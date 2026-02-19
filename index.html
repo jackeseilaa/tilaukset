@@ -1170,8 +1170,31 @@ if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('./sw.js').catch(()=>{});
   });
 }
-loadState();
-render();
+// ─── DEBUG: näytä virheet ruudulla ───
+window.onerror = function (msg, src, line, col, err) {
+  const el = document.getElementById('app');
+  if (el) el.innerHTML = '<pre style="padding:16px;color:#b00020;white-space:pre-wrap">' +
+    'JS ERROR:\n' + msg + '\n' + (src || '') + ':' + line + ':' + col + '\n\n' +
+    (err && err.stack ? err.stack : '') +
+    '</pre>';
+};
+
+window.onunhandledrejection = function (e) {
+  const el = document.getElementById('app');
+  if (el) el.innerHTML = '<pre style="padding:16px;color:#b00020;white-space:pre-wrap">' +
+    'PROMISE ERROR:\n' + (e.reason && e.reason.stack ? e.reason.stack : String(e.reason)) +
+    '</pre>';
+};
+
+try {
+  loadState();
+  render();
+} catch (e) {
+  const el = document.getElementById('app');
+  if (el) el.innerHTML = '<pre style="padding:16px;color:#b00020;white-space:pre-wrap">' +
+    'INIT ERROR:\n' + (e && e.stack ? e.stack : String(e)) +
+    '</pre>';
+}
 </script>
 </body>
 </html>
