@@ -569,17 +569,12 @@ if (sc) {
 }
 
     const ss = document.querySelector('[data-action="search-sailings"]');
-    if (ss) ss.addEventListener("input", (e) => { state.searchSailings = e.target.value; render(); });
-
-    document.querySelectorAll("[data-field]").forEach(el => {
-      el.addEventListener("input", () => {
-        state.form[el.dataset.field] = el.value;
-      });
-      el.addEventListener("change", () => {
-        state.form[el.dataset.field] = el.value;
-      });
-    });
-  }
+if (ss) {
+  ss.addEventListener("input", (e) => {
+    state.searchSailings = e.target.value;
+    render();
+  });
+}
 
   function openCustomerModal() {
     state.form = { name:"", phone:"", email:"" };
