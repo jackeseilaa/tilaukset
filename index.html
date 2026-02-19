@@ -276,14 +276,20 @@ function render() {
   }
 
   function renderDashboard() {
-    return `
-      <div class="card">
-        <div class="row between">
-          <div>
-            <h2 style="margin:0 0 6px 0">Dashboard</h2>
-            <div class="muted">Perusnavigointi toimii.</div>
-          </div>
+  return `
+    <div style="margin-bottom:16px">
+      <button class="btn btn-secondary btn-sm" data-action="backup-json">
+        💾 Lataa varmuuskopio (JSON)
+      </button>
+    </div>
+
+    <div class="card">
+      <div class="row between">
+        <div>
+          <h2 style="margin:0 0 6px 0">Dashboard</h2>
+          <div class="muted">Perusnavigointi toimii.</div>
         </div>
+      </div>
         <div class="hr"></div>
         <div class="row" style="gap:18px">
           <div class="note">
