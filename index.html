@@ -1,123 +1,117 @@
-<!DOCTYPE html>
-<html lang="fi">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Absolut 37</title>
-  <style>
-    body { font-family: system-ui, -apple-system, sans-serif; margin:0; background:#f4f6f8; color:#111; }
-    header { padding:20px; background:#0e4a7a; color:#fff; }
-    header h1 { margin:0; font-size:28px; }
-    header .sub { opacity:.85; font-size:14px; margin-top:4px; }
-    nav { display:flex; background:#fff; border-bottom:1px solid #ddd; position:sticky; top:0; }
-    nav button { flex:1; padding:12px; border:none; background:#fff; font-weight:700; color:#667; }
-    nav button.active { color:#0e4a7a; border-bottom:3px solid #0e4a7a; background:#f0f7ff; }
-    main { padding:20px; max-width:1000px; margin:0 auto; }
-    .card { background:#fff; border:1px solid #ddd; padding:16px; }
-    .muted { color:#667; }
-  </style>
-</head>
-<body>
+<script>
+  // STATE
+  const state = {
+    activeTab: "dashboard",
+    sailings: [
+      {
+        id: "E001",
+        date: "2026-05-21",
+        name: "Purjehduskurssi",
+        price: 560
+      }
+    ],
+    customers: [
+      {
+        id: "V001",
+        name: "Sauli Ketola",
+        sailingId: "E001",
+        price: 476,
+        status: "Varaus"
+      }
+    ]
+  };
 
-  <header>
-    <h1>Absolut 37</h1>
-    <div class="sub">Tilausten hallinta</div>
-  </header>
+  function render() {
+    renderNav();
+    renderContent();
+  }
 
-  <nav id="nav"></nav>
-  <main>
-    <div id="app"></div>
-  </main>
+  function renderNav() {
+    const nav = document.getElementById("nav");
+    const tabs = [
+      { id: "dashboard", label: "Dashboard" },
+      { id: "sailings", label: "Purjehdukset" },
+      { id: "customers", label: "Asiakkaat" },
+      { id: "invoicing", label: "Laskutus" }
+    ];
 
-  <script>
-    // 1) State
-    const state = {
-      activeTab: "dashboard"
-    };
+    nav.innerHTML = tabs.map(t => `
+      <button data-tab="${t.id}" class="${state.activeTab === t.id ? "active" : ""}">
+        ${t.label}
+      </button>
+    `).join("");
 
-    // 2) Render
-    function render() {
-      renderNav();
-      renderContent();
-    }
-
-    function renderNav() {
-      const nav = document.getElementById("nav");
-      const tabs = [
-        { id: "dashboard", label: "Dashboard" },
-        { id: "sailings",   label: "Purjehdukset" },
-        { id: "customers",  label: "Asiakkaat" },
-        { id: "invoicing",  label: "Laskutus" }
-      ];
-
-      nav.innerHTML = tabs.map(t => `
-        <button data-tab="${t.id}" class="${state.activeTab === t.id ? "active" : ""}">
-          ${t.label}
-        </button>
-      `).join("");
-
-      nav.querySelectorAll("button[data-tab]").forEach(btn => {
-        btn.addEventListener("click", () => {
-          state.activeTab = btn.dataset.tab;
-          render();
-        });
+    nav.querySelectorAll("button[data-tab]").forEach(btn => {
+      btn.addEventListener("click", () => {
+        state.activeTab = btn.dataset.tab;
+        render();
       });
+    });
+  }
+
+  function renderContent() {
+    const app = document.getElementById("app");
+
+    if (state.activeTab === "dashboard") {
+      app.innerHTML = `
+        <div class="card">
+          <strong>Purjehduksia:</strong> ${state.sailings.length}<br>
+          <strong>Asiakkaita:</strong> ${state.customers.length}
+        </div>
+      `;
+      return;
     }
 
-    function renderContent() {
-      const app = document.getElementById("app");
-
-      if (state.activeTab === "dashboard") {
-        app.innerHTML = `
-          <div class="card">
-            <div style="font-size:18px;font-weight:800;margin-bottom:6px;">Dashboard</div>
-            <div class="muted">Perusnavigointi toimii.</div>
-          </div>
-        `;
-        return;
-      }
-
-      if (state.activeTab === "sailings") {
-        app.innerHTML = `
-          <div class="card">
-            <div style="font-size:18px;font-weight:800;margin-bottom:6px;">Purjehdukset</div>
-            <div class="muted">Seuraavaksi lisätään purjehduslista.</div>
-          </div>
-        `;
-        return;
-      }
-
-      if (state.activeTab === "customers") {
-        app.innerHTML = `
-          <div class="card">
-            <div style="font-size:18px;font-weight:800;margin-bottom:6px;">Asiakkaat</div>
-            <div class="muted">Seuraavaksi lisätään asiakaslista.</div>
-          </div>
-        `;
-        return;
-      }
-
-      if (state.activeTab === "invoicing") {
-        app.innerHTML = `
-          <div class="card">
-            <div style="font-size:18px;font-weight:800;margin-bottom:6px;">Laskutus</div>
-            <div class="muted">Seuraavaksi lisätään ryhmittely.</div>
-          </div>
-        `;
-        return;
-      }
-
-      app.innerHTML = `<div class="card">Tuntematon välilehti.</div>`;
+    if (state.activeTab === "sailings") {
+      app.innerHTML = `
+        <div class="card">
+          <h3>Purjehdukset</h3>
+          ${state.sailings.map(s => `
+            <div style="margin-top:10px;padding:10px;border:1px solid #ddd">
+              <strong>${s.name}</strong><br>
+              ${s.date}<br>
+              ${s.price} €
+            </div>
+          `).join("")}
+        </div>
+      `;
+      return;
     }
 
-    // 3) Init
-    try {
-      render();
-    } catch (e) {
-      document.getElementById("app").innerHTML =
-        "<pre style='color:#b00020;white-space:pre-wrap'>" + (e.stack || e) + "</pre>";
+    if (state.activeTab === "customers") {
+      app.innerHTML = `
+        <div class="card">
+          <h3>Asiakkaat</h3>
+          ${state.customers.map(c => {
+            const sailing = state.sailings.find(s => s.id === c.sailingId);
+            return `
+              <div style="margin-top:10px;padding:10px;border:1px solid #ddd">
+                <strong>${c.name}</strong><br>
+                Purjehdus: ${sailing ? sailing.name : c.sailingId}<br>
+                ${c.price} €<br>
+                Tila: ${c.status}
+              </div>
+            `;
+          }).join("")}
+        </div>
+      `;
+      return;
     }
-  </script>
 
-</body>
-</html>
+    if (state.activeTab === "invoicing") {
+      app.innerHTML = `
+        <div class="card">
+          Laskutusnäkymä lisätään seuraavaksi.
+        </div>
+      `;
+      return;
+    }
+  }
+
+  try {
+    render();
+  } catch (e) {
+    document.getElementById("app").innerHTML =
+      "<pre style='color:#b00020'>" + (e.stack || e) + "</pre>";
+  }
+</script>
