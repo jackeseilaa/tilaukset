@@ -525,12 +525,58 @@ function render() {
   }
 
   function bind() {
-    document.querySelectorAll("[data-tab]").forEach(btn => {
-      btn.addEventListener("click", () => {
-        state.tab = btn.dataset.tab;
-        render();
-      });
+  // Tabit
+  document.querySelectorAll("[data-tab]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      state.tab = btn.dataset.tab;
+      render();
     });
+  });
+
+  // Asiakkaiden haku
+  const sc = document.querySelector('[data-action="search-customers"]');
+  if (sc) {
+    sc.addEventListener("input", (e) => {
+      state.searchCustomers = e.target.value;
+      render();
+    });
+  }
+
+  // Purjehdusten haku
+  const ss = document.querySelector('[data-action="search-sailings"]');
+  if (ss) {
+    ss.addEventListener("input", (e) => {
+      state.searchSailings = e.target.value;
+      render();
+    });
+  }
+
+  // JSON-varmuuskopio
+  const backupBtn = document.querySelector('[data-action="backup-json"]');
+  if (backupBtn) {
+    backupBtn.addEventListener("click", () => {
+      const data = {
+        exportDate: new Date().toISOString(),
+        sailings: state.sailings,
+        customers: state.customers
+      };
+
+      const blob = new Blob(
+        [JSON.stringify(data, null, 2)],
+        { type: "application/json" }
+      );
+
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "absolut37_backup_" +
+                   new Date().toISOString().slice(0, 10) +
+                   ".json";
+      a.click();
+      URL.revokeObjectURL(url);
+    });
+  }
+}
 
     document.querySelectorAll("[data-action]").forEach(el => {
       el.addEventListener("click", (e) => {
