@@ -425,6 +425,43 @@ function fillUI(booked, max){
         if(a==="new-customer"){ state.modal="customer"; render(); }
         if(a==="new-sailing"){ state.modal="sailing"; render(); }
         if(a==="close-modal"){ state.modal=null; render(); }
+        if(a==="toggle-sailing"){
+  state.openSailingId = (state.openSailingId === id) ? null : id;
+  render();
+  return;
+}
+
+if(a==="add-session"){
+  const date = prompt("Kurssipäivä (YYYY-MM-DD):", today());
+  if(!date) return;
+
+  const start = prompt("Aloitusaika (HH:MM), tyhjä sallittu:", "17:00") || "";
+  const end = prompt("Lopetusaika (HH:MM), tyhjä sallittu:", "20:00") || "";
+  const note = prompt("Lisähuomio (valinnainen):", "") || "";
+
+  const s = state.sailings.find(x => x.id === id);
+  if(!s) return;
+
+  if(!Array.isArray(s.sessions)) s.sessions = [];
+  s.sessions.push({ date, start, end, note });
+
+  save();
+  render();
+  return;
+}
+
+if(a==="delete-session"){
+  const idx = Number(el.dataset.idx);
+  const s = state.sailings.find(x => x.id === id);
+  if(!s || !Array.isArray(s.sessions)) return;
+
+  if(!confirm("Poistetaanko kurssipäivä?")) return;
+
+  s.sessions.splice(idx, 1);
+  save();
+  render();
+  return;
+}
 
         if(a==="toggle-sailing"){
           const sid = el.dataset.id;
