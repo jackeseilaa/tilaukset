@@ -206,6 +206,14 @@
   }
 
 function render() {
+  // Säilytä fokus ja kursorin kohta ennen kuin DOM rakennetaan uusiksi
+  const ae = document.activeElement;
+  const keep = {
+    action: ae && ae.dataset ? ae.dataset.action : null,
+    field:  ae && ae.dataset ? ae.dataset.field  : null,
+    pos:    (ae && typeof ae.selectionStart === "number") ? ae.selectionStart : null
+  };
+
   const app = document.getElementById("app")
   app.innerHTML = `
     ${renderHeader()}
@@ -216,6 +224,22 @@ function render() {
     ${renderModal()}
   `;
   bind();
+
+  // Palauta fokus siihen inputiin, jossa oltiin kirjoittamassa
+  const sel =
+    keep.action ? `[data-action="${keep.action}"]` :
+    keep.field  ? `[data-field="${keep.field}"]`  :
+    null;
+
+  if (sel) {
+    const el = document.querySelector(sel);
+    if (el && typeof el.focus === "function") {
+      el.focus();
+      if (keep.pos !== null && typeof el.setSelectionRange === "function") {
+        el.setSelectionRange(keep.pos, keep.pos);
+      }
+    }
+  }
 }
 
   function renderHeader() {
