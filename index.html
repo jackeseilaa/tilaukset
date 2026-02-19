@@ -454,7 +454,7 @@ function fillUI(booked, max){
 
           if(!name || !date || !type) return alert("Täytä pakolliset kentät (nimi, päivä, tyyppi).");
 
-          state.sailings.push({ id:id("S"), name, date, type, maxPersons, pricePerPerson });
+          state.sailings.push({id:id("S"),name,date,type,maxPersons,pricePerPerson, sessions: []});
           save();
           state.modal=null;
           render();
