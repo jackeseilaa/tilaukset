@@ -240,7 +240,9 @@ function renderSailings(){
   • Ilmoittautuneet: ${state.customers.filter(c => c.sailingId === s.id).length}
 </div>
         </div>
-        <button class="btn secondary" data-action="toggle-sailing" data-id="${s.id}">
+        <button class="btn danger" data-action="delete-sailing" data-id="${s.id}">
+  Poista
+</button>
   ${state.openSailingId === s.id ? "Piilota asiakkaat" : "Näytä asiakkaat"}
 </button>
         <button class="btn danger" data-action="delete-sailing" data-id="${s.id}">Poista</button>
