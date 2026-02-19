@@ -287,12 +287,23 @@ function bind(){
       if(a==="new-customer"){state.modal="customer";render()}
       if(a==="new-sailing"){state.modal="sailing";render()}
       if(a==="close-modal"){state.modal=null;render()}
-      if(a==="save-customer"){
-        const name=document.querySelector('[data-field="name"]').value.trim();
-        if(!name)return alert("Nimi pakollinen");
-        state.customers.push({id:id("C"),name});
-        save();state.modal=null;render();
-      }
+      if (a === "save-customer") {
+  const name = document.querySelector('[data-field="name"]').value.trim();
+  if (!name) return alert("Nimi pakollinen");
+
+  const sailingId =
+    document.querySelector('[data-field="sailingId"]')?.value || "";
+
+  state.customers.push({
+    id: id("C"),
+    name,
+    sailingId
+  });
+
+  save();
+  state.modal = null;
+  render();
+}
       if(a==="save-sailing"){
         const name=document.querySelector('[data-field="name"]').value.trim();
         const date=document.querySelector('[data-field="date"]').value;
