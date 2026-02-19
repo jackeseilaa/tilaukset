@@ -345,6 +345,11 @@ function bind(){
         save();render();
       }
       if(a==="delete-sailing"){
+      if(a==="toggle-sailing"){
+  state.openSailingId =
+    state.openSailingId === id ? null : id;
+  render();
+}
         state.sailings=state.sailings.filter(s=>s.id!==el.dataset.id);
         save();render();
       }
