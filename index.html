@@ -5,18 +5,28 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Absolut 37</title>
 </head>
-<body style="padding:40px;font-family:sans-serif">
+<body style="font-family:sans-serif;margin:0;background:#f4f6f8;">
 
-  <h1>Absolut 37</h1>
+  <header style="padding:20px;background:#0e4a7a;color:white;">
+    <h1 style="margin:0;">Absolut 37</h1>
+    <div style="font-size:14px;opacity:0.8;">Tilausten hallinta</div>
+  </header>
 
-  <div id="app"></div>
+  <nav style="display:flex;background:white;border-bottom:1px solid #ccc;">
+    <button style="flex:1;padding:12px;border:none;background:white;">Dashboard</button>
+    <button style="flex:1;padding:12px;border:none;background:white;">Purjehdukset</button>
+    <button style="flex:1;padding:12px;border:none;background:white;">Asiakkaat</button>
+  </nav>
+
+  <main style="padding:20px;">
+    <div id="app"></div>
+  </main>
 
   <script>
     const app = document.getElementById("app");
-
     app.innerHTML = `
-      <div style="padding:20px;border:1px solid #ccc">
-        Perusrenderöinti toimii
+      <div style="padding:20px;background:white;border:1px solid #ddd;">
+        Sovelluksen UI-runko toimii.
       </div>
     `;
   </script>
