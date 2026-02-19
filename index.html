@@ -354,16 +354,20 @@ function render() {
   }
 
   function renderSailings() {
-    const term = state.searchSailings.trim().toLowerCase();
-    const list = state.sailings
-      .slice()
-      .sort((a,b) => (a.date||"").localeCompare(b.date||""))
-      .filter(s => {
-        if (!term) return true;
-        return (s.name||"").toLowerCase().includes(term)
-          || (s.type||"").toLowerCase().includes(term)
-          || (s.date||"").toLowerCase().includes(term);
-      });
+  const term = (state.searchSailings || "").trim().toLowerCase();
+
+  const list = state.sailings
+    .slice()
+    .sort((a, b) => (a.date || "").localeCompare(b.date || ""))
+    .filter(s => {
+      if (!term) return true;
+
+      return (
+        (s.name || "").toLowerCase().includes(term) ||
+        (s.type || "").toLowerCase().includes(term) ||
+        (s.date || "").toLowerCase().includes(term)
+      );
+    });
 
     return `
       <div class="card">
