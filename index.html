@@ -190,7 +190,18 @@ function renderCustomers(){
     ${list.map(c=>`
       <div class="item">
         <div>
-          <h3>${esc(c.name)}</h3>
+          <h3>
+  ${esc(c.name)}
+  ${c.sailingId ? `
+    <span class="pill">
+      ${
+        esc(
+          state.sailings.find(s => s.id === c.sailingId)?.name || ""
+        )
+      }
+    </span>
+  ` : ""}
+</h3>
           <div class="meta">${esc(c.phone)} ${esc(c.email)}</div>
         </div>
         <button class="btn danger" data-action="delete-customer" data-id="${c.id}">Poista</button>
