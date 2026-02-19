@@ -1,1 +1,288 @@
-975819ad3c4d02eb4b3e24f30245f941ab80c247
+<!DOCTYPE html>
+<html lang="fi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Absolut 37 — Tilaukset</title>
+  <style>
+    :root { --navy:#0e4a7a; --bg:#f4f6f8; --card:#fff; --line:#e5e7eb; --text:#111827; --muted:#6b7280; }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--text)}
+    .header{background:var(--navy);color:#fff;padding:18px 18px 14px}
+    .header h1{margin:0;font-size:28px;font-weight:800}
+    .header p{margin:4px 0 0;color:rgba(255,255,255,.75);font-size:14px}
+    .nav{display:flex;background:#fff;border-bottom:1px solid var(--line)}
+    .tab{flex:1;padding:12px 10px;text-align:center;border:0;background:transparent;font-weight:700;color:#4b5563;border-bottom:3px solid transparent}
+    .tab.active{color:var(--navy);border-bottom-color:var(--navy)}
+    .wrap{max-width:980px;margin:0 auto;padding:16px}
+    .card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px;margin-bottom:12px}
+    .row{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+    .btn{border:0;border-radius:10px;padding:10px 12px;font-weight:800;cursor:pointer}
+    .btn.primary{background:var(--navy);color:#fff}
+    .btn.gray{background:#eef2f7;color:#111827}
+    .btn.danger{background:#fee2e2;color:#991b1b}
+    .input{width:100%;padding:10px 10px;border:1px solid var(--line);border-radius:10px;font-size:16px}
+    .label{font-size:13px;color:var(--muted);font-weight:700;margin-bottom:6px;display:block}
+    .list-item{display:flex;gap:10px;justify-content:space-between;align-items:flex-start;border-top:1px solid var(--line);padding-top:12px;margin-top:12px}
+    .name{font-weight:900}
+    .meta{color:var(--muted);font-size:14px;margin-top:3px}
+    /* Modal */
+    .overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;padding:16px}
+    .modal{background:#fff;border-radius:14px;max-width:520px;width:100%;border:1px solid var(--line);overflow:hidden}
+    .modal-head{padding:14px 14px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center}
+    .modal-body{padding:14px 14px}
+    .xbtn{border:0;background:transparent;font-size:22px;cursor:pointer;color:#6b7280}
+    @media (max-width:520px){ .row{align-items:stretch} .btn{width:100%} }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>Absolut 37</h1>
+    <p>Tilauksen hallinta</p>
+  </div>
+
+  <div class="nav" id="nav"></div>
+  <div class="wrap">
+    <div id="app"></div>
+  </div>
+
+<script>
+(() => {
+  const STORAGE_KEY = "absolut37_customers_v1";
+
+  const tabs = [
+    { id:"dashboard", label:"Dashboard" },
+    { id:"sailings", label:"Purjehdukset" },
+    { id:"customers", label:"Asiakkaat" },
+    { id:"invoicing", label:"Laskutus" },
+  ];
+
+  const state = {
+    tab: "customers",
+    customers: [],
+    modalOpen: false,
+    form: { name:"", phone:"", email:"" },
+    search: ""
+  };
+
+  function load() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) {
+        const data = JSON.parse(raw);
+        if (Array.isArray(data)) state.customers = data;
+      }
+    } catch(e) {}
+  }
+
+  function save() {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state.customers));
+    } catch(e) {}
+  }
+
+  function esc(s) {
+    const d = document.createElement("div");
+    d.textContent = String(s ?? "");
+    return d.innerHTML;
+  }
+
+  function uid() {
+    // iPad Safari: crypto.randomUUID ei aina käytettävissä vanhoissa versioissa
+    return "C" + Date.now().toString(36) + Math.random().toString(36).slice(2,7);
+  }
+
+  function renderNav() {
+    const el = document.getElementById("nav");
+    el.innerHTML = tabs.map(t => `
+      <button class="tab ${state.tab===t.id ? "active":""}" data-tab="${t.id}">${esc(t.label)}</button>
+    `).join("");
+    el.querySelectorAll("[data-tab]").forEach(b => {
+      b.addEventListener("click", () => { state.tab = b.dataset.tab; render(); });
+    });
+  }
+
+  function renderDashboard() {
+    return `<div class="card">
+      <div class="row">
+        <div>
+          <div style="font-weight:900;font-size:18px">Dashboard</div>
+          <div class="meta">Tässä myöhemmin KPI:t.</div>
+        </div>
+      </div>
+    </div>`;
+  }
+
+  function renderSailings() {
+    return `<div class="card">
+      <div style="font-weight:900;font-size:18px">Purjehdukset</div>
+      <div class="meta">Tämä tehdään myöhemmin.</div>
+    </div>`;
+  }
+
+  function renderInvoicing() {
+    return `<div class="card">
+      <div style="font-weight:900;font-size:18px">Laskutus</div>
+      <div class="meta">Tämä tehdään myöhemmin.</div>
+    </div>`;
+  }
+
+  function renderCustomers() {
+    const q = state.search.trim().toLowerCase();
+    const list = state.customers
+      .filter(c => !q || (c.name||"").toLowerCase().includes(q) || (c.email||"").toLowerCase().includes(q) || (c.phone||"").toLowerCase().includes(q))
+      .sort((a,b) => (a.name||"").localeCompare(b.name||"", "fi"));
+
+    return `
+      <div class="card">
+        <div class="row">
+          <div>
+            <div style="font-weight:900;font-size:18px">Asiakkaat</div>
+            <div class="meta">Lisää, selaa ja poista. Tallentuu tähän laitteeseen (localStorage).</div>
+          </div>
+          <button class="btn primary" id="addBtn">+ Lisää asiakas</button>
+        </div>
+
+        <div style="margin-top:12px">
+          <label class="label">Haku</label>
+          <input class="input" id="search" placeholder="Hae nimellä / email / puhelin" value="${esc(state.search)}">
+        </div>
+
+        <div style="margin-top:12px">
+          <div class="meta">Yhteensä: <b>${list.length}</b></div>
+
+          ${list.length === 0 ? `
+            <div class="meta" style="margin-top:10px">Ei asiakkaita vielä.</div>
+          ` : list.map(c => `
+            <div class="list-item">
+              <div>
+                <div class="name">${esc(c.name || "(nimetön)")}</div>
+                <div class="meta">
+                  ${c.phone ? esc(c.phone) : ""}
+                  ${c.phone && c.email ? " • " : ""}
+                  ${c.email ? esc(c.email) : ""}
+                </div>
+              </div>
+              <button class="btn danger" data-del="${esc(c.id)}">Poista</button>
+            </div>
+          `).join("")}
+        </div>
+      </div>
+    `;
+  }
+
+  function renderModal() {
+    if (!state.modalOpen) return "";
+    const f = state.form;
+
+    return `
+      <div class="overlay" id="overlay">
+        <div class="modal" role="dialog" aria-modal="true">
+          <div class="modal-head">
+            <div style="font-weight:900">Uusi asiakas</div>
+            <button class="xbtn" id="closeModal" aria-label="Sulje">×</button>
+          </div>
+          <div class="modal-body">
+            <div style="margin-bottom:12px">
+              <label class="label">Nimi *</label>
+              <input class="input" id="f_name" value="${esc(f.name)}" placeholder="Etunimi Sukunimi">
+            </div>
+            <div style="margin-bottom:12px">
+              <label class="label">Puhelin</label>
+              <input class="input" id="f_phone" value="${esc(f.phone)}" placeholder="0401234567">
+            </div>
+            <div style="margin-bottom:12px">
+              <label class="label">Sähköposti</label>
+              <input class="input" id="f_email" value="${esc(f.email)}" placeholder="nimi@esimerkki.fi">
+            </div>
+
+            <div class="row" style="margin-top:10px">
+              <button class="btn gray" id="cancelBtn">Peruuta</button>
+              <button class="btn primary" id="saveBtn">Tallenna</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  function bindCustomers() {
+    const addBtn = document.getElementById("addBtn");
+    if (addBtn) addBtn.addEventListener("click", () => {
+      state.form = { name:"", phone:"", email:"" };
+      state.modalOpen = true;
+      render();
+      setTimeout(() => { const i=document.getElementById("f_name"); if(i) i.focus(); }, 0);
+    });
+
+    const search = document.getElementById("search");
+    if (search) search.addEventListener("input", (e) => {
+      state.search = e.target.value;
+      render();
+      setTimeout(() => { const s=document.getElementById("search"); if(s){ s.focus(); s.selectionStart = s.selectionEnd = s.value.length; } }, 0);
+    });
+
+    document.querySelectorAll("[data-del]").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const id = btn.getAttribute("data-del");
+        if (!id) return;
+        if (confirm("Poistetaanko asiakas?")) {
+          state.customers = state.customers.filter(c => c.id !== id);
+          save();
+          render();
+        }
+      });
+    });
+  }
+
+  function bindModal() {
+    if (!state.modalOpen) return;
+
+    const close = () => { state.modalOpen = false; render(); };
+
+    const overlay = document.getElementById("overlay");
+    if (overlay) overlay.addEventListener("click", (e) => { if (e.target === overlay) close(); });
+
+    const closeBtn = document.getElementById("closeModal");
+    if (closeBtn) closeBtn.addEventListener("click", close);
+
+    const cancelBtn = document.getElementById("cancelBtn");
+    if (cancelBtn) cancelBtn.addEventListener("click", close);
+
+    const saveBtn = document.getElementById("saveBtn");
+    if (saveBtn) saveBtn.addEventListener("click", () => {
+      const name = (document.getElementById("f_name")?.value || "").trim();
+      const phone = (document.getElementById("f_phone")?.value || "").trim();
+      const email = (document.getElementById("f_email")?.value || "").trim();
+
+      if (!name) { alert("Nimi on pakollinen."); return; }
+
+      state.customers.push({ id: uid(), name, phone, email, createdAt: new Date().toISOString() });
+      save();
+      state.modalOpen = false;
+      render();
+    });
+  }
+
+  function render() {
+    renderNav();
+    const app = document.getElementById("app");
+
+    let html = "";
+    if (state.tab === "dashboard") html = renderDashboard();
+    else if (state.tab === "sailings") html = renderSailings();
+    else if (state.tab === "customers") html = renderCustomers();
+    else if (state.tab === "invoicing") html = renderInvoicing();
+
+    app.innerHTML = html + renderModal();
+
+    if (state.tab === "customers") bindCustomers();
+    bindModal();
+  }
+
+  load();
+  render();
+})();
+</script>
+</body>
+</html>
