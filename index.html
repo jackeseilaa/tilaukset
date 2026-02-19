@@ -569,26 +569,17 @@ if (sc) {
 }
 
     const ss = document.querySelector('[data-action="search-sailings"]');
-if (ss) {
-  ss.addEventListener("input", (e) => {
-    const pos = e.target.selectionStart ?? e.target.value.length;
-    state.searchSailings = e.target.value;
+    if (ss) ss.addEventListener("input", (e) => { state.searchSailings = e.target.value; render(); });
 
-    render();
-
-    const ss2 = document.querySelector('[data-action="search-sailings"]');
-    if (ss2) {
-      ss2.focus();
-      ss2.setSelectionRange(pos, pos);
-    }
-  });
-
-  ss.addEventListener("keydown", (e) => {
-    if (e.key === "Enter") {
-      e.preventDefault();
-    }
-  });
-}
+    document.querySelectorAll("[data-field]").forEach(el => {
+      el.addEventListener("input", () => {
+        state.form[el.dataset.field] = el.value;
+      });
+      el.addEventListener("change", () => {
+        state.form[el.dataset.field] = el.value;
+      });
+    });
+  }
 
   function openCustomerModal() {
     state.form = { name:"", phone:"", email:"" };
