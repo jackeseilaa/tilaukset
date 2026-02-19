@@ -212,11 +212,12 @@ function renderCustomers(){
 }
 
 function renderSailings(){
-  const term=state.searchSailings.toLowerCase();
-  const list=state.sailings.filter(s=>
-    !term||
-    s.name?.toLowerCase().includes(term)||
-    s.type?.toLowerCase().includes(term)||
+  const term = state.searchSailings.toLowerCase();
+
+  const list = state.sailings.filter(s =>
+    !term ||
+    s.name?.toLowerCase().includes(term) ||
+    s.type?.toLowerCase().includes(term) ||
     s.date?.includes(term)
   );
 
@@ -225,28 +226,53 @@ function renderSailings(){
       <h2>Purjehdukset</h2>
       <button class="btn primary" data-action="new-sailing">+ Lisää</button>
     </div>
+
     <div class="hr"></div>
+
     <label>Haku</label>
     <input data-action="search-sailings" value="${esc(state.searchSailings)}">
+
     <div class="hr"></div>
-    ${list.map(s=>`
+
+    ${list.map(s => `
       <div class="item">
         <div>
-          <h3>${esc(s.name)} <span class="pill">${esc(s.type)}</span></h3>
+          <h3>
+            ${esc(s.name)}
+            <span class="pill">${esc(s.type)}</span>
+          </h3>
+
           <div class="meta">
-  ${fmtDate(s.date)}
-  • Max ${Number(s.maxPersons||0)} hlö
-  • ${Number(s.pricePerPerson||0).toFixed(2)} €/hlö
-  • Ilmoittautuneet: ${state.customers.filter(c => c.sailingId === s.id).length}
-</div>
+            ${fmtDate(s.date)}
+            • Max ${Number(s.maxPersons||0)} hlö
+            • ${Number(s.pricePerPerson||0).toFixed(2)} €/hlö
+            • Ilmoittautuneet: ${state.customers.filter(c => c.sailingId === s.id).length}
+          </div>
         </div>
-        <button class="btn danger" data-action="delete-sailing" data-id="${s.id}">
-  Poista
-</button>
-  ${state.openSailingId === s.id ? "Piilota asiakkaat" : "Näytä asiakkaat"}
-</button>
-        <button class="btn danger" data-action="delete-sailing" data-id="${s.id}">Poista</button>
+
+        <div class="row">
+          <button class="btn secondary"
+            data-action="toggle-sailing"
+            data-id="${s.id}">
+            ${state.openSailingId === s.id ? "Piilota asiakkaat" : "Näytä asiakkaat"}
+          </button>
+
+          <button class="btn danger"
+            data-action="delete-sailing"
+            data-id="${s.id}">
+            Poista
+          </button>
+        </div>
       </div>
+
+      ${state.openSailingId === s.id ? `
+        <div style="margin:8px 0 16px 0;padding:10px;background:#f8fafc;border-radius:10px">
+          ${state.customers
+            .filter(c => c.sailingId === s.id)
+            .map(c => `<div>${esc(c.name)}</div>`)
+            .join("") || '<div class="muted">Ei ilmoittautuneita</div>'}
+        </div>
+      ` : ""}
     `).join("")}
   </div>`;
 }
