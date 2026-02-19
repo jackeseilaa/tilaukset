@@ -513,7 +513,8 @@ function render() {
     });
 
     const sc = document.querySelector('[data-action="search-customers"]');
-    if (sc) sc.addEventListener("input", (e) => { state.searchCustomers = e.target.value; render(); });
+    if (sc) sc.addEventListener("input", (e) => { state.searchCustomers = e.target.value;
+    });
 
     const ss = document.querySelector('[data-action="search-sailings"]');
     if (ss) ss.addEventListener("input", (e) => { state.searchSailings = e.target.value; render(); });
