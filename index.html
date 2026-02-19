@@ -5,64 +5,157 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Absolut 37 — Tilaukset</title>
   <style>
-    :root { --navy:#0e4a7a; --bg:#f4f6f8; --card:#fff; --line:#e5e7eb; --text:#111827; --muted:#6b7280; }
+    :root{
+      --navy:#234c78;
+      --bg:#f3f5f7;
+      --card:#ffffff;
+      --muted:#6b7280;
+      --line:#e5e7eb;
+      --btn:#1f4b7a;
+      --btn2:#eef2f7;
+      --danger-bg:#fde2e2;
+      --danger:#991b1b;
+      --radius:12px;
+    }
     *{box-sizing:border-box}
-    body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--text)}
-    .header{background:var(--navy);color:#fff;padding:18px 18px 14px}
-    .header h1{margin:0;font-size:28px;font-weight:800}
-    .header p{margin:4px 0 0;color:rgba(255,255,255,.75);font-size:14px}
-    .nav{display:flex;background:#fff;border-bottom:1px solid var(--line)}
-    .tab{flex:1;padding:12px 10px;text-align:center;border:0;background:transparent;font-weight:700;color:#4b5563;border-bottom:3px solid transparent}
-    .tab.active{color:var(--navy);border-bottom-color:var(--navy)}
-    .wrap{max-width:980px;margin:0 auto;padding:16px}
-    .card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px;margin-bottom:12px}
-    .row{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap}
-    .btn{border:0;border-radius:10px;padding:10px 12px;font-weight:800;cursor:pointer}
-    .btn.primary{background:var(--navy);color:#fff}
-    .btn.gray{background:#eef2f7;color:#111827}
-    .btn.danger{background:#fee2e2;color:#991b1b}
-    .input{width:100%;padding:10px 10px;border:1px solid var(--line);border-radius:10px;font-size:16px}
-    .label{font-size:13px;color:var(--muted);font-weight:700;margin-bottom:6px;display:block}
-    .list-item{display:flex;gap:10px;justify-content:space-between;align-items:flex-start;border-top:1px solid var(--line);padding-top:12px;margin-top:12px}
-    .name{font-weight:900}
-    .meta{color:var(--muted);font-size:14px;margin-top:3px}
-    /* Modal */
-    .overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;padding:16px}
-    .modal{background:#fff;border-radius:14px;max-width:520px;width:100%;border:1px solid var(--line);overflow:hidden}
-    .modal-head{padding:14px 14px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center}
-    .modal-body{padding:14px 14px}
-    .xbtn{border:0;background:transparent;font-size:22px;cursor:pointer;color:#6b7280}
-    @media (max-width:520px){ .row{align-items:stretch} .btn{width:100%} }
+    body{margin:0;font-family:-apple-system,system-ui,Segoe UI,Roboto,Arial,sans-serif;background:var(--bg);color:#111827}
+    header{
+      background:var(--navy);
+      color:#fff;
+      padding:18px 20px;
+    }
+    header h1{margin:0;font-size:34px;line-height:1}
+    header .sub{margin-top:6px;opacity:.85;font-size:14px}
+    nav{
+      background:#fff;
+      border-bottom:1px solid var(--line);
+      display:flex;
+      gap:0;
+    }
+    nav button{
+      flex:1;
+      padding:12px 10px;
+      border:0;
+      background:#fff;
+      font-weight:600;
+      color:#374151;
+      cursor:pointer;
+      border-bottom:3px solid transparent;
+    }
+    nav button.active{
+      color:#111827;
+      border-bottom-color:var(--navy);
+    }
+    main{max-width:980px;margin:0 auto;padding:18px}
+    .card{
+      background:var(--card);
+      border:1px solid var(--line);
+      border-radius:var(--radius);
+      padding:18px;
+    }
+    .row{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+    .row.between{justify-content:space-between}
+    .btn{
+      border:0;
+      border-radius:10px;
+      padding:10px 14px;
+      font-weight:700;
+      cursor:pointer;
+    }
+    .btn.primary{background:var(--btn);color:#fff}
+    .btn.secondary{background:var(--btn2);color:#111827}
+    .btn.danger{background:var(--danger-bg);color:var(--danger)}
+    .muted{color:var(--muted)}
+    .hr{border-top:1px solid var(--line);margin:14px 0}
+    input, select{
+      width:100%;
+      padding:10px 12px;
+      border:1px solid var(--line);
+      border-radius:10px;
+      font-size:15px;
+      background:#fff;
+    }
+    label{display:block;font-size:13px;font-weight:700;margin-bottom:6px;color:#374151}
+    .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+    @media (max-width: 800px){
+      .grid2,.grid3{grid-template-columns:1fr}
+      header h1{font-size:28px}
+    }
+
+    /* list items */
+    .item{
+      display:flex;
+      align-items:flex-start;
+      justify-content:space-between;
+      gap:12px;
+      padding:12px 0;
+      border-top:1px solid var(--line);
+    }
+    .item:first-child{border-top:0;padding-top:0}
+    .item h3{margin:0 0 4px 0;font-size:18px}
+    .item .meta{font-size:14px;color:var(--muted)}
+    .pill{
+      display:inline-block;
+      padding:4px 10px;
+      border-radius:999px;
+      background:#eef2ff;
+      color:#1e3a8a;
+      font-size:12px;
+      font-weight:700;
+      margin-left:8px;
+      vertical-align:middle;
+    }
+
+    /* modal */
+    .overlay{
+      position:fixed;inset:0;
+      background:rgba(0,0,0,.35);
+      display:flex;align-items:center;justify-content:center;
+      padding:18px;
+    }
+    .modal{
+      width:min(680px, 100%);
+      background:#fff;
+      border-radius:16px;
+      border:1px solid var(--line);
+      overflow:hidden;
+    }
+    .modal header{
+      background:#fff;color:#111827;
+      padding:16px 18px;
+      border-bottom:1px solid var(--line);
+    }
+    .modal header h2{margin:0;font-size:18px}
+    .modal .body{padding:18px}
+    .right{margin-left:auto}
+    .small{font-size:12px}
+    .note{
+      background:#f8fafc;
+      border:1px solid var(--line);
+      border-radius:12px;
+      padding:12px 14px;
+    }
   </style>
 </head>
 <body>
-  <div class="header">
-    <h1>Absolut 37</h1>
-    <p>Tilauksen hallinta</p>
-  </div>
 
-  <div class="nav" id="nav"></div>
-  <div class="wrap">
-    <div id="app"></div>
-  </div>
+<div id="app"></div>
 
 <script>
 (() => {
-  const STORAGE_KEY = "absolut37_customers_v1";
+  const STORAGE_KEY = "absolut37_vaihe2_v1";
 
-  const tabs = [
-    { id:"dashboard", label:"Dashboard" },
-    { id:"sailings", label:"Purjehdukset" },
-    { id:"customers", label:"Asiakkaat" },
-    { id:"invoicing", label:"Laskutus" },
-  ];
+  const SAILING_TYPES = ["Iltapurjehdus","Päiväpurjehdus","Charter","Kurssi","Yritystilaisuus","Muu"];
 
   const state = {
-    tab: "customers",
+    tab: "dashboard",
     customers: [],
-    modalOpen: false,
-    form: { name:"", phone:"", email:"" },
-    search: ""
+    sailings: [],
+    modal: null, // "customer" | "sailing" | null
+    form: {},
+    searchCustomers: "",
+    searchSailings: ""
   };
 
   function load() {
@@ -70,135 +163,276 @@
       const raw = localStorage.getItem(STORAGE_KEY);
       if (raw) {
         const data = JSON.parse(raw);
-        if (Array.isArray(data)) state.customers = data;
+        state.customers = Array.isArray(data.customers) ? data.customers : [];
+        state.sailings = Array.isArray(data.sailings) ? data.sailings : [];
       }
-    } catch(e) {}
+    } catch (e) {}
+    // Seed data (vain jos tyhjää)
+    if (state.customers.length === 0 && state.sailings.length === 0) {
+      state.customers.push({ id: id("C"), name:"Testi Seppo", phone:"04012345678", email:"joku@joku.net" });
+      state.sailings.push({ id: id("S"), name:"Iltapurjehdus Suomenlinna", date: today(), type:"Iltapurjehdus", maxPersons: 6, pricePerPerson: 120 });
+    }
   }
 
   function save() {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(state.customers));
-    } catch(e) {}
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({
+      customers: state.customers,
+      sailings: state.sailings
+    }));
+  }
+
+  function id(prefix) {
+    return prefix + Math.random().toString(16).slice(2, 8).toUpperCase();
   }
 
   function esc(s) {
     const d = document.createElement("div");
-    d.textContent = String(s ?? "");
+    d.textContent = s ?? "";
     return d.innerHTML;
   }
 
-  function uid() {
-    // iPad Safari: crypto.randomUUID ei aina käytettävissä vanhoissa versioissa
-    return "C" + Date.now().toString(36) + Math.random().toString(36).slice(2,7);
+  function today() {
+    const d = new Date();
+    const y = d.getFullYear();
+    const m = String(d.getMonth()+1).padStart(2,"0");
+    const day = String(d.getDate()).padStart(2,"0");
+    return `${y}-${m}-${day}`;
+  }
+
+  function fmtDate(iso) {
+    if (!iso) return "";
+    const d = new Date(iso + "T00:00:00");
+    return d.toLocaleDateString("fi-FI");
+  }
+
+function render() {
+  const app = document.getElementById("app")
+  app.innerHTML = `
+    ${renderHeader()}
+    ${renderNav()}
+    <main>
+      ${renderTab()}
+    </main>
+    ${renderModal()}
+  `;
+  bind();
+}
+
+  function renderHeader() {
+    return `
+      <header>
+        <h1>Absolut 37</h1>
+        <div class="sub">Tilauksen hallinta</div>
+      </header>
+    `;
   }
 
   function renderNav() {
-    const el = document.getElementById("nav");
-    el.innerHTML = tabs.map(t => `
-      <button class="tab ${state.tab===t.id ? "active":""}" data-tab="${t.id}">${esc(t.label)}</button>
-    `).join("");
-    el.querySelectorAll("[data-tab]").forEach(b => {
-      b.addEventListener("click", () => { state.tab = b.dataset.tab; render(); });
-    });
+    const tabs = [
+      ["dashboard","Dashboard"],
+      ["sailings","Purjehdukset"],
+      ["customers","Asiakkaat"],
+      ["invoicing","Laskutus"]
+    ];
+    return `
+      <nav>
+        ${tabs.map(([id,label]) => `
+          <button data-tab="${id}" class="${state.tab===id ? "active":""}">${label}</button>
+        `).join("")}
+      </nav>
+    `;
+  }
+
+  function renderTab() {
+    if (state.tab === "dashboard") return renderDashboard();
+    if (state.tab === "customers") return renderCustomers();
+    if (state.tab === "sailings") return renderSailings();
+    if (state.tab === "invoicing") return renderInvoicing();
+    return "";
   }
 
   function renderDashboard() {
-    return `<div class="card">
-      <div class="row">
-        <div>
-          <div style="font-weight:900;font-size:18px">Dashboard</div>
-          <div class="meta">Tässä myöhemmin KPI:t.</div>
+    return `
+      <div class="card">
+        <div class="row between">
+          <div>
+            <h2 style="margin:0 0 6px 0">Dashboard</h2>
+            <div class="muted">Perusnavigointi toimii.</div>
+          </div>
+        </div>
+        <div class="hr"></div>
+        <div class="row" style="gap:18px">
+          <div class="note">
+            <div style="font-weight:800">Asiakkaita</div>
+            <div style="font-size:28px;font-weight:900">${state.customers.length}</div>
+          </div>
+          <div class="note">
+            <div style="font-weight:800">Purjehduksia</div>
+            <div style="font-size:28px;font-weight:900">${state.sailings.length}</div>
+          </div>
+          <div class="note">
+            <div style="font-weight:800">Tallennus</div>
+            <div class="muted">localStorage (tähän laitteeseen)</div>
+          </div>
         </div>
       </div>
-    </div>`;
-  }
-
-  function renderSailings() {
-    return `<div class="card">
-      <div style="font-weight:900;font-size:18px">Purjehdukset</div>
-      <div class="meta">Tämä tehdään myöhemmin.</div>
-    </div>`;
-  }
-
-  function renderInvoicing() {
-    return `<div class="card">
-      <div style="font-weight:900;font-size:18px">Laskutus</div>
-      <div class="meta">Tämä tehdään myöhemmin.</div>
-    </div>`;
+    `;
   }
 
   function renderCustomers() {
-    const q = state.search.trim().toLowerCase();
-    const list = state.customers
-      .filter(c => !q || (c.name||"").toLowerCase().includes(q) || (c.email||"").toLowerCase().includes(q) || (c.phone||"").toLowerCase().includes(q))
-      .sort((a,b) => (a.name||"").localeCompare(b.name||"", "fi"));
+    const term = state.searchCustomers.trim().toLowerCase();
+    const list = state.customers.filter(c => {
+      if (!term) return true;
+      return (c.name||"").toLowerCase().includes(term)
+        || (c.email||"").toLowerCase().includes(term)
+        || (c.phone||"").toLowerCase().includes(term);
+    });
 
     return `
       <div class="card">
-        <div class="row">
+        <div class="row between">
           <div>
-            <div style="font-weight:900;font-size:18px">Asiakkaat</div>
-            <div class="meta">Lisää, selaa ja poista. Tallentuu tähän laitteeseen (localStorage).</div>
+            <h2 style="margin:0 0 6px 0">Asiakkaat</h2>
+            <div class="muted">Lisää, selaa ja poista. Tallentuu tähän laitteeseen (localStorage).</div>
           </div>
-          <button class="btn primary" id="addBtn">+ Lisää asiakas</button>
+          <button class="btn primary" data-action="new-customer">+ Lisää asiakas</button>
         </div>
 
-        <div style="margin-top:12px">
-          <label class="label">Haku</label>
-          <input class="input" id="search" placeholder="Hae nimellä / email / puhelin" value="${esc(state.search)}">
+        <div class="hr"></div>
+
+        <div class="grid2">
+          <div>
+            <label>Haku</label>
+            <input placeholder="Hae nimellä / email / puhelin" value="${esc(state.searchCustomers)}" data-action="search-customers" />
+            <div class="muted small" style="margin-top:8px">Yhteensä: ${list.length}</div>
+          </div>
+          <div class="note">
+            <div style="font-weight:800">Vinkki</div>
+            <div class="muted small">Seuraavassa vaiheessa asiakkaat liitetään purjehdukseen.</div>
+          </div>
         </div>
 
-        <div style="margin-top:12px">
-          <div class="meta">Yhteensä: <b>${list.length}</b></div>
+        <div class="hr"></div>
 
-          ${list.length === 0 ? `
-            <div class="meta" style="margin-top:10px">Ei asiakkaita vielä.</div>
-          ` : list.map(c => `
-            <div class="list-item">
+        ${list.length === 0 ? `<div class="muted">Ei osumia.</div>` : `
+          ${list.map(c => `
+            <div class="item">
               <div>
-                <div class="name">${esc(c.name || "(nimetön)")}</div>
-                <div class="meta">
-                  ${c.phone ? esc(c.phone) : ""}
-                  ${c.phone && c.email ? " • " : ""}
-                  ${c.email ? esc(c.email) : ""}
-                </div>
+                <h3>${esc(c.name || "")}</h3>
+                <div class="meta">${esc(c.phone || "")}${c.phone && c.email ? " • " : ""}${esc(c.email || "")}</div>
               </div>
-              <button class="btn danger" data-del="${esc(c.id)}">Poista</button>
+              <button class="btn danger" data-action="delete-customer" data-id="${c.id}">Poista</button>
             </div>
           `).join("")}
+        `}
+      </div>
+    `;
+  }
+
+  function renderSailings() {
+    const term = state.searchSailings.trim().toLowerCase();
+    const list = state.sailings
+      .slice()
+      .sort((a,b) => (a.date||"").localeCompare(b.date||""))
+      .filter(s => {
+        if (!term) return true;
+        return (s.name||"").toLowerCase().includes(term)
+          || (s.type||"").toLowerCase().includes(term)
+          || (s.date||"").toLowerCase().includes(term);
+      });
+
+    return `
+      <div class="card">
+        <div class="row between">
+          <div>
+            <h2 style="margin:0 0 6px 0">Purjehdukset</h2>
+            <div class="muted">Lisää, selaa ja poista. Tallentuu tähän laitteeseen (localStorage).</div>
+          </div>
+          <button class="btn primary" data-action="new-sailing">+ Lisää purjehdus</button>
         </div>
+
+        <div class="hr"></div>
+
+        <div class="grid2">
+          <div>
+            <label>Haku</label>
+            <input placeholder="Hae nimellä / tyypillä / päivällä (YYYY-MM-DD)" value="${esc(state.searchSailings)}" data-action="search-sailings" />
+            <div class="muted small" style="margin-top:8px">Yhteensä: ${list.length}</div>
+          </div>
+          <div class="note">
+            <div style="font-weight:800">Kentät</div>
+            <div class="muted small">Nimi • Päivä • Tyyppi • Max hlö • Hinta/hlö</div>
+          </div>
+        </div>
+
+        <div class="hr"></div>
+
+        ${list.length === 0 ? `<div class="muted">Ei purjehduksia.</div>` : `
+          ${list.map(s => `
+            <div class="item">
+              <div>
+                <h3>
+                  ${esc(s.name || "")}
+                  <span class="pill">${esc(s.type || "")}</span>
+                </h3>
+                <div class="meta">
+                  ${fmtDate(s.date)} • Max ${Number(s.maxPersons||0)} hlö • ${Number(s.pricePerPerson||0).toFixed(2)} €/hlö
+                </div>
+              </div>
+              <button class="btn danger" data-action="delete-sailing" data-id="${s.id}">Poista</button>
+            </div>
+          `).join("")}
+        `}
+      </div>
+    `;
+  }
+
+  function renderInvoicing() {
+    return `
+      <div class="card">
+        <h2 style="margin:0 0 6px 0">Laskutus</h2>
+        <div class="muted">Seuraavaksi lisätään ryhmittely.</div>
       </div>
     `;
   }
 
   function renderModal() {
-    if (!state.modalOpen) return "";
+    if (!state.modal) return "";
+    if (state.modal === "customer") return modalCustomer();
+    if (state.modal === "sailing") return modalSailing();
+    return "";
+  }
+
+  function modalCustomer() {
     const f = state.form;
-
     return `
-      <div class="overlay" id="overlay">
-        <div class="modal" role="dialog" aria-modal="true">
-          <div class="modal-head">
-            <div style="font-weight:900">Uusi asiakas</div>
-            <button class="xbtn" id="closeModal" aria-label="Sulje">×</button>
-          </div>
-          <div class="modal-body">
-            <div style="margin-bottom:12px">
-              <label class="label">Nimi *</label>
-              <input class="input" id="f_name" value="${esc(f.name)}" placeholder="Etunimi Sukunimi">
+      <div class="overlay" data-action="close-modal">
+        <div class="modal" onclick="event.stopPropagation()">
+          <header>
+            <div class="row between">
+              <h2>Lisää asiakas</h2>
+              <button class="btn secondary" data-action="close-modal">Sulje</button>
             </div>
-            <div style="margin-bottom:12px">
-              <label class="label">Puhelin</label>
-              <input class="input" id="f_phone" value="${esc(f.phone)}" placeholder="0401234567">
-            </div>
-            <div style="margin-bottom:12px">
-              <label class="label">Sähköposti</label>
-              <input class="input" id="f_email" value="${esc(f.email)}" placeholder="nimi@esimerkki.fi">
+          </header>
+          <div class="body">
+            <div class="grid2">
+              <div>
+                <label>Nimi *</label>
+                <input data-field="name" value="${esc(f.name||"")}" placeholder="Etunimi Sukunimi" />
+              </div>
+              <div>
+                <label>Puhelin</label>
+                <input data-field="phone" value="${esc(f.phone||"")}" placeholder="0401234567" />
+              </div>
             </div>
 
-            <div class="row" style="margin-top:10px">
-              <button class="btn gray" id="cancelBtn">Peruuta</button>
-              <button class="btn primary" id="saveBtn">Tallenna</button>
+            <div style="margin-top:12px">
+              <label>Sähköposti</label>
+              <input data-field="email" value="${esc(f.email||"")}" placeholder="nimi@esimerkki.fi" />
+            </div>
+
+            <div class="row" style="margin-top:16px;justify-content:flex-end">
+              <button class="btn primary" data-action="save-customer">Tallenna</button>
             </div>
           </div>
         </div>
@@ -206,83 +440,164 @@
     `;
   }
 
-  function bindCustomers() {
-    const addBtn = document.getElementById("addBtn");
-    if (addBtn) addBtn.addEventListener("click", () => {
-      state.form = { name:"", phone:"", email:"" };
-      state.modalOpen = true;
-      render();
-      setTimeout(() => { const i=document.getElementById("f_name"); if(i) i.focus(); }, 0);
-    });
+  function modalSailing() {
+    const f = state.form;
+    return `
+      <div class="overlay" data-action="close-modal">
+        <div class="modal" onclick="event.stopPropagation()">
+          <header>
+            <div class="row between">
+              <h2>Lisää purjehdus</h2>
+              <button class="btn secondary" data-action="close-modal">Sulje</button>
+            </div>
+          </header>
+          <div class="body">
+            <div style="margin-bottom:12px">
+              <label>Nimi *</label>
+              <input data-field="name" value="${esc(f.name||"")}" placeholder="esim. Iltapurjehdus Suomenlinna" />
+            </div>
 
-    const search = document.getElementById("search");
-    if (search) search.addEventListener("input", (e) => {
-      state.search = e.target.value;
-      render();
-      setTimeout(() => { const s=document.getElementById("search"); if(s){ s.focus(); s.selectionStart = s.selectionEnd = s.value.length; } }, 0);
-    });
+            <div class="grid2">
+              <div>
+                <label>Päivämäärä *</label>
+                <input type="date" data-field="date" value="${esc(f.date||"")}" />
+              </div>
+              <div>
+                <label>Tyyppi *</label>
+                <select data-field="type">
+                  ${SAILING_TYPES.map(t => `<option value="${esc(t)}" ${f.type===t?"selected":""}>${esc(t)}</option>`).join("")}
+                </select>
+              </div>
+            </div>
 
-    document.querySelectorAll("[data-del]").forEach(btn => {
+            <div class="grid2" style="margin-top:12px">
+              <div>
+                <label>Max hlö *</label>
+                <input type="number" min="1" step="1" data-field="maxPersons" value="${Number(f.maxPersons||6)}" />
+              </div>
+              <div>
+                <label>Hinta/hlö (€) *</label>
+                <input type="number" min="0" step="0.01" data-field="pricePerPerson" value="${Number(f.pricePerPerson||0)}" />
+              </div>
+            </div>
+
+            <div class="row" style="margin-top:16px;justify-content:flex-end">
+              <button class="btn primary" data-action="save-sailing">Tallenna</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  function bind() {
+    document.querySelectorAll("[data-tab]").forEach(btn => {
       btn.addEventListener("click", () => {
-        const id = btn.getAttribute("data-del");
-        if (!id) return;
-        if (confirm("Poistetaanko asiakas?")) {
-          state.customers = state.customers.filter(c => c.id !== id);
-          save();
-          render();
-        }
+        state.tab = btn.dataset.tab;
+        render();
+      });
+    });
+
+    document.querySelectorAll("[data-action]").forEach(el => {
+      el.addEventListener("click", (e) => {
+        const a = el.dataset.action;
+        const id = el.dataset.id;
+        if (a === "new-customer") return openCustomerModal();
+        if (a === "new-sailing") return openSailingModal();
+        if (a === "close-modal") return closeModal();
+        if (a === "save-customer") return saveCustomer();
+        if (a === "save-sailing") return saveSailing();
+        if (a === "delete-customer") return delCustomer(id);
+        if (a === "delete-sailing") return delSailing(id);
+      });
+    });
+
+    const sc = document.querySelector('[data-action="search-customers"]');
+    if (sc) sc.addEventListener("input", (e) => { state.searchCustomers = e.target.value; render(); });
+
+    const ss = document.querySelector('[data-action="search-sailings"]');
+    if (ss) ss.addEventListener("input", (e) => { state.searchSailings = e.target.value; render(); });
+
+    document.querySelectorAll("[data-field]").forEach(el => {
+      el.addEventListener("input", () => {
+        state.form[el.dataset.field] = el.value;
+      });
+      el.addEventListener("change", () => {
+        state.form[el.dataset.field] = el.value;
       });
     });
   }
 
-  function bindModal() {
-    if (!state.modalOpen) return;
-
-    const close = () => { state.modalOpen = false; render(); };
-
-    const overlay = document.getElementById("overlay");
-    if (overlay) overlay.addEventListener("click", (e) => { if (e.target === overlay) close(); });
-
-    const closeBtn = document.getElementById("closeModal");
-    if (closeBtn) closeBtn.addEventListener("click", close);
-
-    const cancelBtn = document.getElementById("cancelBtn");
-    if (cancelBtn) cancelBtn.addEventListener("click", close);
-
-    const saveBtn = document.getElementById("saveBtn");
-    if (saveBtn) saveBtn.addEventListener("click", () => {
-      const name = (document.getElementById("f_name")?.value || "").trim();
-      const phone = (document.getElementById("f_phone")?.value || "").trim();
-      const email = (document.getElementById("f_email")?.value || "").trim();
-
-      if (!name) { alert("Nimi on pakollinen."); return; }
-
-      state.customers.push({ id: uid(), name, phone, email, createdAt: new Date().toISOString() });
-      save();
-      state.modalOpen = false;
-      render();
-    });
+  function openCustomerModal() {
+    state.form = { name:"", phone:"", email:"" };
+    state.modal = "customer";
+    render();
   }
 
-  function render() {
-    renderNav();
-    const app = document.getElementById("app");
-
-    let html = "";
-    if (state.tab === "dashboard") html = renderDashboard();
-    else if (state.tab === "sailings") html = renderSailings();
-    else if (state.tab === "customers") html = renderCustomers();
-    else if (state.tab === "invoicing") html = renderInvoicing();
-
-    app.innerHTML = html + renderModal();
-
-    if (state.tab === "customers") bindCustomers();
-    bindModal();
+  function openSailingModal() {
+    state.form = { name:"", date: today(), type: SAILING_TYPES[0], maxPersons: 6, pricePerPerson: 0 };
+    state.modal = "sailing";
+    render();
   }
 
-  load();
-  render();
+  function closeModal() {
+    state.modal = null;
+    state.form = {};
+    render();
+  }
+
+  function saveCustomer() {
+    const name = String(state.form.name||"").trim();
+    const phone = String(state.form.phone||"").trim();
+    const email = String(state.form.email||"").trim();
+
+    if (!name) { alert("Nimi on pakollinen."); return; }
+
+    state.customers.push({ id: id("C"), name, phone, email });
+    save();
+    closeModal();
+  }
+
+  function saveSailing() {
+    const name = String(state.form.name||"").trim();
+    const date = String(state.form.date||"").trim();
+    const type = String(state.form.type||"").trim();
+    const maxPersons = Math.max(1, parseInt(state.form.maxPersons, 10) || 1);
+    const pricePerPerson = Math.max(0, parseFloat(state.form.pricePerPerson) || 0);
+
+    if (!name || !date || !type) { alert("Täytä pakolliset kentät (nimi, päivämäärä, tyyppi)."); return; }
+
+    state.sailings.push({ id: id("S"), name, date, type, maxPersons, pricePerPerson });
+    save();
+    closeModal();
+  }
+
+  function delCustomer(cid) {
+    if (!cid) return;
+    if (!confirm("Poistetaanko asiakas?")) return;
+    state.customers = state.customers.filter(c => c.id !== cid);
+    save();
+    render();
+  }
+
+  function delSailing(sid) {
+    if (!sid) return;
+    if (!confirm("Poistetaanko purjehdus?")) return;
+    state.sailings = state.sailings.filter(s => s.id !== sid);
+    save();
+    render();
+  }
+
+  // Init
+  try {
+    load();
+    render();
+  } catch (err) {
+    document.getElementById("app").innerHTML =
+      `<pre style="padding:16px;color:#b00020;white-space:pre-wrap">INIT ERROR:\n${esc(err && err.stack ? err.stack : String(err))}</pre>`;
+  }
 })();
 </script>
+
 </body>
 </html>
