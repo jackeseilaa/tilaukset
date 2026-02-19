@@ -1,4 +1,4 @@
-<!-- STABLE v1 – customers & sailings search working -->
+<!-- STABLE v1.1 – customers & sailings search + toggle customers per sailing -->
 <!DOCTYPE html>
 <html lang="fi">
 <head>
@@ -47,7 +47,7 @@ input,select{
 label{display:block;font-size:13px;font-weight:700;margin-bottom:6px}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 @media (max-width:800px){.grid2{grid-template-columns:1fr}}
-.item{display:flex;justify-content:space-between;padding:12px 0;border-top:1px solid var(--line)}
+.item{display:flex;justify-content:space-between;gap:12px;padding:12px 0;border-top:1px solid var(--line)}
 .item:first-child{border-top:0}
 .item h3{margin:0 0 4px 0}
 .meta{font-size:14px;color:var(--muted)}
@@ -64,351 +64,373 @@ label{display:block;font-size:13px;font-weight:700;margin-bottom:6px}
 
 <script>
 (() => {
-
-window.onerror = function(msg,src,line,col,err){
-  document.getElementById("app").innerHTML =
-  "<pre style='padding:16px;color:#b00020'>" +
-  msg + "\n" + (err?.stack || "") + "</pre>";
-};
-
-const STORAGE_KEY="absolut37_stable_v1";
-const SAILING_TYPES=["Iltapurjehdus","Päiväpurjehdus","Charter","Kurssi","Yritystilaisuus","Muu"];
-
-const state={
-  tab:"dashboard",
-  customers:[],
-  sailings:[],
-  modal:null,
-  form:{},
-  searchCustomers:"",
-  searchSailings:""
-  openSailingId: null,
-};
-
-function load(){
-  try{
-    const raw=localStorage.getItem(STORAGE_KEY);
-    if(raw){
-      const data=JSON.parse(raw);
-      state.customers=data.customers||[];
-      state.sailings=data.sailings||[];
-    }
-  }catch(e){}
-}
-
-function save(){
-  localStorage.setItem(STORAGE_KEY,JSON.stringify({
-    customers:state.customers,
-    sailings:state.sailings
-  }));
-}
-
-function id(p){return p+Math.random().toString(16).slice(2,8).toUpperCase()}
-function esc(s){return String(s||"").replace(/[&<>"']/g,m=>({ "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;" }[m]))}
-function today(){return new Date().toISOString().slice(0,10)}
-function fmtDate(d){return d?new Date(d+"T00:00:00").toLocaleDateString("fi-FI"):""}
-
-function render(){
-  const ae=document.activeElement;
-  const keep={
-    action:ae?.dataset?.action,
-    field:ae?.dataset?.field,
-    pos:ae?.selectionStart
+  // Näytä virheet ruudulla (helpottaa iPadilla)
+  window.onerror = function(msg, src, line, col, err){
+    const el = document.getElementById("app");
+    if (!el) return;
+    el.innerHTML =
+      "<pre style='padding:16px;color:#b00020;white-space:pre-wrap'>" +
+      "JS ERROR:\n" + msg + "\n" +
+      (src || "") + ":" + line + ":" + col + "\n\n" +
+      (err && err.stack ? err.stack : "") +
+      "</pre>";
   };
 
-  document.getElementById("app").innerHTML=
-    renderHeader()+renderNav()+
-    "<main>"+renderTab()+"</main>"+
-    renderModal();
+  const STORAGE_KEY="absolut37_stable_v1_1";
+  const SAILING_TYPES=["Iltapurjehdus","Päiväpurjehdus","Charter","Kurssi","Yritystilaisuus","Muu"];
 
-  bind();
+  const state={
+    tab:"dashboard",
+    customers:[],
+    sailings:[],
+    modal:null,
+    form:{},
+    searchCustomers:"",
+    searchSailings:"",
+    openSailingId: null,
+  };
 
-  if(keep.action||keep.field){
-    const sel=keep.action?
-      `[data-action="${keep.action}"]`:
-      `[data-field="${keep.field}"]`;
-    const el=document.querySelector(sel);
-    if(el){
-      el.focus();
-      if(typeof keep.pos==="number")el.setSelectionRange(keep.pos,keep.pos);
+  function load(){
+    try{
+      const raw=localStorage.getItem(STORAGE_KEY);
+      if(raw){
+        const data=JSON.parse(raw);
+        state.customers=Array.isArray(data.customers)?data.customers:[];
+        state.sailings=Array.isArray(data.sailings)?data.sailings:[];
+      }
+    }catch(e){}
+
+    // Seed jos tyhjä
+    if(state.customers.length===0 && state.sailings.length===0){
+      const sid = id("S");
+      state.sailings.push({id:sid,name:"Iltapurjehdus Suomenlinna",date:today(),type:"Iltapurjehdus",maxPersons:6,pricePerPerson:120});
+      state.customers.push({id:id("C"),name:"Testi Seppo",phone:"04012345678",email:"joku@joku.net",sailingId:sid});
     }
   }
-}
 
-function renderHeader(){
-  return `<header>
-    <h1>Absolut 37</h1>
-    <div class="sub">Tilauksen hallinta</div>
-  </header>`;
-}
-
-function renderNav(){
-  const tabs=[["dashboard","Dashboard"],["sailings","Purjehdukset"],["customers","Asiakkaat"]];
-  return `<nav>`+
-    tabs.map(([id,label])=>
-      `<button data-tab="${id}" class="${state.tab===id?"active":""}">${label}</button>`
-    ).join("")+
-    `</nav>`;
-}
-
-function renderTab(){
-  if(state.tab==="dashboard")return renderDashboard();
-  if(state.tab==="customers")return renderCustomers();
-  if(state.tab==="sailings")return renderSailings();
-  return "";
-}
-
-function renderDashboard(){
-  return `<div class="card">
-    <div class="row between">
-      <h2>Dashboard</h2>
-      <button class="btn secondary" data-action="backup-json">💾 Varmuuskopio</button>
-    </div>
-    <div class="hr"></div>
-    <div>Asiakkaita: <b>${state.customers.length}</b></div>
-    <div>Purjehduksia: <b>${state.sailings.length}</b></div>
-  </div>`;
-}
-
-function renderCustomers(){
-  const term=state.searchCustomers.toLowerCase();
-  const list=state.customers.filter(c=>
-    !term||
-    c.name?.toLowerCase().includes(term)||
-    c.phone?.toLowerCase().includes(term)||
-    c.email?.toLowerCase().includes(term)
-  );
-
-  return `<div class="card">
-    <div class="row between">
-      <h2>Asiakkaat</h2>
-      <button class="btn primary" data-action="new-customer">+ Lisää</button>
-    </div>
-    <div class="hr"></div>
-    <label>Haku</label>
-    <input data-action="search-customers" value="${esc(state.searchCustomers)}">
-    <div class="hr"></div>
-    ${list.map(c=>`
-      <div class="item">
-        <div>
-          <h3>
-  ${esc(c.name)}
-  ${c.sailingId ? `
-    <span class="pill">
-      ${
-        esc(
-          state.sailings.find(s => s.id === c.sailingId)?.name || ""
-        )
-      }
-    </span>
-  ` : ""}
-</h3>
-          <div class="meta">${esc(c.phone)} ${esc(c.email)}</div>
-        </div>
-        <button class="btn danger" data-action="delete-customer" data-id="${c.id}">Poista</button>
-      </div>
-    `).join("")}
-  </div>`;
-}
-
-function renderSailings(){
-  const term = state.searchSailings.toLowerCase();
-
-  const list = state.sailings.filter(s =>
-    !term ||
-    s.name?.toLowerCase().includes(term) ||
-    s.type?.toLowerCase().includes(term) ||
-    s.date?.includes(term)
-  );
-
-  return `<div class="card">
-    <div class="row between">
-      <h2>Purjehdukset</h2>
-      <button class="btn primary" data-action="new-sailing">+ Lisää</button>
-    </div>
-
-    <div class="hr"></div>
-
-    <label>Haku</label>
-    <input data-action="search-sailings" value="${esc(state.searchSailings)}">
-
-    <div class="hr"></div>
-
-    ${list.map(s => `
-      <div class="item">
-        <div>
-          <h3>
-            ${esc(s.name)}
-            <span class="pill">${esc(s.type)}</span>
-          </h3>
-
-          <div class="meta">
-            ${fmtDate(s.date)}
-            • Max ${Number(s.maxPersons||0)} hlö
-            • ${Number(s.pricePerPerson||0).toFixed(2)} €/hlö
-            • Ilmoittautuneet: ${state.customers.filter(c => c.sailingId === s.id).length}
-          </div>
-        </div>
-
-        <div class="row">
-          <button class="btn secondary"
-            data-action="toggle-sailing"
-            data-id="${s.id}">
-            ${state.openSailingId === s.id ? "Piilota asiakkaat" : "Näytä asiakkaat"}
-          </button>
-
-          <button class="btn danger"
-            data-action="delete-sailing"
-            data-id="${s.id}">
-            Poista
-          </button>
-        </div>
-      </div>
-
-      ${state.openSailingId === s.id ? `
-        <div style="margin:8px 0 16px 0;padding:10px;background:#f8fafc;border-radius:10px">
-          ${state.customers
-            .filter(c => c.sailingId === s.id)
-            .map(c => `<div>${esc(c.name)}</div>`)
-            .join("") || '<div class="muted">Ei ilmoittautuneita</div>'}
-        </div>
-      ` : ""}
-    `).join("")}
-  </div>`;
-}
-
-function renderModal(){
-  if(!state.modal)return "";
-  if(state.modal==="customer"){
-    return `<div class="overlay" data-action="close-modal">
-      <div class="modal" onclick="event.stopPropagation()">
-        <header><h2>Uusi asiakas</h2></header>
-        <div class="body">
-          <label>Nimi</label>
-          <input data-field="name" value="">
-          <label>Puhelin</label>
-          <input data-field="phone">
-          <label>Email</label>
-          <input data-field="email">
-          <label>Purjehdus</label>
-<select data-field="sailingId">
-  <option value="">-- Ei valittu --</option>
-  ${state.sailings.map(s => `
-    <option value="${s.id}">
-      ${esc(s.name)} (${fmtDate(s.date)})
-    </option>
-  `).join("")}
-</select>
-          <div class="row" style="justify-content:flex-end;margin-top:12px">
-            <button class="btn primary" data-action="save-customer">Tallenna</button>
-          </div>
-        </div>
-      </div>
-    </div>`;
+  function save(){
+    localStorage.setItem(STORAGE_KEY,JSON.stringify({
+      customers:state.customers,
+      sailings:state.sailings
+    }));
   }
-  if(state.modal==="sailing"){
-    return `<div class="overlay" data-action="close-modal">
-      <div class="modal" onclick="event.stopPropagation()">
-        <header><h2>Uusi purjehdus</h2></header>
-        <div class="body">
-          <label>Nimi</label>
-          <input data-field="name">
-          <label>Päivä</label>
-          <input type="date" data-field="date" value="${today()}">
-          <label>Tyyppi</label>
-          <select data-field="type">
-            ${SAILING_TYPES.map(t=>`<option>${t}</option>`).join("")}
-          </select>
-          <label>Max hlö</label>
-          <input type="number" data-field="maxPersons" value="6">
-          <label>Hinta/hlö</label>
-          <input type="number" data-field="pricePerPerson" value="0">
-          <div class="row" style="justify-content:flex-end;margin-top:12px">
-            <button class="btn primary" data-action="save-sailing">Tallenna</button>
-          </div>
-        </div>
-      </div>
-    </div>`;
-  }
-  return "";
-}
 
-function bind(){
-  document.querySelectorAll("[data-tab]").forEach(b=>{
-    b.onclick=()=>{state.tab=b.dataset.tab;render();}
-  });
+  function id(p){return p+Math.random().toString(16).slice(2,8).toUpperCase()}
+  function esc(s){return String(s||"").replace(/[&<>"']/g,m=>({ "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;" }[m]))}
+  function today(){return new Date().toISOString().slice(0,10)}
+  function fmtDate(d){return d?new Date(d+"T00:00:00").toLocaleDateString("fi-FI"):""}
 
-  document.querySelectorAll("[data-action]").forEach(el=>{
-    el.onclick=()=>{
-      const a=el.dataset.action;
-      if(a==="new-customer"){state.modal="customer";render()}
-      if(a==="new-sailing"){state.modal="sailing";render()}
-      if(a==="close-modal"){state.modal=null;render()}
-      if (a === "save-customer") {
-  const name = document.querySelector('[data-field="name"]').value.trim();
-  if (!name) return alert("Nimi pakollinen");
-
-  const sailingId =
-    document.querySelector('[data-field="sailingId"]')?.value || "";
-
-  state.customers.push({
-    id: id("C"),
-    name,
-    sailingId
-  });
-
-  save();
-  state.modal = null;
-  render();
-}
-      if(a==="save-sailing"){
-        const name=document.querySelector('[data-field="name"]').value.trim();
-        const date=document.querySelector('[data-field="date"]').value;
-        const type=document.querySelector('[data-field="type"]').value;
-        const maxPersons=parseInt(document.querySelector('[data-field="maxPersons"]').value)||1;
-        const pricePerPerson=parseFloat(document.querySelector('[data-field="pricePerPerson"]').value)||0;
-        if(!name||!date)return alert("Täytä pakolliset kentät");
-        state.sailings.push({id:id("S"),name,date,type,maxPersons,pricePerPerson});
-        save();state.modal=null;render();
-      }
-      if(a==="delete-customer"){
-        state.customers=state.customers.filter(c=>c.id!==el.dataset.id);
-        save();render();
-      }
-      if(a==="delete-sailing"){
-      if(a==="toggle-sailing"){
-  state.openSailingId =
-    state.openSailingId === id ? null : id;
-  render();
-}
-        state.sailings=state.sailings.filter(s=>s.id!==el.dataset.id);
-        save();render();
-      }
-      if(a==="backup-json"){
-        const blob=new Blob([JSON.stringify({customers:state.customers,sailings:state.sailings},null,2)],{type:"application/json"});
-        const url=URL.createObjectURL(blob);
-        const x=document.createElement("a");
-        x.href=url;x.download="absolut37_backup.json";x.click();
-        URL.revokeObjectURL(url);
-      }
+  function render(){
+    // säilytä fokus+kursori kun renderöidään (iPad/Safari)
+    const ae=document.activeElement;
+    const keep={
+      action: ae && ae.dataset ? ae.dataset.action : null,
+      field:  ae && ae.dataset ? ae.dataset.field  : null,
+      pos:    (ae && typeof ae.selectionStart==="number") ? ae.selectionStart : null
     };
-  });
 
-  const sc=document.querySelector('[data-action="search-customers"]');
-  if(sc){
-    sc.oninput=e=>{state.searchCustomers=e.target.value;render();}
-    sc.onkeydown=e=>{if(e.key==="Enter")e.preventDefault();}
+    document.getElementById("app").innerHTML =
+      renderHeader()+renderNav()+
+      "<main>"+renderTab()+"</main>"+
+      renderModal();
+
+    bind();
+
+    const sel = keep.action ? `[data-action="${keep.action}"]` :
+                keep.field  ? `[data-field="${keep.field}"]`  : null;
+
+    if(sel){
+      const el=document.querySelector(sel);
+      if(el && typeof el.focus==="function"){
+        el.focus();
+        if(keep.pos!==null && typeof el.setSelectionRange==="function"){
+          el.setSelectionRange(keep.pos, keep.pos);
+        }
+      }
+    }
   }
 
-  const ss=document.querySelector('[data-action="search-sailings"]');
-  if(ss){
-    ss.oninput=e=>{state.searchSailings=e.target.value;render();}
-    ss.onkeydown=e=>{if(e.key==="Enter")e.preventDefault();}
+  function renderHeader(){
+    return `<header>
+      <h1>Absolut 37</h1>
+      <div class="sub">Tilauksen hallinta</div>
+    </header>`;
   }
-}
 
-load();
-render();
+  function renderNav(){
+    const tabs=[["dashboard","Dashboard"],["sailings","Purjehdukset"],["customers","Asiakkaat"]];
+    return `<nav>`+
+      tabs.map(([id,label])=>
+        `<button data-tab="${id}" class="${state.tab===id?"active":""}">${label}</button>`
+      ).join("")+
+      `</nav>`;
+  }
+
+  function renderTab(){
+    if(state.tab==="dashboard")return renderDashboard();
+    if(state.tab==="customers")return renderCustomers();
+    if(state.tab==="sailings")return renderSailings();
+    return "";
+  }
+
+  function renderDashboard(){
+    return `<div class="card">
+      <div class="row between">
+        <h2>Dashboard</h2>
+        <button class="btn secondary" data-action="backup-json">💾 Varmuuskopio</button>
+      </div>
+      <div class="hr"></div>
+      <div>Asiakkaita: <b>${state.customers.length}</b></div>
+      <div>Purjehduksia: <b>${state.sailings.length}</b></div>
+      <div class="muted" style="margin-top:10px">Tallennus: localStorage (tähän laitteeseen)</div>
+    </div>`;
+  }
+
+  function renderCustomers(){
+    const term=(state.searchCustomers||"").toLowerCase();
+    const list=state.customers.filter(c =>
+      !term ||
+      (c.name||"").toLowerCase().includes(term) ||
+      (c.phone||"").toLowerCase().includes(term) ||
+      (c.email||"").toLowerCase().includes(term)
+    );
+
+    return `<div class="card">
+      <div class="row between">
+        <h2>Asiakkaat</h2>
+        <button class="btn primary" data-action="new-customer">+ Lisää</button>
+      </div>
+
+      <div class="hr"></div>
+      <label>Haku</label>
+      <input data-action="search-customers" value="${esc(state.searchCustomers)}" placeholder="Hae nimellä / puhelin / email">
+
+      <div class="hr"></div>
+
+      ${list.length===0 ? `<div class="muted">Ei osumia.</div>` : `
+        ${list.map(c=>`
+          <div class="item">
+            <div>
+              <h3>
+                ${esc(c.name||"")}
+                ${c.sailingId ? `
+                  <span class="pill">
+                    ${esc(state.sailings.find(s=>s.id===c.sailingId)?.name || "")}
+                  </span>` : ""}
+              </h3>
+              <div class="meta">${esc(c.phone||"")}${(c.phone&&c.email)?" • ":""}${esc(c.email||"")}</div>
+            </div>
+            <button class="btn danger" data-action="delete-customer" data-id="${c.id}">Poista</button>
+          </div>
+        `).join("")}
+      `}
+    </div>`;
+  }
+
+  function renderSailings(){
+    const term=(state.searchSailings||"").toLowerCase();
+    const list=state.sailings.filter(s =>
+      !term ||
+      (s.name||"").toLowerCase().includes(term) ||
+      (s.type||"").toLowerCase().includes(term) ||
+      (s.date||"").includes(term)
+    );
+
+    return `<div class="card">
+      <div class="row between">
+        <h2>Purjehdukset</h2>
+        <button class="btn primary" data-action="new-sailing">+ Lisää</button>
+      </div>
+
+      <div class="hr"></div>
+      <label>Haku</label>
+      <input data-action="search-sailings" value="${esc(state.searchSailings)}" placeholder="Hae nimellä / tyypillä / päivällä (YYYY-MM-DD)">
+
+      <div class="hr"></div>
+
+      ${list.length===0 ? `<div class="muted">Ei purjehduksia.</div>` : `
+        ${list.map(s=>`
+          <div class="item">
+            <div>
+              <h3>${esc(s.name||"")} <span class="pill">${esc(s.type||"")}</span></h3>
+              <div class="meta">
+                ${fmtDate(s.date)} • Max ${Number(s.maxPersons||0)} hlö • ${Number(s.pricePerPerson||0).toFixed(2)} €/hlö
+                • Ilmoittautuneet: ${state.customers.filter(c=>c.sailingId===s.id).length}
+              </div>
+            </div>
+            <div class="row">
+              <button class="btn secondary" data-action="toggle-sailing" data-id="${s.id}">
+                ${state.openSailingId===s.id ? "Piilota asiakkaat" : "Näytä asiakkaat"}
+              </button>
+              <button class="btn danger" data-action="delete-sailing" data-id="${s.id}">Poista</button>
+            </div>
+          </div>
+
+          ${state.openSailingId===s.id ? `
+            <div style="margin:8px 0 16px 0;padding:10px;background:#f8fafc;border-radius:10px;border:1px solid var(--line)">
+              ${
+                state.customers.filter(c=>c.sailingId===s.id).length
+                ? state.customers.filter(c=>c.sailingId===s.id).map(c=>`<div>${esc(c.name||"")}</div>`).join("")
+                : `<div class="muted">Ei ilmoittautuneita</div>`
+              }
+            </div>
+          ` : ""}
+        `).join("")}
+      `}
+    </div>`;
+  }
+
+  function renderModal(){
+    if(!state.modal)return "";
+
+    if(state.modal==="customer"){
+      return `<div class="overlay" data-action="close-modal">
+        <div class="modal" onclick="event.stopPropagation()">
+          <header><h2>Uusi asiakas</h2></header>
+          <div class="body">
+            <label>Nimi *</label>
+            <input data-field="name" value="">
+            <label>Puhelin</label>
+            <input data-field="phone" value="">
+            <label>Email</label>
+            <input data-field="email" value="">
+            <label>Purjehdus</label>
+            <select data-field="sailingId">
+              <option value="">-- Ei valittu --</option>
+              ${state.sailings.map(s=>`
+                <option value="${s.id}">${esc(s.name)} (${fmtDate(s.date)})</option>
+              `).join("")}
+            </select>
+            <div class="row" style="justify-content:flex-end;margin-top:12px">
+              <button class="btn primary" data-action="save-customer">Tallenna</button>
+            </div>
+          </div>
+        </div>
+      </div>`;
+    }
+
+    if(state.modal==="sailing"){
+      return `<div class="overlay" data-action="close-modal">
+        <div class="modal" onclick="event.stopPropagation()">
+          <header><h2>Uusi purjehdus</h2></header>
+          <div class="body">
+            <label>Nimi *</label>
+            <input data-field="name" value="">
+            <label>Päivä *</label>
+            <input type="date" data-field="date" value="${today()}">
+            <label>Tyyppi *</label>
+            <select data-field="type">
+              ${SAILING_TYPES.map(t=>`<option>${esc(t)}</option>`).join("")}
+            </select>
+            <label>Max hlö *</label>
+            <input type="number" data-field="maxPersons" value="6" min="1" step="1">
+            <label>Hinta/hlö (€) *</label>
+            <input type="number" data-field="pricePerPerson" value="0" min="0" step="0.01">
+            <div class="row" style="justify-content:flex-end;margin-top:12px">
+              <button class="btn primary" data-action="save-sailing">Tallenna</button>
+            </div>
+          </div>
+        </div>
+      </div>`;
+    }
+
+    return "";
+  }
+
+  function bind(){
+    // tabit
+    document.querySelectorAll("[data-tab]").forEach(b=>{
+      b.onclick=()=>{ state.tab=b.dataset.tab; render(); };
+    });
+
+    // click-actionit
+    document.querySelectorAll("[data-action]").forEach(el=>{
+      el.onclick=()=>{
+        const a = el.dataset.action;
+
+        if(a==="new-customer"){ state.modal="customer"; render(); }
+        if(a==="new-sailing"){ state.modal="sailing"; render(); }
+        if(a==="close-modal"){ state.modal=null; render(); }
+
+        if(a==="toggle-sailing"){
+          const sid = el.dataset.id;
+          state.openSailingId = (state.openSailingId===sid) ? null : sid;
+          render();
+        }
+
+        if(a==="save-customer"){
+          const name = (document.querySelector('[data-field="name"]')?.value || "").trim();
+          if(!name) return alert("Nimi pakollinen");
+
+          const phone = (document.querySelector('[data-field="phone"]')?.value || "").trim();
+          const email = (document.querySelector('[data-field="email"]')?.value || "").trim();
+          const sailingId = (document.querySelector('[data-field="sailingId"]')?.value || "");
+
+          state.customers.push({ id:id("C"), name, phone, email, sailingId });
+          save();
+          state.modal=null;
+          render();
+        }
+
+        if(a==="save-sailing"){
+          const name = (document.querySelector('[data-field="name"]')?.value || "").trim();
+          const date = (document.querySelector('[data-field="date"]')?.value || "").trim();
+          const type = (document.querySelector('[data-field="type"]')?.value || "").trim();
+          const maxPersons = parseInt(document.querySelector('[data-field="maxPersons"]')?.value, 10) || 1;
+          const pricePerPerson = parseFloat(document.querySelector('[data-field="pricePerPerson"]')?.value) || 0;
+
+          if(!name || !date || !type) return alert("Täytä pakolliset kentät (nimi, päivä, tyyppi).");
+
+          state.sailings.push({ id:id("S"), name, date, type, maxPersons, pricePerPerson });
+          save();
+          state.modal=null;
+          render();
+        }
+
+        if(a==="delete-customer"){
+          const cid = el.dataset.id;
+          state.customers = state.customers.filter(c=>c.id!==cid);
+          save();
+          render();
+        }
+
+        if(a==="delete-sailing"){
+          const sid = el.dataset.id;
+          state.sailings = state.sailings.filter(s=>s.id!==sid);
+          // jos oli auki, sulje
+          if(state.openSailingId===sid) state.openSailingId=null;
+          // asiakkaiden sailingId:t jätetään ennalleen (näkyy pillissä tyhjänä jos purjehdus poistuu)
+          save();
+          render();
+        }
+
+        if(a==="backup-json"){
+          const blob = new Blob([JSON.stringify({customers:state.customers,sailings:state.sailings},null,2)],{type:"application/json"});
+          const url = URL.createObjectURL(blob);
+          const x = document.createElement("a");
+          x.href=url; x.download="absolut37_backup.json"; x.click();
+          URL.revokeObjectURL(url);
+        }
+      };
+    });
+
+    // hakukentät
+    const sc=document.querySelector('[data-action="search-customers"]');
+    if(sc){
+      sc.oninput=e=>{ state.searchCustomers=e.target.value; render(); };
+      sc.onkeydown=e=>{ if(e.key==="Enter") e.preventDefault(); };
+    }
+
+    const ss=document.querySelector('[data-action="search-sailings"]');
+    if(ss){
+      ss.oninput=e=>{ state.searchSailings=e.target.value; render(); };
+      ss.onkeydown=e=>{ if(e.key==="Enter") e.preventDefault(); };
+    }
+  }
+
+  // init
+  load();
+  render();
 
 })();
 </script>
