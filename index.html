@@ -1164,11 +1164,6 @@ async function saveToFileDirect() {
 }
 
 
-// ─── INIT ───
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js').catch(()=>{});
-  });
 }
 // ─── DEBUG: näytä virheet ruudulla ───
 window.onerror = function (msg, src, line, col, err) {
