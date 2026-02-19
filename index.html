@@ -1,142 +1,61 @@
 <!DOCTYPE html>
 <html lang="fi">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Absolut 37 — Tilaukset</title>
-  <style>
-    :root{
-      --navy:#234c78;
-      --bg:#f3f5f7;
-      --card:#ffffff;
-      --muted:#6b7280;
-      --line:#e5e7eb;
-      --btn:#1f4b7a;
-      --btn2:#eef2f7;
-      --danger-bg:#fde2e2;
-      --danger:#991b1b;
-      --radius:12px;
-    }
-    *{box-sizing:border-box}
-    body{margin:0;font-family:-apple-system,system-ui,Segoe UI,Roboto,Arial,sans-serif;background:var(--bg);color:#111827}
-    header{
-      background:var(--navy);
-      color:#fff;
-      padding:18px 20px;
-    }
-    header h1{margin:0;font-size:34px;line-height:1}
-    header .sub{margin-top:6px;opacity:.85;font-size:14px}
-    nav{
-      background:#fff;
-      border-bottom:1px solid var(--line);
-      display:flex;
-      gap:0;
-    }
-    nav button{
-      flex:1;
-      padding:12px 10px;
-      border:0;
-      background:#fff;
-      font-weight:600;
-      color:#374151;
-      cursor:pointer;
-      border-bottom:3px solid transparent;
-    }
-    nav button.active{
-      color:#111827;
-      border-bottom-color:var(--navy);
-    }
-    main{max-width:980px;margin:0 auto;padding:18px}
-    .card{
-      background:var(--card);
-      border:1px solid var(--line);
-      border-radius:var(--radius);
-      padding:18px;
-    }
-    .row{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
-    .row.between{justify-content:space-between}
-    .btn{
-      border:0;
-      border-radius:10px;
-      padding:10px 14px;
-      font-weight:700;
-      cursor:pointer;
-    }
-    .btn.primary{background:var(--btn);color:#fff}
-    .btn.secondary{background:var(--btn2);color:#111827}
-    .btn.danger{background:var(--danger-bg);color:var(--danger)}
-    .muted{color:var(--muted)}
-    .hr{border-top:1px solid var(--line);margin:14px 0}
-    input, select{
-      width:100%;
-      padding:10px 12px;
-      border:1px solid var(--line);
-      border-radius:10px;
-      font-size:15px;
-      background:#fff;
-    }
-    label{display:block;font-size:13px;font-weight:700;margin-bottom:6px;color:#374151}
-    .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-    .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
-    @media (max-width: 800px){
-      .grid2,.grid3{grid-template-columns:1fr}
-      header h1{font-size:28px}
-    }
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Absolut 37 — Tilaukset</title>
 
-    /* list items */
-    .item{
-      display:flex;
-      align-items:flex-start;
-      justify-content:space-between;
-      gap:12px;
-      padding:12px 0;
-      border-top:1px solid var(--line);
-    }
-    .item:first-child{border-top:0;padding-top:0}
-    .item h3{margin:0 0 4px 0;font-size:18px}
-    .item .meta{font-size:14px;color:var(--muted)}
-    .pill{
-      display:inline-block;
-      padding:4px 10px;
-      border-radius:999px;
-      background:#eef2ff;
-      color:#1e3a8a;
-      font-size:12px;
-      font-weight:700;
-      margin-left:8px;
-      vertical-align:middle;
-    }
-
-    /* modal */
-    .overlay{
-      position:fixed;inset:0;
-      background:rgba(0,0,0,.35);
-      display:flex;align-items:center;justify-content:center;
-      padding:18px;
-    }
-    .modal{
-      width:min(680px, 100%);
-      background:#fff;
-      border-radius:16px;
-      border:1px solid var(--line);
-      overflow:hidden;
-    }
-    .modal header{
-      background:#fff;color:#111827;
-      padding:16px 18px;
-      border-bottom:1px solid var(--line);
-    }
-    .modal header h2{margin:0;font-size:18px}
-    .modal .body{padding:18px}
-    .right{margin-left:auto}
-    .small{font-size:12px}
-    .note{
-      background:#f8fafc;
-      border:1px solid var(--line);
-      border-radius:12px;
-      padding:12px 14px;
-    }
-  </style>
+<style>
+:root{
+  --navy:#234c78;
+  --bg:#f3f5f7;
+  --card:#ffffff;
+  --muted:#6b7280;
+  --line:#e5e7eb;
+  --btn:#1f4b7a;
+  --btn2:#eef2f7;
+  --danger-bg:#fde2e2;
+  --danger:#991b1b;
+  --radius:12px;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:-apple-system,system-ui,Segoe UI,Roboto,Arial,sans-serif;background:var(--bg);color:#111827}
+header{background:var(--navy);color:#fff;padding:18px 20px}
+header h1{margin:0;font-size:32px}
+header .sub{margin-top:6px;opacity:.85;font-size:14px}
+nav{background:#fff;border-bottom:1px solid var(--line);display:flex}
+nav button{
+  flex:1;padding:12px;border:0;background:#fff;font-weight:600;
+  border-bottom:3px solid transparent;cursor:pointer
+}
+nav button.active{border-bottom-color:var(--navy)}
+main{max-width:980px;margin:0 auto;padding:18px}
+.card{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:18px}
+.row{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.row.between{justify-content:space-between}
+.btn{border:0;border-radius:10px;padding:10px 14px;font-weight:700;cursor:pointer}
+.btn.primary{background:var(--btn);color:#fff}
+.btn.secondary{background:var(--btn2)}
+.btn.danger{background:var(--danger-bg);color:var(--danger)}
+.muted{color:var(--muted)}
+.hr{border-top:1px solid var(--line);margin:14px 0}
+input,select{
+  width:100%;padding:10px;border:1px solid var(--line);
+  border-radius:10px;font-size:15px
+}
+label{display:block;font-size:13px;font-weight:700;margin-bottom:6px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media (max-width:800px){.grid2{grid-template-columns:1fr}}
+.item{display:flex;justify-content:space-between;padding:12px 0;border-top:1px solid var(--line)}
+.item:first-child{border-top:0}
+.item h3{margin:0 0 4px 0}
+.meta{font-size:14px;color:var(--muted)}
+.pill{background:#eef2ff;padding:4px 10px;border-radius:999px;font-size:12px;font-weight:700;margin-left:8px}
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.35);display:flex;align-items:center;justify-content:center;padding:18px}
+.modal{background:#fff;border-radius:16px;border:1px solid var(--line);width:min(680px,100%)}
+.modal header{background:#fff;color:#111;border-bottom:1px solid var(--line);padding:16px}
+.modal .body{padding:18px}
+</style>
 </head>
 <body>
 
@@ -144,526 +63,280 @@
 
 <script>
 (() => {
-  const STORAGE_KEY = "absolut37_vaihe2_v1";
 
-  const SAILING_TYPES = ["Iltapurjehdus","Päiväpurjehdus","Charter","Kurssi","Yritystilaisuus","Muu"];
+window.onerror = function(msg,src,line,col,err){
+  document.getElementById("app").innerHTML =
+  "<pre style='padding:16px;color:#b00020'>" +
+  msg + "\n" + (err?.stack || "") + "</pre>";
+};
 
-  const state = {
-    tab: "dashboard",
-    customers: [],
-    sailings: [],
-    modal: null, // "customer" | "sailing" | null
-    form: {},
-    searchCustomers: "",
-    searchSailings: ""
-  };
+const STORAGE_KEY="absolut37_stable_v1";
+const SAILING_TYPES=["Iltapurjehdus","Päiväpurjehdus","Charter","Kurssi","Yritystilaisuus","Muu"];
 
-  function load() {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) {
-        const data = JSON.parse(raw);
-        state.customers = Array.isArray(data.customers) ? data.customers : [];
-        state.sailings = Array.isArray(data.sailings) ? data.sailings : [];
-      }
-    } catch (e) {}
-    // Seed data (vain jos tyhjää)
-    if (state.customers.length === 0 && state.sailings.length === 0) {
-      state.customers.push({ id: id("C"), name:"Testi Seppo", phone:"04012345678", email:"joku@joku.net" });
-      state.sailings.push({ id: id("S"), name:"Iltapurjehdus Suomenlinna", date: today(), type:"Iltapurjehdus", maxPersons: 6, pricePerPerson: 120 });
+const state={
+  tab:"dashboard",
+  customers:[],
+  sailings:[],
+  modal:null,
+  form:{},
+  searchCustomers:"",
+  searchSailings:""
+};
+
+function load(){
+  try{
+    const raw=localStorage.getItem(STORAGE_KEY);
+    if(raw){
+      const data=JSON.parse(raw);
+      state.customers=data.customers||[];
+      state.sailings=data.sailings||[];
     }
-  }
+  }catch(e){}
+}
 
-  function save() {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({
-      customers: state.customers,
-      sailings: state.sailings
-    }));
-  }
+function save(){
+  localStorage.setItem(STORAGE_KEY,JSON.stringify({
+    customers:state.customers,
+    sailings:state.sailings
+  }));
+}
 
-  function id(prefix) {
-    return prefix + Math.random().toString(16).slice(2, 8).toUpperCase();
-  }
+function id(p){return p+Math.random().toString(16).slice(2,8).toUpperCase()}
+function esc(s){return String(s||"").replace(/[&<>"']/g,m=>({ "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;" }[m]))}
+function today(){return new Date().toISOString().slice(0,10)}
+function fmtDate(d){return d?new Date(d+"T00:00:00").toLocaleDateString("fi-FI"):""}
 
-  function esc(s) {
-    const d = document.createElement("div");
-    d.textContent = s ?? "";
-    return d.innerHTML;
-  }
-
-  function today() {
-    const d = new Date();
-    const y = d.getFullYear();
-    const m = String(d.getMonth()+1).padStart(2,"0");
-    const day = String(d.getDate()).padStart(2,"0");
-    return `${y}-${m}-${day}`;
-  }
-
-  function fmtDate(iso) {
-    if (!iso) return "";
-    const d = new Date(iso + "T00:00:00");
-    return d.toLocaleDateString("fi-FI");
-  }
-
-function render() {
-  // Säilytä fokus ja kursorin kohta ennen kuin DOM rakennetaan uusiksi
-  const ae = document.activeElement;
-  const keep = {
-    action: ae && ae.dataset ? ae.dataset.action : null,
-    field:  ae && ae.dataset ? ae.dataset.field  : null,
-    pos:    (ae && typeof ae.selectionStart === "number") ? ae.selectionStart : null
+function render(){
+  const ae=document.activeElement;
+  const keep={
+    action:ae?.dataset?.action,
+    field:ae?.dataset?.field,
+    pos:ae?.selectionStart
   };
 
-  const app = document.getElementById("app")
-  app.innerHTML = `
-    ${renderHeader()}
-    ${renderNav()}
-    <main>
-      ${renderTab()}
-    </main>
-    ${renderModal()}
-  `;
+  document.getElementById("app").innerHTML=
+    renderHeader()+renderNav()+
+    "<main>"+renderTab()+"</main>"+
+    renderModal();
+
   bind();
 
-  // Palauta fokus siihen inputiin, jossa oltiin kirjoittamassa
-  const sel =
-    keep.action ? `[data-action="${keep.action}"]` :
-    keep.field  ? `[data-field="${keep.field}"]`  :
-    null;
-
-  if (sel) {
-    const el = document.querySelector(sel);
-    if (el && typeof el.focus === "function") {
+  if(keep.action||keep.field){
+    const sel=keep.action?
+      `[data-action="${keep.action}"]`:
+      `[data-field="${keep.field}"]`;
+    const el=document.querySelector(sel);
+    if(el){
       el.focus();
-      if (keep.pos !== null && typeof el.setSelectionRange === "function") {
-        el.setSelectionRange(keep.pos, keep.pos);
-      }
+      if(typeof keep.pos==="number")el.setSelectionRange(keep.pos,keep.pos);
     }
   }
 }
 
-  function renderHeader() {
-    return `
-      <header>
-        <h1>Absolut 37</h1>
-        <div class="sub">Tilauksen hallinta</div>
-      </header>
-    `;
-  }
+function renderHeader(){
+  return `<header>
+    <h1>Absolut 37</h1>
+    <div class="sub">Tilauksen hallinta</div>
+  </header>`;
+}
 
-  function renderNav() {
-    const tabs = [
-      ["dashboard","Dashboard"],
-      ["sailings","Purjehdukset"],
-      ["customers","Asiakkaat"],
-      ["invoicing","Laskutus"]
-    ];
-    return `
-      <nav>
-        ${tabs.map(([id,label]) => `
-          <button data-tab="${id}" class="${state.tab===id ? "active":""}">${label}</button>
-        `).join("")}
-      </nav>
-    `;
-  }
+function renderNav(){
+  const tabs=[["dashboard","Dashboard"],["sailings","Purjehdukset"],["customers","Asiakkaat"]];
+  return `<nav>`+
+    tabs.map(([id,label])=>
+      `<button data-tab="${id}" class="${state.tab===id?"active":""}">${label}</button>`
+    ).join("")+
+    `</nav>`;
+}
 
-  function renderTab() {
-    if (state.tab === "dashboard") return renderDashboard();
-    if (state.tab === "customers") return renderCustomers();
-    if (state.tab === "sailings") return renderSailings();
-    if (state.tab === "invoicing") return renderInvoicing();
-    return "";
-  }
+function renderTab(){
+  if(state.tab==="dashboard")return renderDashboard();
+  if(state.tab==="customers")return renderCustomers();
+  if(state.tab==="sailings")return renderSailings();
+  return "";
+}
 
-  function renderDashboard() {
-  return `
-    <div style="margin-bottom:16px">
-      <button class="btn btn-secondary btn-sm" data-action="backup-json">
-        💾 Lataa varmuuskopio (JSON)
-      </button>
+function renderDashboard(){
+  return `<div class="card">
+    <div class="row between">
+      <h2>Dashboard</h2>
+      <button class="btn secondary" data-action="backup-json">💾 Varmuuskopio</button>
     </div>
+    <div class="hr"></div>
+    <div>Asiakkaita: <b>${state.customers.length}</b></div>
+    <div>Purjehduksia: <b>${state.sailings.length}</b></div>
+  </div>`;
+}
 
-    <div class="card">
-      <div class="row between">
+function renderCustomers(){
+  const term=state.searchCustomers.toLowerCase();
+  const list=state.customers.filter(c=>
+    !term||
+    c.name?.toLowerCase().includes(term)||
+    c.phone?.toLowerCase().includes(term)||
+    c.email?.toLowerCase().includes(term)
+  );
+
+  return `<div class="card">
+    <div class="row between">
+      <h2>Asiakkaat</h2>
+      <button class="btn primary" data-action="new-customer">+ Lisää</button>
+    </div>
+    <div class="hr"></div>
+    <label>Haku</label>
+    <input data-action="search-customers" value="${esc(state.searchCustomers)}">
+    <div class="hr"></div>
+    ${list.map(c=>`
+      <div class="item">
         <div>
-          <h2 style="margin:0 0 6px 0">Dashboard</h2>
-          <div class="muted">Perusnavigointi toimii.</div>
+          <h3>${esc(c.name)}</h3>
+          <div class="meta">${esc(c.phone)} ${esc(c.email)}</div>
         </div>
+        <button class="btn danger" data-action="delete-customer" data-id="${c.id}">Poista</button>
       </div>
-        <div class="hr"></div>
-        <div class="row" style="gap:18px">
-          <div class="note">
-            <div style="font-weight:800">Asiakkaita</div>
-            <div style="font-size:28px;font-weight:900">${state.customers.length}</div>
-          </div>
-          <div class="note">
-            <div style="font-weight:800">Purjehduksia</div>
-            <div style="font-size:28px;font-weight:900">${state.sailings.length}</div>
-          </div>
-          <div class="note">
-            <div style="font-weight:800">Tallennus</div>
-            <div class="muted">localStorage (tähän laitteeseen)</div>
-          </div>
-        </div>
-      </div>
-    `;
-  }
-
-  function renderCustomers() {
-    const term = state.searchCustomers.trim().toLowerCase();
-    const list = state.customers.filter(c => {
-      if (!term) return true;
-      return (c.name||"").toLowerCase().includes(term)
-        || (c.email||"").toLowerCase().includes(term)
-        || (c.phone||"").toLowerCase().includes(term);
-    });
-
-    return `
-      <div class="card">
-        <div class="row between">
-          <div>
-            <h2 style="margin:0 0 6px 0">Asiakkaat</h2>
-            <div class="muted">Lisää, selaa ja poista. Tallentuu tähän laitteeseen (localStorage).</div>
-          </div>
-          <button class="btn primary" data-action="new-customer">+ Lisää asiakas</button>
-        </div>
-
-        <div class="hr"></div>
-
-        <div class="grid2">
-          <div>
-            <label>Haku</label>
-            <input placeholder="Hae nimellä / email / puhelin" value="${esc(state.searchCustomers)}" data-action="search-customers" />
-            <div class="muted small" style="margin-top:8px">Yhteensä: ${list.length}</div>
-          </div>
-          <div class="note">
-            <div style="font-weight:800">Vinkki</div>
-            <div class="muted small">Seuraavassa vaiheessa asiakkaat liitetään purjehdukseen.</div>
-          </div>
-        </div>
-
-        <div class="hr"></div>
-
-        ${list.length === 0 ? `<div class="muted">Ei osumia.</div>` : `
-          ${list.map(c => `
-            <div class="item">
-              <div>
-                <h3>${esc(c.name || "")}</h3>
-                <div class="meta">${esc(c.phone || "")}${c.phone && c.email ? " • " : ""}${esc(c.email || "")}</div>
-              </div>
-              <button class="btn danger" data-action="delete-customer" data-id="${c.id}">Poista</button>
-            </div>
-          `).join("")}
-        `}
-      </div>
-    `;
-  }
-
-  function renderSailings() {
-  const term = (state.searchSailings || "").trim().toLowerCase();
-
-  const list = state.sailings
-    .slice()
-    .sort((a, b) => (a.date || "").localeCompare(b.date || ""))
-    .filter(s => {
-      if (!term) return true;
-
-      return (
-        (s.name || "").toLowerCase().includes(term) ||
-        (s.type || "").toLowerCase().includes(term) ||
-        (s.date || "").toLowerCase().includes(term)
-      );
-    });
-
-    return `
-      <div class="card">
-        <div class="row between">
-          <div>
-            <h2 style="margin:0 0 6px 0">Purjehdukset</h2>
-            <div class="muted">Lisää, selaa ja poista. Tallentuu tähän laitteeseen (localStorage).</div>
-          </div>
-          <button class="btn primary" data-action="new-sailing">+ Lisää purjehdus</button>
-        </div>
-
-        <div class="hr"></div>
-
-        <div class="grid2">
-          <div>
-            <label>Haku</label>
-            <input placeholder="Hae nimellä / tyypillä / päivällä (YYYY-MM-DD)" value="${esc(state.searchSailings || "")}" data-action="search-sailings" />
-            <div class="muted small" style="margin-top:8px">Yhteensä: ${list.length}</div>
-          </div>
-          <div class="note">
-            <div style="font-weight:800">Kentät</div>
-            <div class="muted small">Nimi • Päivä • Tyyppi • Max hlö • Hinta/hlö</div>
-          </div>
-        </div>
-
-        <div class="hr"></div>
-
-        ${list.length === 0 ? `<div class="muted">Ei purjehduksia.</div>` : `
-          ${list.map(s => `
-            <div class="item">
-              <div>
-                <h3>
-                  ${esc(s.name || "")}
-                  <span class="pill">${esc(s.type || "")}</span>
-                </h3>
-                <div class="meta">
-                  ${fmtDate(s.date)} • Max ${Number(s.maxPersons||0)} hlö • ${Number(s.pricePerPerson||0).toFixed(2)} €/hlö
-                </div>
-              </div>
-              <button class="btn danger" data-action="delete-sailing" data-id="${s.id}">Poista</button>
-            </div>
-          `).join("")}
-        `}
-      </div>
-    `;
-  }
-
-  function renderInvoicing() {
-    return `
-      <div class="card">
-        <h2 style="margin:0 0 6px 0">Laskutus</h2>
-        <div class="muted">Seuraavaksi lisätään ryhmittely.</div>
-      </div>
-    `;
-  }
-
-  function renderModal() {
-    if (!state.modal) return "";
-    if (state.modal === "customer") return modalCustomer();
-    if (state.modal === "sailing") return modalSailing();
-    return "";
-  }
-
-  function modalCustomer() {
-    const f = state.form;
-    return `
-      <div class="overlay" data-action="close-modal">
-        <div class="modal" onclick="event.stopPropagation()">
-          <header>
-            <div class="row between">
-              <h2>Lisää asiakas</h2>
-              <button class="btn secondary" data-action="close-modal">Sulje</button>
-            </div>
-          </header>
-          <div class="body">
-            <div class="grid2">
-              <div>
-                <label>Nimi *</label>
-                <input data-field="name" value="${esc(f.name||"")}" placeholder="Etunimi Sukunimi" />
-              </div>
-              <div>
-                <label>Puhelin</label>
-                <input data-field="phone" value="${esc(f.phone||"")}" placeholder="0401234567" />
-              </div>
-            </div>
-
-            <div style="margin-top:12px">
-              <label>Sähköposti</label>
-              <input data-field="email" value="${esc(f.email||"")}" placeholder="nimi@esimerkki.fi" />
-            </div>
-
-            <div class="row" style="margin-top:16px;justify-content:flex-end">
-              <button class="btn primary" data-action="save-customer">Tallenna</button>
-            </div>
-          </div>
-        </div>
-      </div>
-    `;
-  }
-
-  function modalSailing() {
-    const f = state.form;
-    return `
-      <div class="overlay" data-action="close-modal">
-        <div class="modal" onclick="event.stopPropagation()">
-          <header>
-            <div class="row between">
-              <h2>Lisää purjehdus</h2>
-              <button class="btn secondary" data-action="close-modal">Sulje</button>
-            </div>
-          </header>
-          <div class="body">
-            <div style="margin-bottom:12px">
-              <label>Nimi *</label>
-              <input data-field="name" value="${esc(f.name||"")}" placeholder="esim. Iltapurjehdus Suomenlinna" />
-            </div>
-
-            <div class="grid2">
-              <div>
-                <label>Päivämäärä *</label>
-                <input type="date" data-field="date" value="${esc(f.date||"")}" />
-              </div>
-              <div>
-                <label>Tyyppi *</label>
-                <select data-field="type">
-                  ${SAILING_TYPES.map(t => `<option value="${esc(t)}" ${f.type===t?"selected":""}>${esc(t)}</option>`).join("")}
-                </select>
-              </div>
-            </div>
-
-            <div class="grid2" style="margin-top:12px">
-              <div>
-                <label>Max hlö *</label>
-                <input type="number" min="1" step="1" data-field="maxPersons" value="${Number(f.maxPersons||6)}" />
-              </div>
-              <div>
-                <label>Hinta/hlö (€) *</label>
-                <input type="number" min="0" step="0.01" data-field="pricePerPerson" value="${Number(f.pricePerPerson||0)}" />
-              </div>
-            </div>
-
-            <div class="row" style="margin-top:16px;justify-content:flex-end">
-              <button class="btn primary" data-action="save-sailing">Tallenna</button>
-            </div>
-          </div>
-        </div>
-      </div>
-    `;
-  }
-
-  function bind() {
-    document.querySelectorAll("[data-tab]").forEach(btn => {
-      btn.addEventListener("click", () => {
-        state.tab = btn.dataset.tab;
-        render();
-      });
-    });
-
-    document.querySelectorAll("[data-action]").forEach(el => {
-      el.addEventListener("click", (e) => {
-        const a = el.dataset.action;
-        const id = el.dataset.id;
-        if (a === "new-customer") return openCustomerModal();
-        if (a === "new-sailing") return openSailingModal();
-        if (a === "close-modal") return closeModal();
-        if (a === "save-customer") return saveCustomer();
-        if (a === "save-sailing") return saveSailing();
-        if (a === "delete-customer") return delCustomer(id);
-        if (a === "delete-sailing") return delSailing(id);
-      });
-    });
-
-  const sc = document.querySelector('[data-action="search-customers"]');
-if (sc) {
-  sc.addEventListener("input", (e) => {
-    const pos = e.target.selectionStart ?? e.target.value.length;
-    state.searchCustomers = e.target.value;
-
-    render();
-
-    const sc2 = document.querySelector('[data-action="search-customers"]');
-    if (sc2) {
-      sc2.focus();
-      sc2.setSelectionRange(pos, pos);
-    }
-  });
-
-  sc.addEventListener("keydown", (e) => {
-    if (e.key === "Enter") {
-      e.preventDefault();
-    }
-  });
+    `).join("")}
+  </div>`;
 }
 
-const ss = document.querySelector('[data-action="search-sailings"]');
-if (ss) {
+function renderSailings(){
+  const term=state.searchSailings.toLowerCase();
+  const list=state.sailings.filter(s=>
+    !term||
+    s.name?.toLowerCase().includes(term)||
+    s.type?.toLowerCase().includes(term)||
+    s.date?.includes(term)
+  );
 
-  ss.addEventListener("input", (e) => {
-    const pos = e.target.selectionStart ?? e.target.value.length;
-    state.searchSailings = e.target.value;
-
-    render();
-
-    const ss2 = document.querySelector('[data-action="search-sailings"]');
-    if (ss2) {
-      ss2.focus();
-      ss2.setSelectionRange(pos, pos);
-    }
-  });
-
-    ss.addEventListener("keydown", (e) => {
-    if (e.key === "Enter") {
-      e.preventDefault();
-    }
-  });
-
+  return `<div class="card">
+    <div class="row between">
+      <h2>Purjehdukset</h2>
+      <button class="btn primary" data-action="new-sailing">+ Lisää</button>
+    </div>
+    <div class="hr"></div>
+    <label>Haku</label>
+    <input data-action="search-sailings" value="${esc(state.searchSailings)}">
+    <div class="hr"></div>
+    ${list.map(s=>`
+      <div class="item">
+        <div>
+          <h3>${esc(s.name)} <span class="pill">${esc(s.type)}</span></h3>
+          <div class="meta">${fmtDate(s.date)} • ${s.maxPersons} hlö • ${s.pricePerPerson} €/hlö</div>
+        </div>
+        <button class="btn danger" data-action="delete-sailing" data-id="${s.id}">Poista</button>
+      </div>
+    `).join("")}
+  </div>`;
 }
 
+function renderModal(){
+  if(!state.modal)return "";
+  if(state.modal==="customer"){
+    return `<div class="overlay" data-action="close-modal">
+      <div class="modal" onclick="event.stopPropagation()">
+        <header><h2>Uusi asiakas</h2></header>
+        <div class="body">
+          <label>Nimi</label>
+          <input data-field="name" value="">
+          <label>Puhelin</label>
+          <input data-field="phone">
+          <label>Email</label>
+          <input data-field="email">
+          <div class="row" style="justify-content:flex-end;margin-top:12px">
+            <button class="btn primary" data-action="save-customer">Tallenna</button>
+          </div>
+        </div>
+      </div>
+    </div>`;
+  }
+  if(state.modal==="sailing"){
+    return `<div class="overlay" data-action="close-modal">
+      <div class="modal" onclick="event.stopPropagation()">
+        <header><h2>Uusi purjehdus</h2></header>
+        <div class="body">
+          <label>Nimi</label>
+          <input data-field="name">
+          <label>Päivä</label>
+          <input type="date" data-field="date" value="${today()}">
+          <label>Tyyppi</label>
+          <select data-field="type">
+            ${SAILING_TYPES.map(t=>`<option>${t}</option>`).join("")}
+          </select>
+          <label>Max hlö</label>
+          <input type="number" data-field="maxPersons" value="6">
+          <label>Hinta/hlö</label>
+          <input type="number" data-field="pricePerPerson" value="0">
+          <div class="row" style="justify-content:flex-end;margin-top:12px">
+            <button class="btn primary" data-action="save-sailing">Tallenna</button>
+          </div>
+        </div>
+      </div>
+    </div>`;
+  }
+  return "";
 }
 
-  function openCustomerModal() {
-    state.form = { name:"", phone:"", email:"" };
-    state.modal = "customer";
-    render();
+function bind(){
+  document.querySelectorAll("[data-tab]").forEach(b=>{
+    b.onclick=()=>{state.tab=b.dataset.tab;render();}
+  });
+
+  document.querySelectorAll("[data-action]").forEach(el=>{
+    el.onclick=()=>{
+      const a=el.dataset.action;
+      if(a==="new-customer"){state.modal="customer";render()}
+      if(a==="new-sailing"){state.modal="sailing";render()}
+      if(a==="close-modal"){state.modal=null;render()}
+      if(a==="save-customer"){
+        const name=document.querySelector('[data-field="name"]').value.trim();
+        if(!name)return alert("Nimi pakollinen");
+        state.customers.push({id:id("C"),name});
+        save();state.modal=null;render();
+      }
+      if(a==="save-sailing"){
+        const name=document.querySelector('[data-field="name"]').value.trim();
+        const date=document.querySelector('[data-field="date"]').value;
+        const type=document.querySelector('[data-field="type"]').value;
+        const maxPersons=parseInt(document.querySelector('[data-field="maxPersons"]').value)||1;
+        const pricePerPerson=parseFloat(document.querySelector('[data-field="pricePerPerson"]').value)||0;
+        if(!name||!date)return alert("Täytä pakolliset kentät");
+        state.sailings.push({id:id("S"),name,date,type,maxPersons,pricePerPerson});
+        save();state.modal=null;render();
+      }
+      if(a==="delete-customer"){
+        state.customers=state.customers.filter(c=>c.id!==el.dataset.id);
+        save();render();
+      }
+      if(a==="delete-sailing"){
+        state.sailings=state.sailings.filter(s=>s.id!==el.dataset.id);
+        save();render();
+      }
+      if(a==="backup-json"){
+        const blob=new Blob([JSON.stringify({customers:state.customers,sailings:state.sailings},null,2)],{type:"application/json"});
+        const url=URL.createObjectURL(blob);
+        const x=document.createElement("a");
+        x.href=url;x.download="absolut37_backup.json";x.click();
+        URL.revokeObjectURL(url);
+      }
+    };
+  });
+
+  const sc=document.querySelector('[data-action="search-customers"]');
+  if(sc){
+    sc.oninput=e=>{state.searchCustomers=e.target.value;render();}
+    sc.onkeydown=e=>{if(e.key==="Enter")e.preventDefault();}
   }
 
-  function openSailingModal() {
-    state.form = { name:"", date: today(), type: SAILING_TYPES[0], maxPersons: 6, pricePerPerson: 0 };
-    state.modal = "sailing";
-    render();
+  const ss=document.querySelector('[data-action="search-sailings"]');
+  if(ss){
+    ss.oninput=e=>{state.searchSailings=e.target.value;render();}
+    ss.onkeydown=e=>{if(e.key==="Enter")e.preventDefault();}
   }
+}
 
-  function closeModal() {
-    state.modal = null;
-    state.form = {};
-    render();
-  }
+load();
+render();
 
-  function saveCustomer() {
-    const name = String(state.form.name||"").trim();
-    const phone = String(state.form.phone||"").trim();
-    const email = String(state.form.email||"").trim();
-
-    if (!name) { alert("Nimi on pakollinen."); return; }
-
-    state.customers.push({ id: id("C"), name, phone, email });
-    save();
-    closeModal();
-  }
-
-  function saveSailing() {
-    const name = String(state.form.name||"").trim();
-    const date = String(state.form.date||"").trim();
-    const type = String(state.form.type||"").trim();
-    const maxPersons = Math.max(1, parseInt(state.form.maxPersons, 10) || 1);
-    const pricePerPerson = Math.max(0, parseFloat(state.form.pricePerPerson) || 0);
-
-    if (!name || !date || !type) { alert("Täytä pakolliset kentät (nimi, päivämäärä, tyyppi)."); return; }
-
-    state.sailings.push({ id: id("S"), name, date, type, maxPersons, pricePerPerson });
-    save();
-    closeModal();
-  }
-
-  function delCustomer(cid) {
-    if (!cid) return;
-    if (!confirm("Poistetaanko asiakas?")) return;
-    state.customers = state.customers.filter(c => c.id !== cid);
-    save();
-    render();
-  }
-
-  function delSailing(sid) {
-    if (!sid) return;
-    if (!confirm("Poistetaanko purjehdus?")) return;
-    state.sailings = state.sailings.filter(s => s.id !== sid);
-    save();
-    render();
-  }
-
-  // Init
-  try {
-    load();
-    render();
-  } catch (err) {
-    document.getElementById("app").innerHTML =
-      `<pre style="padding:16px;color:#b00020;white-space:pre-wrap">INIT ERROR:\n${esc(err && err.stack ? err.stack : String(err))}</pre>`;
-  }
 })();
 </script>
-
 </body>
 </html>
