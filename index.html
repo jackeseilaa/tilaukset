@@ -1,16 +1,19 @@
 <!DOCTYPE html>
-<html>
+<html lang="fi">
 <head>
-<meta charset="UTF-8">
-<title>TESTI</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TESTI</title>
 </head>
-<body>
-<h1>RUNKO NÄKYY</h1>
-<div id="app"></div>
+<body style="padding:40px;font-size:28px">
+  <h1>RUNKO NÄKYY</h1>
+  <div id="app" style="margin-top:16px;padding:16px;border:2px solid #ccc">
+    (app tyhjä)
+  </div>
 
-<script>
-console.log("JS käynnistyi");
-</script>
-
+  <script>
+    // Näkyvä testi (ei consolea)
+    document.getElementById('app').textContent = 'JS KÄYNNISTYI ✅ ' + new Date().toLocaleString();
+  </script>
 </body>
 </html>
