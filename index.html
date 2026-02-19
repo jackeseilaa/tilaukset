@@ -206,7 +206,14 @@
   }
 
 function render() {
-  const app = document.getElementById("app")
+  const app = document.getElementById("app");
+
+  // Tallenna fokus + kursorin paikka ENNEN kuin DOM korvataan
+  const active = document.activeElement;
+  const focusAction = active && active.dataset ? active.dataset.action : null;
+  const selStart = active && typeof active.selectionStart === "number" ? active.selectionStart : null;
+  const selEnd = active && typeof active.selectionEnd === "number" ? active.selectionEnd : null;
+
   app.innerHTML = `
     ${renderHeader()}
     ${renderNav()}
@@ -215,7 +222,21 @@ function render() {
     </main>
     ${renderModal()}
   `;
+
   bind();
+
+  // Palauta fokus samaan inputtiin renderin jälkeen
+  if (focusAction) {
+    const el = document.querySelector(`[data-action="${focusAction}"]`);
+    if (el) {
+      el.focus();
+      if (selStart !== null && selEnd !== null && el.setSelectionRange) {
+        const len = el.value.length;
+        el.setSelectionRange(Math.min(selStart, len), Math.min(selEnd, len));
+      }
+    }
+  }
+}
 }
 
   function renderHeader() {
