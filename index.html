@@ -205,18 +205,18 @@
     return d.toLocaleDateString("fi-FI");
   }
 
-  function render() {
-    const app = document.getElementById("app");
-    app.innerHTML = `
-      ${renderHeader()}
-      ${renderNav()}
-      <main>
-        ${renderTab()}
-      </main>
-      ${renderModal()}
-    `;
-    bind();
-  }
+function render() {
+  const app = document.getElementById("app")
+  app.innerHTML = `
+    ${renderHeader()}
+    ${renderNav()}
+    <main>
+      ${renderTab()}
+    </main>
+    ${renderModal()}
+  `;
+  bind();
+}
 
   function renderHeader() {
     return `
