@@ -420,6 +420,7 @@ function fillUI(booked, max){
     document.querySelectorAll("[data-action]").forEach(el=>{
       el.onclick=()=>{
         const a = el.dataset.action;
+        const id = el.dataset.id;
 
         if(a==="new-customer"){ state.modal="customer"; render(); }
         if(a==="new-sailing"){ state.modal="sailing"; render(); }
