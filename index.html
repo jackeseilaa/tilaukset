@@ -513,8 +513,20 @@ function render() {
     });
 
     const sc = document.querySelector('[data-action="search-customers"]');
-    if (sc) sc.addEventListener("input", (e) => { state.searchCustomers = e.target.value;
-    });
+if (sc) {
+  sc.addEventListener("input", (e) => {
+    const pos = e.target.selectionStart ?? e.target.value.length; // kursorin paikka talteen
+    state.searchCustomers = e.target.value;
+
+    render(); // saa edelleen renderöidä, mutta palautetaan fokus
+
+    const el = document.querySelector('[data-action="search-customers"]');
+    if (el) {
+      el.focus();
+      if (el.setSelectionRange) el.setSelectionRange(pos, pos);
+    }
+  });
+}
 
     const ss = document.querySelector('[data-action="search-sailings"]');
     if (ss) ss.addEventListener("input", (e) => { state.searchSailings = e.target.value; render(); });
