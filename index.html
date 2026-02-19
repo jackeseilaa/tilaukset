@@ -384,7 +384,7 @@ function render() {
         <div class="grid2">
           <div>
             <label>Haku</label>
-            <input placeholder="Hae nimellä / tyypillä / päivällä (YYYY-MM-DD)" value="${esc(state.searchSailings)}" data-action="search-sailings" />
+            <input placeholder="Hae nimellä / tyypillä / päivällä (YYYY-MM-DD)" value="${esc(state.searchSailings || "")}" data-action="search-sailings" />
             <div class="muted small" style="margin-top:8px">Yhteensä: ${list.length}</div>
           </div>
           <div class="note">
