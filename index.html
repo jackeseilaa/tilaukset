@@ -206,7 +206,25 @@
   }
 
 function render() {
-  const app = document.getElementById("app")
+  const app = document.getElementById("app");
+
+  // 1) Tallenna fokuksessa oleva input/textarea + kursorin paikka
+  const active = document.activeElement;
+  const focusInfo =
+    active && (active.tagName === "INPUT" || active.tagName === "TEXTAREA")
+      ? {
+          id: active.id || null,
+          filter: active.getAttribute("data-filter") || null,
+          field: active.getAttribute("data-field") || null,
+          action: active.getAttribute("data-action") || null,
+          selectionStart:
+            typeof active.selectionStart === "number" ? active.selectionStart : null,
+          selectionEnd:
+            typeof active.selectionEnd === "number" ? active.selectionEnd : null,
+        }
+      : null;
+
+  // 2) Renderöi näkymä uudelleen
   app.innerHTML = `
     ${renderHeader()}
     ${renderNav()}
@@ -215,7 +233,36 @@ function render() {
     </main>
     ${renderModal()}
   `;
+
+  // 3) Kiinnitä eventit uudelleen
   bind();
+
+  // 4) Palauta fokus + kursori samaan kenttään
+  if (focusInfo) {
+    let el = null;
+
+    if (focusInfo.id) el = document.getElementById(focusInfo.id);
+    if (!el && focusInfo.filter)
+      el = document.querySelector(`[data-filter="${focusInfo.filter}"]`);
+    if (!el && focusInfo.field)
+      el = document.querySelector(`[data-field="${focusInfo.field}"]`);
+    if (!el && focusInfo.action)
+      el = document.querySelector(`[data-action="${focusInfo.action}"]`);
+
+    if (el && el.focus) {
+      el.focus();
+      if (
+        typeof el.setSelectionRange === "function" &&
+        focusInfo.selectionStart !== null
+      ) {
+        el.setSelectionRange(
+          focusInfo.selectionStart,
+          focusInfo.selectionEnd ?? focusInfo.selectionStart
+        );
+      }
+    }
+  }
+}
 }
 
   function renderHeader() {
