@@ -242,6 +242,15 @@ function renderModal(){
           <input data-field="phone">
           <label>Email</label>
           <input data-field="email">
+          <label>Purjehdus</label>
+<select data-field="sailingId">
+  <option value="">-- Ei valittu --</option>
+  ${state.sailings.map(s => `
+    <option value="${s.id}">
+      ${esc(s.name)} (${fmtDate(s.date)})
+    </option>
+  `).join("")}
+</select>
           <div class="row" style="justify-content:flex-end;margin-top:12px">
             <button class="btn primary" data-action="save-customer">Tallenna</button>
           </div>
