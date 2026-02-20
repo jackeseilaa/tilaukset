@@ -96,7 +96,6 @@ label{display:block;font-size:13px;font-weight:900;margin-bottom:6px;color:#3741
 
 <script>
 (() => {
-  // Virheet ruudulle (iPad/Safari)
   window.onerror = function(msg, src, line, col, err){
     const el = document.getElementById("app");
     if (!el) return;
@@ -113,7 +112,6 @@ label{display:block;font-size:13px;font-weight:900;margin-bottom:6px;color:#3741
 
   const SAILING_TYPES = ["Iltapurjehdus","Päiväpurjehdus","Charter","Kurssi","Yritystilaisuus","Purjehdusretki","Muu"];
 
-  // Ryhmät -> käytetään type-kenttää, ei muuteta dataa
   const SAILING_GROUPS = [
     { id:"all", label:"Kaikki", types:null },
     { id:"courses", label:"Purjehduskurssit", types:["Kurssi"] },
@@ -129,8 +127,8 @@ label{display:block;font-size:13px;font-weight:900;margin-bottom:6px;color:#3741
     customers:[],
     sailings:[],
     companies:[],
-    modal:null,          // "customer" | "sailing" | "company" | null
-    editId:null,         // id (customer/sailing/company)
+    modal:null,
+    editId:null,
     searchCustomers:"",
     searchSailings:"",
     openSailingId:null,
@@ -164,10 +162,7 @@ label{display:block;font-size:13px;font-weight:900;margin-bottom:6px;color:#3741
       }
     }catch(e){}
 
-    // default invoice no
     if(!state.invoice.invoiceNo) state.invoice.invoiceNo = "JS-"+today().replaceAll("-","");
-
-    // seed jos tyhjä
     if(state.customers.length===0 && state.sailings.length===0 && state.companies.length===0){
       const coId = id("B");
       state.companies.push({id:coId, name:"Esimerkki Oy", businessId:"1234567-8", email:"info@esimerkki.fi", commissionPct:10});
@@ -178,12 +173,11 @@ label{display:block;font-size:13px;font-weight:900;margin-bottom:6px;color:#3741
       state.customers.push({
         id:id("C"), name:"Testi Seppo", phone:"04012345678", email:"testi@seppo.fi",
         sailingId:sid,
-        billTo:"self",      // "self" | "company"
+        billTo:"self",
         companyId:""
       });
     }
 
-    // default invoice selections if missing
     if(!state.invoice.sailingId && state.sailings[0]) state.invoice.sailingId = state.sailings[0].id;
   }
 
@@ -192,7 +186,6 @@ label{display:block;font-size:13px;font-weight:900;margin-bottom:6px;color:#3741
   function esc(s){return String(s||"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[m]));}
   function fmtDate(d){return d ? new Date(d+"T00:00:00").toLocaleDateString("fi-FI") : "";}
   function enrolledCount(sailingId){return state.customers.filter(c=>c.sailingId===sailingId).length;}
-
   function vatRate(s){ return (s && s.type==="Charter") ? 0.135 : 0.255; }
 
   function fillUI(booked,max){
@@ -218,7 +211,6 @@ label{display:block;font-size:13px;font-weight:900;margin-bottom:6px;color:#3741
   }
 
   function render(){
-    // fokus/kurssori talteen (iPad)
     const ae=document.activeElement;
     const keep={
       action: ae?.dataset?.action || null,
@@ -235,7 +227,6 @@ label{display:block;font-size:13px;font-weight:900;margin-bottom:6px;color:#3741
 
     bind();
 
-    // fokus takaisin
     const sel = keep.action ? `[data-action="${keep.action}"]` :
                 keep.field  ? `[data-field="${keep.field}"]` : null;
     if(sel){
@@ -540,7 +531,7 @@ label{display:block;font-size:13px;font-weight:900;margin-bottom:6px;color:#3741
         if(c){
           payerName = c.name||"";
           payerEmail = c.email||"";
-          lines.push({title:s.name, qty:1, unit:price, total:price});
+          lines.push({title:`${s.name} — ${c.name}`, qty:1, unit:price, total:price});
           grossTotal = price;
         }
       }else{
@@ -550,18 +541,24 @@ label{display:block;font-size:13px;font-weight:900;margin-bottom:6px;color:#3741
           payerEmail = co.email||"";
           payerBusinessId = co.businessId||"";
 
-          // yrityslasku: asiakkaat joilla billTo=company ja companyId=valittu ja sailingId=tapahtuma
-          const cust = state.customers.filter(c =>
-            c.sailingId===s.id && c.billTo==="company" && c.companyId===co.id
-          );
+          // yrityslasku: eritellään osallistujat riveille
+          const cust = state.customers
+            .filter(c => c.sailingId===s.id && c.billTo==="company" && c.companyId===co.id)
+            .slice()
+            .sort((a,b)=>(a.name||"").localeCompare(b.name||""));
 
           const gross = cust.length * price;
-          lines.push({title:s.name, qty:cust.length, unit:price, total:gross});
+
+          // yksi rivi per osallistuja (kuvauksessa nimi)
+          for(const c of cust){
+            lines.push({title:`${s.name} — ${c.name}`, qty:1, unit:price, total:price});
+          }
 
           const commission = gross * (Number(co.commissionPct||0)/100);
           if(commission>0){
             lines.push({title:"Välitysprovisio", qty:1, unit:-commission, total:-commission});
           }
+
           grossTotal = gross - commission;
         }
       }
@@ -886,12 +883,10 @@ label{display:block;font-size:13px;font-weight:900;margin-bottom:6px;color:#3741
   }
 
   function bind(){
-    // tabit
     document.querySelectorAll("[data-tab]").forEach(b=>{
       b.onclick=()=>{ state.tab=b.dataset.tab; render(); };
     });
 
-    // hakukentät
     const sc=document.querySelector('[data-action="search-customers"]');
     if(sc){
       sc.oninput=e=>{ state.searchCustomers=e.target.value; render(); };
@@ -903,7 +898,6 @@ label{display:block;font-size:13px;font-weight:900;margin-bottom:6px;color:#3741
       ss.onkeydown=e=>{ if(e.key==="Enter") e.preventDefault(); };
     }
 
-    // dashboard restore file
     document.querySelector('[data-action="restore-json"]')?.addEventListener("change", async (e)=>{
       const file=e.target.files && e.target.files[0];
       if(!file) return;
@@ -924,7 +918,6 @@ label{display:block;font-size:13px;font-weight:900;margin-bottom:6px;color:#3741
       }
     });
 
-    // invoicing inputs
     document.querySelector('[data-action="inv-sailing"]')?.addEventListener("change",(e)=>{ state.invoice.sailingId=e.target.value; render(); });
     document.querySelector('[data-action="inv-mode"]')?.addEventListener("change",(e)=>{ state.invoice.mode=e.target.value; render(); });
     document.querySelector('[data-action="inv-customer"]')?.addEventListener("change",(e)=>{ state.invoice.customerId=e.target.value; render(); });
@@ -932,7 +925,6 @@ label{display:block;font-size:13px;font-weight:900;margin-bottom:6px;color:#3741
     document.querySelector('[data-action="inv-no"]')?.addEventListener("input",(e)=>{ state.invoice.invoiceNo=e.target.value; });
     document.querySelector('[data-action="inv-date"]')?.addEventListener("change",(e)=>{ state.invoice.invoiceDate=e.target.value; render(); });
 
-    // click-actionit
     document.querySelectorAll("[data-action]").forEach(el=>{
       el.onclick=()=>{
         const a=el.dataset.action;
@@ -993,12 +985,10 @@ label{display:block;font-size:13px;font-weight:900;margin-bottom:6px;color:#3741
           const billTo=(document.querySelector('[data-field="billTo"]')?.value||"self");
           const companyId=(document.querySelector('[data-field="companyId"]')?.value||"");
 
-          // yritysvalidaatio
           if(billTo==="company" && !companyId){
             return alert("Valitse tilaajayritys (tai vaihda laskutus: Asiakas maksaa itse).");
           }
 
-          // estä ylibuukkaus: jos uusi asiakas liitetään purjehdukseen joka täynnä
           if(sailingId){
             const s=state.sailings.find(x=>x.id===sailingId);
             if(s){
@@ -1006,7 +996,6 @@ label{display:block;font-size:13px;font-weight:900;margin-bottom:6px;color:#3741
               const booked=enrolledCount(sailingId);
               const editing = !!state.editId;
               const wasInSame = editing ? (state.customers.find(x=>x.id===state.editId)?.sailingId===sailingId) : false;
-              // jos muokataan ja oli jo samassa purjehduksessa, ei kasvateta paikkaa
               const effectiveBooked = wasInSame ? booked-1 : booked;
               if(max>0 && effectiveBooked>=max){
                 return alert(`Purjehdus on täynnä (${booked}/${max}). Valitse toinen purjehdus tai jätä tyhjäksi.`);
@@ -1046,9 +1035,7 @@ label{display:block;font-size:13px;font-weight:900;margin-bottom:6px;color:#3741
             state.sailings.push({id:id("S"), name, date, type, maxPersons, pricePerPerson, sessions:[]});
           }
 
-          // default invoice selection
           if(!state.invoice.sailingId) state.invoice.sailingId = state.sailings[0]?.id || "";
-
           save();
           state.modal=null; state.editId=null;
           render();
@@ -1087,7 +1074,6 @@ label{display:block;font-size:13px;font-weight:900;margin-bottom:6px;color:#3741
           if(!confirm("Poistetaanko purjehdus?")) return;
           state.sailings=state.sailings.filter(s=>s.id!==itemId);
           if(state.openSailingId===itemId) state.openSailingId=null;
-          // asiakkaiden sailingId:t jätetään (näkyy tyhjänä pillinä jos purjehdus poistuu)
           save(); render(); return;
         }
 
@@ -1095,7 +1081,6 @@ label{display:block;font-size:13px;font-weight:900;margin-bottom:6px;color:#3741
           if(!confirm("Poistetaanko yritys?")) return;
           const cid=itemId;
           state.companies=state.companies.filter(co=>co.id!==cid);
-          // asiakkaista irrotetaan yritys
           state.customers.forEach(c=>{ if(c.companyId===cid){ c.companyId=""; if(c.billTo==="company") c.billTo="self"; }});
           save(); render(); return;
         }
@@ -1122,7 +1107,6 @@ label{display:block;font-size:13px;font-weight:900;margin-bottom:6px;color:#3741
     if(!box){ alert("Laskua ei löytynyt."); return; }
     const text=box.innerText;
 
-    // vastaanottaja: yritetään päätellä valinnan mukaan
     let to="";
     if(state.invoice.mode==="customer"){
       const c=state.customers.find(x=>x.id===state.invoice.customerId);
@@ -1137,7 +1121,6 @@ label{display:block;font-size:13px;font-weight:900;margin-bottom:6px;color:#3741
     window.location.href=`mailto:${encodeURIComponent(to)}?subject=${subject}&body=${body}`;
   }
 
-  // init
   load();
   render();
 
