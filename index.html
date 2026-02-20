@@ -485,7 +485,7 @@ label{display:block;font-size:13px;font-weight:700;margin-bottom:6px}
           return;
         }
 
-        if (a==="save-customer"){
+        if(a==="save-customer"){
   const name = (document.querySelector('[data-field="name"]')?.value || "").trim();
   if(!name) return alert("Nimi pakollinen");
 
@@ -493,17 +493,24 @@ label{display:block;font-size:13px;font-weight:700;margin-bottom:6px}
   const email = (document.querySelector('[data-field="email"]')?.value || "").trim();
   const sailingId = (document.querySelector('[data-field="sailingId"]')?.value || "");
 
-  // 🔒 Kapasiteettitarkistus
-  if(sailingId){
-    const sailing = state.sailings.find(s => s.id === sailingId);
-    if(sailing){
+  // ESTÄ YLIBUUKKAUS: jos purjehdus valittu ja täynnä, älä tallenna
+  if (sailingId) {
+    const s = state.sailings.find(x => x.id === sailingId);
+    if (s) {
+      const max = Number(s.maxPersons || 0) || 0;
       const booked = enrolledCount(sailingId);
-      const max = Number(sailing.maxPersons || 0);
-      if(booked >= max){
-        return alert("Purjehdus on täynnä.");
+
+      if (max > 0 && booked >= max) {
+        return alert(`Purjehdus on täynnä (${booked}/${max}). Valitse toinen purjehdus tai jätä tyhjäksi.`);
       }
     }
   }
+
+  state.customers.push({ id:id("C"), name, phone, email, sailingId });
+  save();
+  state.modal=null;
+  render();
+}
 
   state.customers.push({ id:makeId("C"), name, phone, email, sailingId });
 
