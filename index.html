@@ -83,8 +83,8 @@ label{display:block;font-size:13px;font-weight:700;margin-bottom:6px}
     if (!el) return;
     el.innerHTML =
       "<pre style='padding:16px;color:#b00020;white-space:pre-wrap'>" +
-      "JS ERROR:\\n" + msg + "\\n" +
-      (src || "") + ":" + line + ":" + col + "\\n\\n" +
+      "JS ERROR:\n" + msg + "\n" +
+      (src || "") + ":" + line + ":" + col + "\n\n" +
       (err && err.stack ? err.stack : "") +
       "</pre>";
   };
@@ -100,7 +100,7 @@ label{display:block;font-size:13px;font-weight:700;margin-bottom:6px}
     form:{},
     searchCustomers:"",
     searchSailings:"",
-    openSailingId: null
+    openSailingId: null,
     editCustomerId: null,
     editSailingId: null
   };
@@ -144,7 +144,6 @@ label{display:block;font-size:13px;font-weight:700;margin-bottom:6px}
     }));
   }
 
-  // ✅ ID-funktio (korjaa “id is not a function” -virheen)
   function id(p){ return p + Math.random().toString(16).slice(2,8).toUpperCase(); }
 
   function esc(s){
@@ -157,6 +156,9 @@ label{display:block;font-size:13px;font-weight:700;margin-bottom:6px}
 
   function enrolledCount(sailingId){
     return state.customers.filter(c => c.sailingId === sailingId).length;
+  }
+  function enrolledCountExcludingCustomer(sailingId, customerId){
+    return state.customers.filter(c => c.sailingId === sailingId && c.id !== customerId).length;
   }
 
   function fillUI(booked, max){
@@ -171,6 +173,11 @@ label{display:block;font-size:13px;font-weight:700;margin-bottom:6px}
         <div class="filltext">${b} / ${m} (${pct}%)</div>
       </div>
     `;
+  }
+
+  function resetEdits(){
+    state.editCustomerId = null;
+    state.editSailingId = null;
   }
 
   function render(){
@@ -252,8 +259,6 @@ label{display:block;font-size:13px;font-weight:700;margin-bottom:6px}
       <div class="row between">
         <h2>Asiakkaat</h2>
         <button class="btn primary" data-action="new-customer">+ Lisää</button>
-        <button class="btn secondary" data-action="edit-customer" data-id="${c.id}">Muokkaa</button>
-        <button class="btn danger" data-action="delete-customer" data-id="${c.id}">Poista</button>
       </div>
 
       <div class="hr"></div>
@@ -275,7 +280,10 @@ label{display:block;font-size:13px;font-weight:700;margin-bottom:6px}
               </h3>
               <div class="meta">${esc(c.phone||"")}${(c.phone&&c.email)?" • ":""}${esc(c.email||"")}</div>
             </div>
-            <button class="btn danger" data-action="delete-customer" data-id="${c.id}">Poista</button>
+            <div class="row" style="align-items:flex-start">
+              <button class="btn secondary" data-action="edit-customer" data-id="${c.id}">Muokkaa</button>
+              <button class="btn danger" data-action="delete-customer" data-id="${c.id}">Poista</button>
+            </div>
           </div>
         `).join("")}
       `}
@@ -299,8 +307,6 @@ label{display:block;font-size:13px;font-weight:700;margin-bottom:6px}
       <div class="row between">
         <h2>Purjehdukset</h2>
         <button class="btn primary" data-action="new-sailing">+ Lisää</button>
-        <button class="btn secondary" data-action="edit-sailing" data-id="${s.id}">Muokkaa</button>
-        <button class="btn danger" data-action="delete-sailing" data-id="${s.id}">Poista</button>
       </div>
 
       <div class="hr"></div>
@@ -373,6 +379,7 @@ label{display:block;font-size:13px;font-weight:700;margin-bottom:6px}
               <button class="btn secondary" data-action="toggle-sailing" data-id="${s.id}">
                 ${state.openSailingId === s.id ? "Piilota asiakkaat" : "Näytä asiakkaat"}
               </button>
+              <button class="btn secondary" data-action="edit-sailing" data-id="${s.id}">Muokkaa</button>
               <button class="btn danger" data-action="delete-sailing" data-id="${s.id}">Poista</button>
             </div>
           </div>
@@ -392,16 +399,18 @@ label{display:block;font-size:13px;font-weight:700;margin-bottom:6px}
           <header><h2>${state.editCustomerId ? "Muokkaa asiakasta" : "Uusi asiakas"}</h2></header>
           <div class="body">
             <label>Nimi *</label>
-            <input data-field="name" value="">
+            <input data-field="name" value="${esc(state.form.name||"")}">
             <label>Puhelin</label>
-            <input data-field="phone" value="">
+            <input data-field="phone" value="${esc(state.form.phone||"")}">
             <label>Email</label>
-            <input data-field="email" value="">
+            <input data-field="email" value="${esc(state.form.email||"")}">
             <label>Purjehdus</label>
             <select data-field="sailingId">
               <option value="">-- Ei valittu --</option>
               ${state.sailings.map(s=>`
-                <option value="${s.id}">${esc(s.name)} (${fmtDate(s.date)})</option>
+                <option value="${s.id}" ${state.form.sailingId===s.id ? "selected" : ""}>
+                  ${esc(s.name)} (${fmtDate(s.date)})
+                </option>
               `).join("")}
             </select>
             <div class="row" style="justify-content:flex-end;margin-top:12px">
@@ -415,20 +424,22 @@ label{display:block;font-size:13px;font-weight:700;margin-bottom:6px}
     if(state.modal==="sailing"){
       return `<div class="overlay" data-action="close-modal">
         <div class="modal" onclick="event.stopPropagation()">
-          <header><h2>Uusi purjehdus</h2></header>
+          <header><h2>${state.editSailingId ? "Muokkaa purjehdusta" : "Uusi purjehdus"}</h2></header>
           <div class="body">
             <label>Nimi *</label>
-            <input data-field="name" value="">
+            <input data-field="name" value="${esc(state.form.name||"")}">
             <label>Päivä *</label>
-            <input type="date" data-field="date" value="${today()}">
+            <input type="date" data-field="date" value="${esc(state.form.date||today())}">
             <label>Tyyppi *</label>
             <select data-field="type">
-              ${SAILING_TYPES.map(t=>`<option>${esc(t)}</option>`).join("")}
+              ${SAILING_TYPES.map(t=>`
+                <option value="${esc(t)}" ${state.form.type===t ? "selected" : ""}>${esc(t)}</option>
+              `).join("")}
             </select>
             <label>Max hlö *</label>
-            <input type="number" data-field="maxPersons" value="6" min="1" step="1">
+            <input type="number" data-field="maxPersons" value="${Number(state.form.maxPersons||6)}" min="1" step="1">
             <label>Hinta/hlö (€) *</label>
-            <input type="number" data-field="pricePerPerson" value="0" min="0" step="0.01">
+            <input type="number" data-field="pricePerPerson" value="${Number(state.form.pricePerPerson||0)}" min="0" step="0.01">
             <div class="row" style="justify-content:flex-end;margin-top:12px">
               <button class="btn primary" data-action="save-sailing">Tallenna</button>
             </div>
@@ -453,12 +464,65 @@ label{display:block;font-size:13px;font-weight:700;margin-bottom:6px}
         const itemId = el.dataset.id;
         const idx = (typeof el.dataset.idx !== "undefined") ? Number(el.dataset.idx) : null;
 
-        if(a==="new-customer"){ state.modal="customer"; render(); return; }
-        if(a==="new-sailing"){ state.modal="sailing"; render(); return; }
-        if(a==="close-modal"){ state.modal=null; render(); return; }
+        if(a==="new-customer"){
+          resetEdits();
+          state.form = { name:"", phone:"", email:"", sailingId:"" };
+          state.modal="customer";
+          render();
+          return;
+        }
+
+        if(a==="new-sailing"){
+          resetEdits();
+          state.form = { name:"", date:today(), type:SAILING_TYPES[0], maxPersons:6, pricePerPerson:0 };
+          state.modal="sailing";
+          render();
+          return;
+        }
+
+        if(a==="close-modal"){
+          state.modal=null;
+          state.form={};
+          resetEdits();
+          render();
+          return;
+        }
 
         if(a==="toggle-sailing"){
           state.openSailingId = (state.openSailingId===itemId) ? null : itemId;
+          render();
+          return;
+        }
+
+        if(a==="edit-customer"){
+          const c = state.customers.find(x => x.id === itemId);
+          if(!c) return;
+          state.editCustomerId = c.id;
+          state.editSailingId = null;
+          state.form = {
+            name: c.name || "",
+            phone: c.phone || "",
+            email: c.email || "",
+            sailingId: c.sailingId || ""
+          };
+          state.modal = "customer";
+          render();
+          return;
+        }
+
+        if(a==="edit-sailing"){
+          const s = state.sailings.find(x => x.id === itemId);
+          if(!s) return;
+          state.editSailingId = s.id;
+          state.editCustomerId = null;
+          state.form = {
+            name: s.name || "",
+            date: s.date || today(),
+            type: s.type || SAILING_TYPES[0],
+            maxPersons: s.maxPersons || 6,
+            pricePerPerson: s.pricePerPerson || 0
+          };
+          state.modal = "sailing";
           render();
           return;
         }
@@ -503,21 +567,40 @@ label{display:block;font-size:13px;font-weight:700;margin-bottom:6px}
           const email = (document.querySelector('[data-field="email"]')?.value || "").trim();
           const sailingId = (document.querySelector('[data-field="sailingId"]')?.value || "");
 
-          // ESTÄ YLIBUUKKAUS
+          // ESTÄ YLIBUUKKAUS (huomioi muokkaus: oma asiakas ei saa laskea mukaan)
           if (sailingId) {
             const s = state.sailings.find(x => x.id === sailingId);
             if (s) {
               const max = Number(s.maxPersons || 0) || 0;
-              const booked = enrolledCount(sailingId);
+              const booked = state.editCustomerId
+                ? enrolledCountExcludingCustomer(sailingId, state.editCustomerId)
+                : enrolledCount(sailingId);
+
               if (max > 0 && booked >= max) {
                 return alert(`Purjehdus on täynnä (${booked}/${max}). Valitse toinen purjehdus tai jätä tyhjäksi.`);
               }
             }
           }
 
-          state.customers.push({ id:id("C"), name, phone, email, sailingId });
+          if(state.editCustomerId){
+            const c = state.customers.find(x => x.id === state.editCustomerId);
+            if(!c) {
+              // jos jotain meni rikki, tee varmuuden vuoksi uusi
+              state.customers.push({ id:id("C"), name, phone, email, sailingId });
+            } else {
+              c.name = name;
+              c.phone = phone;
+              c.email = email;
+              c.sailingId = sailingId;
+            }
+          } else {
+            state.customers.push({ id:id("C"), name, phone, email, sailingId });
+          }
+
           save();
           state.modal=null;
+          state.form={};
+          resetEdits();
           render();
           return;
         }
@@ -531,9 +614,29 @@ label{display:block;font-size:13px;font-weight:700;margin-bottom:6px}
 
           if(!name || !date || !type) return alert("Täytä pakolliset kentät (nimi, päivä, tyyppi).");
 
-          state.sailings.push({id:id("S"),name,date,type,maxPersons,pricePerPerson, sessions: []});
+          // jos muokataan: estä max pienemmäksi kuin jo ilmoittautuneita
+          if(state.editSailingId){
+            const booked = enrolledCount(state.editSailingId);
+            if(maxPersons > 0 && booked > maxPersons){
+              return alert(`Et voi asettaa Max hlö (${maxPersons}) pienemmäksi kuin ilmoittautuneita (${booked}).`);
+            }
+            const s = state.sailings.find(x => x.id === state.editSailingId);
+            if(!s) return alert("Muokattavaa purjehdusta ei löytynyt.");
+
+            s.name = name;
+            s.date = date;
+            s.type = type;
+            s.maxPersons = maxPersons;
+            s.pricePerPerson = pricePerPerson;
+            if(!Array.isArray(s.sessions)) s.sessions = [];
+          } else {
+            state.sailings.push({id:id("S"),name,date,type,maxPersons,pricePerPerson, sessions: []});
+          }
+
           save();
           state.modal=null;
+          state.form={};
+          resetEdits();
           render();
           return;
         }
@@ -541,6 +644,7 @@ label{display:block;font-size:13px;font-weight:700;margin-bottom:6px}
         if(a==="delete-customer"){
           const cid = itemId;
           state.customers = state.customers.filter(c=>c.id!==cid);
+          if(state.editCustomerId===cid){ resetEdits(); }
           save();
           render();
           return;
@@ -550,6 +654,10 @@ label{display:block;font-size:13px;font-weight:700;margin-bottom:6px}
           const sid = itemId;
           state.sailings = state.sailings.filter(s=>s.id!==sid);
           if(state.openSailingId===sid) state.openSailingId=null;
+
+          // Jos joku asiakas oli liitetty poistettuun purjehdukseen, jätetään tieto (näkyy pillissä tyhjänä).
+          if(state.editSailingId===sid){ resetEdits(); }
+
           save();
           render();
           return;
