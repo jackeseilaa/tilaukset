@@ -83,8 +83,8 @@ label{display:block;font-size:13px;font-weight:700;margin-bottom:6px}
     if (!el) return;
     el.innerHTML =
       "<pre style='padding:16px;color:#b00020;white-space:pre-wrap'>" +
-      "JS ERROR:\n" + msg + "\n" +
-      (src || "") + ":" + line + ":" + col + "\n\n" +
+      "JS ERROR:\\n" + msg + "\\n" +
+      (src || "") + ":" + line + ":" + col + "\\n\\n" +
       (err && err.stack ? err.stack : "") +
       "</pre>";
   };
@@ -115,7 +115,7 @@ label{display:block;font-size:13px;font-weight:700;margin-bottom:6px}
 
     // Seed jos tyhjä
     if(state.customers.length===0 && state.sailings.length===0){
-      const sid = makeId("S");
+      const sid = id("S");
       state.sailings.push({
         id:sid,
         name:"Iltapurjehdus Suomenlinna",
@@ -126,7 +126,7 @@ label{display:block;font-size:13px;font-weight:700;margin-bottom:6px}
         sessions:[]
       });
       state.customers.push({
-        id:makeId("C"),
+        id:id("C"),
         name:"Testi Seppo",
         phone:"04012345678",
         email:"joku@joku.net",
@@ -142,7 +142,9 @@ label{display:block;font-size:13px;font-weight:700;margin-bottom:6px}
     }));
   }
 
-  function makeId(p){ return p + Math.random().toString(16).slice(2,8).toUpperCase(); }
+  // ✅ ID-funktio (korjaa “id is not a function” -virheen)
+  function id(p){ return p + Math.random().toString(16).slice(2,8).toUpperCase(); }
+
   function esc(s){
     return String(s||"").replace(/[&<>"']/g, m => ({
       "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"
@@ -433,144 +435,145 @@ label{display:block;font-size:13px;font-weight:700;margin-bottom:6px}
   }
 
   function bind(){
-  // tabit
-  document.querySelectorAll("[data-tab]").forEach(b=>{
-    b.onclick=()=>{ state.tab=b.dataset.tab; render(); };
-  });
+    // tabit
+    document.querySelectorAll("[data-tab]").forEach(b=>{
+      b.onclick=()=>{ state.tab=b.dataset.tab; render(); };
+    });
 
-  // click-actionit
-  document.querySelectorAll("[data-action]").forEach(el=>{
-    el.onclick=()=>{
-      const a = el.dataset.action;
-      const itemId = el.dataset.id; // käytetään tätä kaikkialla
-      const idx = (typeof el.dataset.idx !== "undefined") ? Number(el.dataset.idx) : null;
+    // click-actionit
+    document.querySelectorAll("[data-action]").forEach(el=>{
+      el.onclick=()=>{
+        const a = el.dataset.action;
+        const itemId = el.dataset.id;
+        const idx = (typeof el.dataset.idx !== "undefined") ? Number(el.dataset.idx) : null;
 
-      if(a==="new-customer"){ state.modal="customer"; render(); return; }
-      if(a==="new-sailing"){ state.modal="sailing"; render(); return; }
-      if(a==="close-modal"){ state.modal=null; render(); return; }
+        if(a==="new-customer"){ state.modal="customer"; render(); return; }
+        if(a==="new-sailing"){ state.modal="sailing"; render(); return; }
+        if(a==="close-modal"){ state.modal=null; render(); return; }
 
-      if(a==="toggle-sailing"){
-        state.openSailingId = (state.openSailingId===itemId) ? null : itemId;
-        render();
-        return;
-      }
-
-      if(a==="add-session"){
-        const s = state.sailings.find(x => x.id === itemId);
-        if(!s) return;
-
-        const date = prompt("Kurssipäivä (YYYY-MM-DD):", today());
-        if(!date) return;
-
-        const start = prompt("Aloitusaika (HH:MM), tyhjä sallittu:", "17:00") || "";
-        const end = prompt("Lopetusaika (HH:MM), tyhjä sallittu:", "20:00") || "";
-        const note = prompt("Lisähuomio (valinnainen):", "") || "";
-
-        if(!Array.isArray(s.sessions)) s.sessions = [];
-        s.sessions.push({ date, start, end, note });
-
-        save();
-        render();
-        return;
-      }
-
-      if(a==="delete-session"){
-        const s = state.sailings.find(x => x.id === itemId);
-        if(!s || !Array.isArray(s.sessions)) return;
-        if(idx===null || Number.isNaN(idx)) return;
-
-        if(!confirm("Poistetaanko kurssipäivä?")) return;
-
-        s.sessions.splice(idx, 1);
-        save();
-        render();
-        return;
-      }
-
-      if(a==="save-customer"){
-        const name = (document.querySelector('[data-field="name"]')?.value || "").trim();
-        if(!name) return alert("Nimi pakollinen");
-
-        const phone = (document.querySelector('[data-field="phone"]')?.value || "").trim();
-        const email = (document.querySelector('[data-field="email"]')?.value || "").trim();
-        const sailingId = (document.querySelector('[data-field="sailingId"]')?.value || "");
-
-        // ESTÄ YLIBUUKKAUS
-        if (sailingId) {
-          const s = state.sailings.find(x => x.id === sailingId);
-          if (s) {
-            const max = Number(s.maxPersons || 0) || 0;
-            const booked = enrolledCount(sailingId);
-            if (max > 0 && booked >= max) {
-              return alert(`Purjehdus on täynnä (${booked}/${max}). Valitse toinen purjehdus tai jätä tyhjäksi.`);
-            }
-          }
+        if(a==="toggle-sailing"){
+          state.openSailingId = (state.openSailingId===itemId) ? null : itemId;
+          render();
+          return;
         }
 
-        state.customers.push({ id:id("C"), name, phone, email, sailingId });
-        save();
-        state.modal=null;
-        render();
-        return;
-      }
+        if(a==="add-session"){
+          const s = state.sailings.find(x => x.id === itemId);
+          if(!s) return;
 
-      if(a==="save-sailing"){
-        const name = (document.querySelector('[data-field="name"]')?.value || "").trim();
-        const date = (document.querySelector('[data-field="date"]')?.value || "").trim();
-        const type = (document.querySelector('[data-field="type"]')?.value || "").trim();
-        const maxPersons = parseInt(document.querySelector('[data-field="maxPersons"]')?.value, 10) || 1;
-        const pricePerPerson = parseFloat(document.querySelector('[data-field="pricePerPerson"]')?.value) || 0;
+          const date = prompt("Kurssipäivä (YYYY-MM-DD):", today());
+          if(!date) return;
 
-        if(!name || !date || !type) return alert("Täytä pakolliset kentät (nimi, päivä, tyyppi).");
+          const start = prompt("Aloitusaika (HH:MM), tyhjä sallittu:", "17:00") || "";
+          const end = prompt("Lopetusaika (HH:MM), tyhjä sallittu:", "20:00") || "";
+          const note = prompt("Lisähuomio (valinnainen):", "") || "";
 
-        state.sailings.push({id:id("S"),name,date,type,maxPersons,pricePerPerson, sessions: []});
-        save();
-        state.modal=null;
-        render();
-        return;
-      }
+          if(!Array.isArray(s.sessions)) s.sessions = [];
+          s.sessions.push({ date, start, end, note });
 
-      if(a==="delete-customer"){
-        const cid = itemId;
-        state.customers = state.customers.filter(c=>c.id!==cid);
-        save();
-        render();
-        return;
-      }
+          save();
+          render();
+          return;
+        }
 
-      if(a==="delete-sailing"){
-        const sid = itemId;
-        state.sailings = state.sailings.filter(s=>s.id!==sid);
-        if(state.openSailingId===sid) state.openSailingId=null;
-        save();
-        render();
-        return;
-      }
+        if(a==="delete-session"){
+          const s = state.sailings.find(x => x.id === itemId);
+          if(!s || !Array.isArray(s.sessions)) return;
+          if(idx===null || Number.isNaN(idx)) return;
 
-      if(a==="backup-json"){
-        const blob = new Blob([JSON.stringify({customers:state.customers,sailings:state.sailings},null,2)],{type:"application/json"});
-        const url = URL.createObjectURL(blob);
-        const x = document.createElement("a");
-        x.href=url; x.download="absolut37_backup.json"; x.click();
-        URL.revokeObjectURL(url);
-        return;
-      }
-    };
-  });
+          if(!confirm("Poistetaanko kurssipäivä?")) return;
 
-  // hakukentät
-  const sc=document.querySelector('[data-action="search-customers"]');
-  if(sc){
-    sc.oninput=e=>{ state.searchCustomers=e.target.value; render(); };
-    sc.onkeydown=e=>{ if(e.key==="Enter") e.preventDefault(); };
+          s.sessions.splice(idx, 1);
+          save();
+          render();
+          return;
+        }
+
+        if(a==="save-customer"){
+          const name = (document.querySelector('[data-field="name"]')?.value || "").trim();
+          if(!name) return alert("Nimi pakollinen");
+
+          const phone = (document.querySelector('[data-field="phone"]')?.value || "").trim();
+          const email = (document.querySelector('[data-field="email"]')?.value || "").trim();
+          const sailingId = (document.querySelector('[data-field="sailingId"]')?.value || "");
+
+          // ESTÄ YLIBUUKKAUS
+          if (sailingId) {
+            const s = state.sailings.find(x => x.id === sailingId);
+            if (s) {
+              const max = Number(s.maxPersons || 0) || 0;
+              const booked = enrolledCount(sailingId);
+              if (max > 0 && booked >= max) {
+                return alert(`Purjehdus on täynnä (${booked}/${max}). Valitse toinen purjehdus tai jätä tyhjäksi.`);
+              }
+            }
+          }
+
+          state.customers.push({ id:id("C"), name, phone, email, sailingId });
+          save();
+          state.modal=null;
+          render();
+          return;
+        }
+
+        if(a==="save-sailing"){
+          const name = (document.querySelector('[data-field="name"]')?.value || "").trim();
+          const date = (document.querySelector('[data-field="date"]')?.value || "").trim();
+          const type = (document.querySelector('[data-field="type"]')?.value || "").trim();
+          const maxPersons = parseInt(document.querySelector('[data-field="maxPersons"]')?.value, 10) || 1;
+          const pricePerPerson = parseFloat(document.querySelector('[data-field="pricePerPerson"]')?.value) || 0;
+
+          if(!name || !date || !type) return alert("Täytä pakolliset kentät (nimi, päivä, tyyppi).");
+
+          state.sailings.push({id:id("S"),name,date,type,maxPersons,pricePerPerson, sessions: []});
+          save();
+          state.modal=null;
+          render();
+          return;
+        }
+
+        if(a==="delete-customer"){
+          const cid = itemId;
+          state.customers = state.customers.filter(c=>c.id!==cid);
+          save();
+          render();
+          return;
+        }
+
+        if(a==="delete-sailing"){
+          const sid = itemId;
+          state.sailings = state.sailings.filter(s=>s.id!==sid);
+          if(state.openSailingId===sid) state.openSailingId=null;
+          save();
+          render();
+          return;
+        }
+
+        if(a==="backup-json"){
+          const blob = new Blob([JSON.stringify({customers:state.customers,sailings:state.sailings},null,2)],{type:"application/json"});
+          const url = URL.createObjectURL(blob);
+          const x = document.createElement("a");
+          x.href=url; x.download="absolut37_backup.json"; x.click();
+          URL.revokeObjectURL(url);
+          return;
+        }
+      };
+    });
+
+    // hakukentät
+    const sc=document.querySelector('[data-action="search-customers"]');
+    if(sc){
+      sc.oninput=e=>{ state.searchCustomers=e.target.value; render(); };
+      sc.onkeydown=e=>{ if(e.key==="Enter") e.preventDefault(); };
+    }
+
+    const ss=document.querySelector('[data-action="search-sailings"]');
+    if(ss){
+      ss.oninput=e=>{ state.searchSailings=e.target.value; render(); };
+      ss.onkeydown=e=>{ if(e.key==="Enter") e.preventDefault(); };
+    }
   }
 
-  const ss=document.querySelector('[data-action="search-sailings"]');
-  if(ss){
-    ss.oninput=e=>{ state.searchSailings=e.target.value; render(); };
-    ss.onkeydown=e=>{ if(e.key==="Enter") e.preventDefault(); };
-  }
-}
   // init
   load();
   render();
