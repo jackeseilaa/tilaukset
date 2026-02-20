@@ -1,4 +1,4 @@
-<!-- STABLE v2.0 – groups + edit + enrollments + capacity check + invoicing (VAT split) + backup/restore -->
+<!-- STABLE v2.1 – enrollment edit/delete + company management + capacity-safe edits + invoice stays same -->
 <!DOCTYPE html>
 <html lang="fi">
 <head>
@@ -25,13 +25,13 @@ header{background:var(--navy);color:#fff;padding:18px 20px}
 header h1{margin:0;font-size:32px}
 header .sub{margin-top:6px;opacity:.85;font-size:14px}
 nav{background:#fff;border-bottom:1px solid var(--line);display:flex}
-nav button{flex:1;padding:12px;border:0;background:#fff;font-weight:700;border-bottom:3px solid transparent;cursor:pointer;color:#374151}
+nav button{flex:1;padding:12px;border:0;background:#fff;font-weight:800;border-bottom:3px solid transparent;cursor:pointer;color:#374151}
 nav button.active{border-bottom-color:var(--navy);color:#111827}
 main{max-width:980px;margin:0 auto;padding:18px}
 .card{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:18px}
 .row{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
 .row.between{justify-content:space-between}
-.btn{border:0;border-radius:10px;padding:10px 14px;font-weight:800;cursor:pointer}
+.btn{border:0;border-radius:10px;padding:10px 14px;font-weight:900;cursor:pointer}
 .btn.primary{background:var(--btn);color:#fff}
 .btn.secondary{background:var(--btn2);color:#111827}
 .btn.danger{background:var(--danger-bg);color:var(--danger)}
@@ -39,7 +39,7 @@ main{max-width:980px;margin:0 auto;padding:18px}
 .small{font-size:12px}
 .hr{border-top:1px solid var(--line);margin:14px 0}
 input,select{width:100%;padding:10px;border:1px solid var(--line);border-radius:10px;font-size:15px;background:#fff}
-label{display:block;font-size:13px;font-weight:800;margin-bottom:6px;color:#374151}
+label{display:block;font-size:13px;font-weight:900;margin-bottom:6px;color:#374151}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
 @media (max-width:800px){.grid2,.grid3{grid-template-columns:1fr}}
@@ -48,10 +48,10 @@ label{display:block;font-size:13px;font-weight:800;margin-bottom:6px;color:#3741
 .item:first-child{border-top:0}
 .item h3{margin:0 0 4px 0}
 .meta{font-size:14px;color:var(--muted)}
-.pill{background:#eef2ff;padding:4px 10px;border-radius:999px;font-size:12px;font-weight:800;margin-left:8px;color:#1e3a8a;display:inline-block;vertical-align:middle}
+.pill{background:#eef2ff;padding:4px 10px;border-radius:999px;font-size:12px;font-weight:900;margin-left:8px;color:#1e3a8a;display:inline-block;vertical-align:middle}
 
 .overlay{position:fixed;inset:0;background:rgba(0,0,0,.35);display:flex;align-items:center;justify-content:center;padding:18px}
-.modal{background:#fff;border-radius:16px;border:1px solid var(--line);width:min(720px,100%);overflow:hidden}
+.modal{background:#fff;border-radius:16px;border:1px solid var(--line);width:min(760px,100%);overflow:hidden}
 .modal header{background:#fff;color:#111;border-bottom:1px solid var(--line);padding:16px}
 .modal header h2{margin:0;font-size:18px}
 .modal .body{padding:18px}
@@ -79,7 +79,6 @@ label{display:block;font-size:13px;font-weight:800;margin-bottom:6px;color:#3741
 
 <script>
 (() => {
-  // Virheet ruudulle (helpottaa iPadilla)
   window.onerror = function(msg, src, line, col, err){
     const el = document.getElementById("app");
     if (!el) return;
@@ -91,13 +90,12 @@ label{display:block;font-size:13px;font-weight:800;margin-bottom:6px;color:#3741
       "</pre>";
   };
 
-  const STORAGE_KEY = "absolut37_stable_v2_0";
+  const STORAGE_KEY = "absolut37_stable_v2_1";
 
   const SAILING_TYPES = [
     "Iltapurjehdus","Päiväpurjehdus","Charter","Kurssi","Yritystilaisuus","Purjehdusretki","Muu"
   ];
 
-  // Ryhmät (UI-otsikot) -> mitkä type-kentät kuuluvat ryhmään
   const SAILING_GROUPS = [
     { id:"all", label:"Kaikki", types:null },
     { id:"courses", label:"Purjehduskurssit", types:["Kurssi"] },
@@ -114,11 +112,13 @@ label{display:block;font-size:13px;font-weight:800;margin-bottom:6px;color:#3741
     customers:[],     // {id,name,phone,email}
     sailings:[],      // {id,name,date,type,maxPersons,pricePerPerson,sessions:[]}
     enrollments:[],   // {id,customerId,eventId,qty,unitPriceGross,payerType,payerCompanyId,commission:{type,value},vatRate?}
-    companies:[],     // {id,name,vatId?,email?}
+    companies:[],     // {id,name,defaultCommissionPercent}
 
-    modal:null,       // "customer" | "sailing" | null
+    modal:null,       // "customer" | "sailing" | "enrollment" | "company"
     editCustomerId:null,
     editSailingId:null,
+    editEnrollmentId:null,
+    editCompanyId:null,
 
     searchCustomers:"",
     searchSailings:"",
@@ -138,7 +138,6 @@ label{display:block;font-size:13px;font-weight:800;margin-bottom:6px;color:#3741
   function round2(n){ const x=Number(n||0); return Math.round(x*100)/100; }
 
   function getVatRateByType(type){
-    // Charter 13,5% -> 0.135, muut 25,5% -> 0.255
     return (String(type||"").toLowerCase()==="charter") ? 0.135 : 0.255;
   }
 
@@ -150,9 +149,9 @@ label{display:block;font-size:13px;font-weight:800;margin-bottom:6px;color:#3741
     return { net: round2(net), vat: round2(vat), gross: round2(g) };
   }
 
-  function enrolledQty(eventId){
+  function enrolledQty(eventId, excludeEnrollmentId){
     return state.enrollments
-      .filter(e => e.eventId === eventId)
+      .filter(e => e.eventId === eventId && e.id !== excludeEnrollmentId)
       .reduce((sum,e)=> sum + (Number(e.qty||1)||1), 0);
   }
 
@@ -208,6 +207,11 @@ label{display:block;font-size:13px;font-weight:800;margin-bottom:6px;color:#3741
       }
     }catch(e){}
 
+    // company defaultCommissionPercent varmistus
+    state.companies.forEach(c=>{
+      if(typeof c.defaultCommissionPercent !== "number") c.defaultCommissionPercent = 0;
+    });
+
     // Seed jos tyhjä
     if(state.customers.length===0 && state.sailings.length===0 && state.enrollments.length===0){
       const sid = makeId("S");
@@ -235,7 +239,7 @@ label{display:block;font-size:13px;font-weight:800;margin-bottom:6px;color:#3741
         commission: { type:"percent", value: 0 }
       });
 
-      state.companies.push({ id: makeId("CO"), name:"Välittäjä Oy" });
+      state.companies.push({ id: makeId("CO"), name:"Välittäjä Oy", defaultCommissionPercent: 10 });
     }
   }
 
@@ -249,7 +253,6 @@ label{display:block;font-size:13px;font-weight:800;margin-bottom:6px;color:#3741
   }
 
   function render(){
-    // fokus+kursori talteen (Safari/iPad)
     const ae = document.activeElement;
     const keep = {
       action: ae && ae.dataset ? ae.dataset.action : null,
@@ -374,7 +377,7 @@ label{display:block;font-size:13px;font-weight:800;margin-bottom:6px;color:#3741
         <div class="row between">
           <div>
             <h2 style="margin:0 0 6px 0">Asiakkaat</h2>
-            <div class="muted">Lisää / muokkaa / poista.</div>
+            <div class="muted">Lisää / muokkaa / poista. Ilmoittautumiset löytyvät asiakkaan alta.</div>
           </div>
           <button class="btn primary" data-action="new-customer">+ Lisää asiakas</button>
         </div>
@@ -388,25 +391,48 @@ label{display:block;font-size:13px;font-weight:800;margin-bottom:6px;color:#3741
 
         ${list.length===0 ? `<div class="muted">Ei osumia.</div>` : `
           ${list.map(c=>{
-            const custEnrolls = state.enrollments.filter(e=>e.customerId===c.id);
-            const last = custEnrolls
-              .map(e=>({ e, s: state.sailings.find(x=>x.id===e.eventId) }))
-              .filter(x=>x.s)
-              .sort((a,b)=>(b.s.date||"").localeCompare(a.s.date||""))[0];
+            const custEnrolls = state.enrollments
+              .filter(e=>e.customerId===c.id)
+              .slice()
+              .sort((a,b)=>{
+                const sa = state.sailings.find(x=>x.id===a.eventId);
+                const sb = state.sailings.find(x=>x.id===b.eventId);
+                return (sb?.date||"").localeCompare(sa?.date||"");
+              });
+
+            const enrollUI = custEnrolls.length===0 ? `<div class="muted small" style="margin-top:8px">Ei ilmoittautumisia.</div>` : `
+              <div style="margin-top:8px;border:1px solid var(--line);border-radius:12px;padding:10px;background:#f8fafc">
+                ${custEnrolls.map(e=>{
+                  const s = state.sailings.find(x=>x.id===e.eventId);
+                  const qty = Number(e.qty||1)||1;
+                  return `
+                    <div style="padding:8px 0;border-top:1px dashed #dbe2ea">
+                      <div class="row between" style="align-items:flex-start">
+                        <div>
+                          <div style="font-weight:900">${esc(s? s.name : "(Tapahtuma poistettu)")} ${s?`<span class="pill">${fmtDate(s.date)}</span>`:""}</div>
+                          <div class="muted small">${qty} hlö • Maksaja: ${esc(payerLabel(e))}</div>
+                        </div>
+                        <div class="row">
+                          <button class="btn secondary" data-action="edit-enrollment" data-id="${e.id}">Muokkaa</button>
+                          <button class="btn danger" data-action="delete-enrollment" data-id="${e.id}">Poista</button>
+                        </div>
+                      </div>
+                    </div>
+                  `;
+                }).join("")}
+              </div>
+            `;
 
             return `
               <div class="item">
                 <div style="flex:1">
-                  <h3 style="margin:0 0 4px 0">
-                    ${esc(c.name||"")}
-                    ${last ? `<span class="pill">${esc(last.s.name)} (${fmtDate(last.s.date)})</span>` : ``}
-                  </h3>
-                  <div class="meta">
-                    ${esc(c.phone||"")}${(c.phone&&c.email)?" • ":""}${esc(c.email||"")}
-                    ${custEnrolls.length ? ` • Ilmoittautumisia: ${custEnrolls.length}` : ``}
-                  </div>
+                  <h3 style="margin:0 0 4px 0">${esc(c.name||"")}</h3>
+                  <div class="meta">${esc(c.phone||"")}${(c.phone&&c.email)?" • ":""}${esc(c.email||"")}</div>
+                  ${enrollUI}
                 </div>
+
                 <div class="row" style="align-items:flex-start">
+                  <button class="btn secondary" data-action="new-enrollment" data-id="${c.id}">+ Ilmoittautuminen</button>
                   <button class="btn secondary" data-action="edit-customer" data-id="${c.id}">Muokkaa</button>
                   <button class="btn danger" data-action="delete-customer" data-id="${c.id}">Poista</button>
                 </div>
@@ -422,7 +448,7 @@ label{display:block;font-size:13px;font-weight:800;margin-bottom:6px;color:#3741
     const term = (state.searchSailings||"").toLowerCase().trim();
 
     const group = SAILING_GROUPS.find(g=>g.id===state.sailingGroup) || SAILING_GROUPS[0];
-    const allowedTypes = group.types; // null = kaikki
+    const allowedTypes = group.types;
 
     const list = state.sailings
       .slice()
@@ -448,7 +474,7 @@ label{display:block;font-size:13px;font-weight:800;margin-bottom:6px;color:#3741
         <div class="row between">
           <div>
             <h2 style="margin:0 0 6px 0">Purjehdukset</h2>
-            <div class="muted">Ryhmitelty type-kentän perusteella. Täyttöaste ja kurssipäivät näkyvät listassa.</div>
+            <div class="muted">Näytä asiakkaat → muokkaa myös ilmoittautumisia suoraan listasta.</div>
           </div>
           <button class="btn primary" data-action="new-sailing">+ Lisää</button>
         </div>
@@ -471,7 +497,7 @@ label{display:block;font-size:13px;font-weight:800;margin-bottom:6px;color:#3741
 
         ${list.length===0 ? `<div class="muted">Ei purjehduksia.</div>` : `
           ${list.map(s=>{
-            const booked = enrolledQty(s.id);
+            const booked = enrolledQty(s.id, null);
             const max = Number(s.maxPersons||0)||0;
 
             const sessions = Array.isArray(s.sessions) ? s.sessions : [];
@@ -498,25 +524,30 @@ label{display:block;font-size:13px;font-weight:800;margin-bottom:6px;color:#3741
               </div>
             ` : "";
 
+            const enrolls = state.enrollments.filter(e=>e.eventId===s.id);
+
             const attendeesUI = (state.openSailingId===s.id) ? `
               <div style="margin:8px 0 16px 0;padding:12px;background:#f8fafc;border-radius:12px;border:1px solid var(--line)">
-                ${state.enrollments.filter(e=>e.eventId===s.id).length===0 ? `<div class="muted">Ei ilmoittautumisia</div>` : `
-                  ${state.enrollments
-                    .filter(e=>e.eventId===s.id)
-                    .map(e=>{
-                      const c = state.customers.find(x=>x.id===e.customerId);
-                      const qty = Number(e.qty||1)||1;
-                      const payer = payerLabel(e);
-                      const isCompany = (e.payerType==="company");
-                      return `
-                        <div style="padding:8px 0;border-top:1px dashed #dbe2ea">
-                          <div style="font-weight:900">${esc(c?c.name:"(Asiakas puuttuu)")} <span class="pill">${qty} hlö</span></div>
-                          <div class="muted small">
-                            Maksaja: ${esc(payer)}${isCompany ? " (yritys)" : " (asiakas)"}
+                ${enrolls.length===0 ? `<div class="muted">Ei ilmoittautumisia</div>` : `
+                  ${enrolls.map(e=>{
+                    const c = state.customers.find(x=>x.id===e.customerId);
+                    const qty = Number(e.qty||1)||1;
+                    const payer = payerLabel(e);
+                    return `
+                      <div style="padding:10px 0;border-top:1px dashed #dbe2ea">
+                        <div class="row between" style="align-items:flex-start">
+                          <div>
+                            <div style="font-weight:900">${esc(c?c.name:"(Asiakas puuttuu)")} <span class="pill">${qty} hlö</span></div>
+                            <div class="muted small">Maksaja: ${esc(payer)}</div>
+                          </div>
+                          <div class="row">
+                            <button class="btn secondary" data-action="edit-enrollment" data-id="${e.id}">Muokkaa</button>
+                            <button class="btn danger" data-action="delete-enrollment" data-id="${e.id}">Poista</button>
                           </div>
                         </div>
-                      `;
-                    }).join("")
+                      </div>
+                    `;
+                  }).join("")}
                 `}
               </div>
             ` : "";
@@ -559,7 +590,6 @@ label{display:block;font-size:13px;font-weight:800;margin-bottom:6px;color:#3741
     if(!state.invoicingEventId && selectedId) state.invoicingEventId = selectedId;
 
     const list = state.enrollments.filter(e=>e.eventId===selectedId);
-
     const groups = {};
     list.forEach(e=>{
       const k = payerKey(e);
@@ -573,10 +603,10 @@ label{display:block;font-size:13px;font-weight:800;margin-bottom:6px;color:#3741
         <div class="row between">
           <div>
             <h2 style="margin:0 0 6px 0">Laskutus</h2>
-            <div class="muted">Ryhmittely maksajan mukaan. Hinnat sisältävät ALV:n → netto/ALV erotellaan.</div>
+            <div class="muted">Ryhmittely maksajan mukaan. Hinnat sis ALV → netto/ALV erotellaan.</div>
           </div>
           <div class="row">
-            <button class="btn secondary" data-action="add-company">+ Lisää yritys</button>
+            <button class="btn secondary" data-action="manage-companies">🏢 Yritykset</button>
             <button class="btn secondary" data-action="export-invoice-csv">⬇️ Vie CSV</button>
           </div>
         </div>
@@ -721,13 +751,10 @@ label{display:block;font-size:13px;font-weight:800;margin-bottom:6px;color:#3741
       const editing = !!state.editCustomerId;
       const c = editing ? state.customers.find(x=>x.id===state.editCustomerId) : null;
 
-      // Esitäytä
       const name  = c ? (c.name||"")  : "";
       const phone = c ? (c.phone||"") : "";
       const email = c ? (c.email||"") : "";
 
-      // Uusi ilmoittautuminen (valinnainen)
-      const sailingsSorted = state.sailings.slice().sort((a,b)=>(a.date||"").localeCompare(b.date||""));
       return `
         <div class="overlay" data-action="close-modal">
           <div class="modal" onclick="event.stopPropagation()">
@@ -753,69 +780,6 @@ label{display:block;font-size:13px;font-weight:800;margin-bottom:6px;color:#3741
               <div style="margin-top:12px">
                 <label>Email</label>
                 <input data-field="c_email" value="${esc(email)}" placeholder="nimi@esimerkki.fi">
-              </div>
-
-              <div class="hr"></div>
-
-              <div class="note">
-                <div style="font-weight:900;margin-bottom:8px">Ilmoittautuminen (valinnainen)</div>
-
-                <div class="grid2">
-                  <div>
-                    <label>Purjehdus / tapahtuma</label>
-                    <select data-field="e_eventId">
-                      <option value="">-- Ei ilmoittautumista --</option>
-                      ${sailingsSorted.map(s=>`
-                        <option value="${s.id}">
-                          ${esc(s.name)} (${fmtDate(s.date)}) • ${esc(s.type||"")}
-                        </option>
-                      `).join("")}
-                    </select>
-                  </div>
-
-                  <div>
-                    <label>Määrä (hlö)</label>
-                    <input type="number" min="1" step="1" value="1" data-field="e_qty">
-                  </div>
-                </div>
-
-                <div class="grid2" style="margin-top:12px">
-                  <div>
-                    <label>Yksikköhinta €/hlö (sis ALV)</label>
-                    <input type="number" min="0" step="0.01" value="0" data-field="e_unitGross">
-                    <div class="muted small" style="margin-top:6px">Jos jätät 0 → käytetään purjehduksen hinta/hlö.</div>
-                  </div>
-
-                  <div>
-                    <label>Maksaja</label>
-                    <select data-field="e_payerType">
-                      <option value="customer">Asiakas</option>
-                      <option value="company">Yritys</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div class="grid2" style="margin-top:12px">
-                  <div>
-                    <label>Yritys (jos maksaja = yritys)</label>
-                    <select data-field="e_companyId">
-                      <option value="">-- Valitse yritys --</option>
-                      ${state.companies.map(co=>`<option value="${co.id}">${esc(co.name)}</option>`).join("")}
-                    </select>
-                  </div>
-
-                  <div>
-                    <label>Provisio</label>
-                    <div class="grid2" style="grid-template-columns:140px 1fr;gap:10px">
-                      <select data-field="e_commType">
-                        <option value="percent">%</option>
-                        <option value="fixed">€</option>
-                      </select>
-                      <input type="number" min="0" step="0.01" value="0" data-field="e_commValue">
-                    </div>
-                    <div class="muted small" style="margin-top:6px">Provisio vähennetään brutosta ennen yrityslaskutusta.</div>
-                  </div>
-                </div>
               </div>
 
               <div class="row" style="justify-content:flex-end;margin-top:16px">
@@ -849,7 +813,7 @@ label{display:block;font-size:13px;font-weight:800;margin-bottom:6px;color:#3741
 
             <div class="body">
               <label>Nimi *</label>
-              <input data-field="s_name" value="${esc(name)}" placeholder="esim. Iltapurjehdus Suomenlinna">
+              <input data-field="s_name" value="${esc(name)}">
 
               <div class="grid2" style="margin-top:12px">
                 <div>
@@ -894,6 +858,164 @@ label{display:block;font-size:13px;font-weight:800;margin-bottom:6px;color:#3741
       `;
     }
 
+    if(state.modal==="enrollment"){
+      const editing = !!state.editEnrollmentId;
+      const e = editing ? state.enrollments.find(x=>x.id===state.editEnrollmentId) : null;
+
+      const defaultCustomerId = state.editCustomerId || ""; // jos avattiin asiakkaan kautta
+      const customerId = e ? e.customerId : defaultCustomerId;
+      const eventId = e ? e.eventId : "";
+      const qty = e ? (Number(e.qty||1)||1) : 1;
+      const unitGross = e ? (Number(e.unitPriceGross||0)||0) : 0;
+      const payerType = e ? (e.payerType||"customer") : "customer";
+      const payerCompanyId = e ? (e.payerCompanyId||"") : "";
+      const commType = e && e.commission ? (e.commission.type||"percent") : "percent";
+      const commValue = e && e.commission ? (Number(e.commission.value||0)||0) : 0;
+
+      const customersSorted = state.customers.slice().sort((a,b)=>(a.name||"").localeCompare(b.name||""));
+      const sailingsSorted = state.sailings.slice().sort((a,b)=>(a.date||"").localeCompare(b.date||""));
+
+      return `
+        <div class="overlay" data-action="close-modal">
+          <div class="modal" onclick="event.stopPropagation()">
+            <header>
+              <div class="row between">
+                <h2>${editing ? "Muokkaa ilmoittautumista" : "Uusi ilmoittautuminen"}</h2>
+                <button class="btn secondary" data-action="close-modal">Sulje</button>
+              </div>
+            </header>
+
+            <div class="body">
+              <div class="grid2">
+                <div>
+                  <label>Asiakas *</label>
+                  <select data-field="e_customerId">
+                    ${customersSorted.map(c=>`
+                      <option value="${c.id}" ${c.id===customerId?"selected":""}>${esc(c.name)}</option>
+                    `).join("")}
+                  </select>
+                </div>
+                <div>
+                  <label>Tapahtuma *</label>
+                  <select data-field="e_eventId">
+                    ${sailingsSorted.map(s=>`
+                      <option value="${s.id}" ${s.id===eventId?"selected":""}>
+                        ${esc(s.name)} (${fmtDate(s.date)}) • ${esc(s.type||"")}
+                      </option>
+                    `).join("")}
+                  </select>
+                </div>
+              </div>
+
+              <div class="grid3" style="margin-top:12px">
+                <div>
+                  <label>Määrä (hlö) *</label>
+                  <input type="number" min="1" step="1" data-field="e_qty" value="${qty}">
+                </div>
+                <div>
+                  <label>Yksikköhinta €/hlö (sis ALV) *</label>
+                  <input type="number" min="0" step="0.01" data-field="e_unitGross" value="${unitGross}">
+                  <div class="muted small" style="margin-top:6px">Jos 0 → käytetään tapahtuman hinta/hlö.</div>
+                </div>
+                <div>
+                  <label>Maksaja</label>
+                  <select data-field="e_payerType">
+                    <option value="customer" ${payerType==="customer"?"selected":""}>Asiakas</option>
+                    <option value="company" ${payerType==="company"?"selected":""}>Yritys</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="grid2" style="margin-top:12px">
+                <div>
+                  <label>Yritys (jos maksaja = yritys)</label>
+                  <select data-field="e_companyId">
+                    <option value="">-- Valitse yritys --</option>
+                    ${state.companies.map(co=>`
+                      <option value="${co.id}" ${co.id===payerCompanyId?"selected":""}>
+                        ${esc(co.name)} (oletusprovisio ${Number(co.defaultCommissionPercent||0)}%)
+                      </option>
+                    `).join("")}
+                  </select>
+                </div>
+
+                <div>
+                  <label>Provisio</label>
+                  <div class="grid2" style="grid-template-columns:140px 1fr;gap:10px">
+                    <select data-field="e_commType">
+                      <option value="percent" ${commType==="percent"?"selected":""}>%</option>
+                      <option value="fixed" ${commType==="fixed"?"selected":""}>€</option>
+                    </select>
+                    <input type="number" min="0" step="0.01" data-field="e_commValue" value="${commValue}">
+                  </div>
+                  <div class="muted small" style="margin-top:6px">Vähennetään brutosta ennen yrityslaskutusta.</div>
+                </div>
+              </div>
+
+              <div class="row" style="justify-content:flex-end;margin-top:16px">
+                <button class="btn primary" data-action="save-enrollment">${editing ? "Tallenna muutokset" : "Tallenna"}</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    if(state.modal==="company"){
+      const editing = !!state.editCompanyId;
+      const co = editing ? state.companies.find(x=>x.id===state.editCompanyId) : null;
+
+      const name = co ? (co.name||"") : "";
+      const dcp = co ? Number(co.defaultCommissionPercent||0) : 0;
+
+      return `
+        <div class="overlay" data-action="close-modal">
+          <div class="modal" onclick="event.stopPropagation()">
+            <header>
+              <div class="row between">
+                <h2>${editing ? "Muokkaa yritystä" : "Uusi yritys"}</h2>
+                <button class="btn secondary" data-action="close-modal">Sulje</button>
+              </div>
+            </header>
+            <div class="body">
+              <label>Yrityksen nimi *</label>
+              <input data-field="co_name" value="${esc(name)}">
+
+              <div style="margin-top:12px">
+                <label>Oletusprovisio (%)</label>
+                <input type="number" min="0" step="0.01" data-field="co_dcp" value="${dcp}">
+                <div class="muted small" style="margin-top:6px">Voit silti vaihtaa provisiota ilmoittautumiskohtaisesti.</div>
+              </div>
+
+              <div class="row" style="justify-content:flex-end;margin-top:16px">
+                <button class="btn primary" data-action="save-company">${editing ? "Tallenna muutokset" : "Tallenna"}</button>
+              </div>
+
+              <div class="hr"></div>
+              <div style="font-weight:900;margin-bottom:8px">Nykyiset yritykset</div>
+              ${state.companies.length===0 ? `<div class="muted">Ei yrityksiä.</div>` : `
+                ${state.companies
+                  .slice()
+                  .sort((a,b)=>(a.name||"").localeCompare(b.name||""))
+                  .map(x=>`
+                    <div class="item">
+                      <div style="flex:1">
+                        <div style="font-weight:900">${esc(x.name||"")}</div>
+                        <div class="muted small">Oletusprovisio: ${Number(x.defaultCommissionPercent||0)}%</div>
+                      </div>
+                      <div class="row">
+                        <button class="btn secondary" data-action="edit-company" data-id="${x.id}">Muokkaa</button>
+                        <button class="btn danger" data-action="delete-company" data-id="${x.id}">Poista</button>
+                      </div>
+                    </div>
+                  `).join("")}
+              `}
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
     return "";
   }
 
@@ -906,35 +1028,39 @@ label{display:block;font-size:13px;font-weight:800;margin-bottom:6px;color:#3741
       });
     });
 
-    // actionit (click)
+    // restore-json
+    document.querySelectorAll('[data-action="restore-json"]').forEach(inp=>{
+      inp.onchange = async (e)=>{
+        const file = e.target.files && e.target.files[0];
+        if(!file) return;
+        try{
+          const text = await file.text();
+          const data = JSON.parse(text);
+          if(!confirm("Palautetaanko varmuuskopio? Tämä korvaa nykyiset tiedot tässä laitteessa.")) return;
+
+          state.customers   = Array.isArray(data.customers)   ? data.customers   : [];
+          state.sailings    = Array.isArray(data.sailings)    ? data.sailings    : [];
+          state.enrollments = Array.isArray(data.enrollments) ? data.enrollments : [];
+          state.companies   = Array.isArray(data.companies)   ? data.companies   : [];
+
+          state.companies.forEach(c=>{
+            if(typeof c.defaultCommissionPercent !== "number") c.defaultCommissionPercent = 0;
+          });
+
+          save();
+          render();
+        }catch(err){
+          alert("Varmuuskopion luku epäonnistui.");
+        }finally{
+          e.target.value = "";
+        }
+      };
+    });
+
+    // click-actionit
     document.querySelectorAll("[data-action]").forEach(el=>{
-      // restore-json on <input type=file> => käsitellään erikseen
-      if(el.tagName==="INPUT" && el.type==="file" && el.dataset.action==="restore-json"){
-        el.onchange = async (e)=>{
-          const file = e.target.files && e.target.files[0];
-          if(!file) return;
-
-          try{
-            const text = await file.text();
-            const data = JSON.parse(text);
-
-            if(!confirm("Palautetaanko varmuuskopio? Tämä korvaa nykyiset tiedot tässä laitteessa.")) return;
-
-            state.customers   = Array.isArray(data.customers)   ? data.customers   : [];
-            state.sailings    = Array.isArray(data.sailings)    ? data.sailings    : [];
-            state.enrollments = Array.isArray(data.enrollments) ? data.enrollments : [];
-            state.companies   = Array.isArray(data.companies)   ? data.companies   : [];
-
-            save();
-            render();
-          }catch(err){
-            alert("Varmuuskopion luku epäonnistui.");
-          }finally{
-            e.target.value = ""; // sama tiedosto voidaan valita uudelleen
-          }
-        };
-        return;
-      }
+      // ohita file inputit
+      if(el.tagName==="INPUT" && el.type==="file") return;
 
       el.onclick = ()=>{
         const a = el.dataset.action;
@@ -943,10 +1069,65 @@ label{display:block;font-size:13px;font-weight:800;margin-bottom:6px;color:#3741
 
         if(a==="new-customer"){ state.modal="customer"; state.editCustomerId=null; render(); return; }
         if(a==="new-sailing"){ state.modal="sailing"; state.editSailingId=null; render(); return; }
-        if(a==="close-modal"){ state.modal=null; state.editCustomerId=null; state.editSailingId=null; render(); return; }
+        if(a==="close-modal"){
+          state.modal=null;
+          state.editCustomerId=null;
+          state.editSailingId=null;
+          state.editEnrollmentId=null;
+          state.editCompanyId=null;
+          render();
+          return;
+        }
 
         if(a==="edit-customer"){ state.modal="customer"; state.editCustomerId=itemId; render(); return; }
         if(a==="edit-sailing"){ state.modal="sailing"; state.editSailingId=itemId; render(); return; }
+
+        if(a==="new-enrollment"){
+          // itemId = customerId
+          state.modal="enrollment";
+          state.editEnrollmentId=null;
+          state.editCustomerId=itemId || null; // esitäyttö asiakkaalle
+          render();
+          return;
+        }
+
+        if(a==="edit-enrollment"){
+          state.modal="enrollment";
+          state.editEnrollmentId=itemId;
+          state.editCustomerId=null;
+          render();
+          return;
+        }
+
+        if(a==="delete-enrollment"){
+          if(!confirm("Poistetaanko ilmoittautuminen?")) return;
+          state.enrollments = state.enrollments.filter(e=>e.id!==itemId);
+          save(); render(); return;
+        }
+
+        if(a==="manage-companies"){
+          state.modal="company";
+          state.editCompanyId=null;
+          render();
+          return;
+        }
+
+        if(a==="edit-company"){
+          state.modal="company";
+          state.editCompanyId=itemId;
+          render();
+          return;
+        }
+
+        if(a==="delete-company"){
+          if(!confirm("Poistetaanko yritys? (Ilmoittautumiset säilyvät, mutta yritysviite tyhjenee.)")) return;
+          state.companies = state.companies.filter(c=>c.id!==itemId);
+          state.enrollments.forEach(e=>{
+            if(e.payerCompanyId===itemId) e.payerCompanyId="";
+            if(e.payerType==="company" && !e.payerCompanyId) e.payerType="customer";
+          });
+          save(); render(); return;
+        }
 
         if(a==="set-sailing-group"){ state.sailingGroup=itemId || "all"; render(); return; }
 
@@ -956,26 +1137,16 @@ label{display:block;font-size:13px;font-weight:800;margin-bottom:6px;color:#3741
           return;
         }
 
-        if(a==="add-company"){
-          const name = (prompt("Yrityksen nimi:", "") || "").trim();
-          if(!name) return;
-          state.companies.push({ id: makeId("CO"), name });
-          save(); render(); return;
-        }
-
         if(a==="add-session"){
           const s = state.sailings.find(x=>x.id===itemId);
           if(!s) return;
-
           const date = prompt("Kurssipäivä (YYYY-MM-DD):", today());
           if(!date) return;
           const start = prompt("Aloitusaika (HH:MM), tyhjä sallittu:", "17:00") || "";
           const end = prompt("Lopetusaika (HH:MM), tyhjä sallittu:", "20:00") || "";
           const note = prompt("Lisähuomio (valinnainen):", "") || "";
-
           if(!Array.isArray(s.sessions)) s.sessions=[];
           s.sessions.push({ date, start, end, note });
-
           save(); render(); return;
         }
 
@@ -989,17 +1160,15 @@ label{display:block;font-size:13px;font-weight:800;margin-bottom:6px;color:#3741
         }
 
         if(a==="delete-customer"){
-          if(!confirm("Poistetaanko asiakas?")) return;
+          if(!confirm("Poistetaanko asiakas? (Myös asiakkaan ilmoittautumiset poistuvat.)")) return;
           state.customers = state.customers.filter(c=>c.id!==itemId);
-          // poista myös ilmoittautumiset
           state.enrollments = state.enrollments.filter(e=>e.customerId!==itemId);
           save(); render(); return;
         }
 
         if(a==="delete-sailing"){
-          if(!confirm("Poistetaanko purjehdus?")) return;
+          if(!confirm("Poistetaanko purjehdus? (Myös tapahtuman ilmoittautumiset poistuvat.)")) return;
           state.sailings = state.sailings.filter(s=>s.id!==itemId);
-          // poista myös ilmoittautumiset tapahtumaan
           state.enrollments = state.enrollments.filter(e=>e.eventId!==itemId);
           if(state.openSailingId===itemId) state.openSailingId=null;
           if(state.invoicingEventId===itemId) state.invoicingEventId="";
@@ -1021,6 +1190,141 @@ label{display:block;font-size:13px;font-weight:800;margin-bottom:6px;color:#3741
           link.download = "absolut37_backup_" + new Date().toISOString().slice(0,10) + ".json";
           link.click();
           URL.revokeObjectURL(url);
+          return;
+        }
+
+        if(a==="save-customer"){
+          const name = (document.querySelector('[data-field="c_name"]')?.value || "").trim();
+          if(!name) return alert("Nimi on pakollinen.");
+          const phone = (document.querySelector('[data-field="c_phone"]')?.value || "").trim();
+          const email = (document.querySelector('[data-field="c_email"]')?.value || "").trim();
+
+          if(state.editCustomerId){
+            const c = state.customers.find(x=>x.id===state.editCustomerId);
+            if(!c) return alert("Asiakasta ei löytynyt.");
+            c.name=name; c.phone=phone; c.email=email;
+          }else{
+            state.customers.push({ id: makeId("C"), name, phone, email });
+          }
+          save();
+          state.modal=null; state.editCustomerId=null;
+          render();
+          return;
+        }
+
+        if(a==="save-sailing"){
+          const name = (document.querySelector('[data-field="s_name"]')?.value || "").trim();
+          const date = (document.querySelector('[data-field="s_date"]')?.value || "").trim();
+          const type = (document.querySelector('[data-field="s_type"]')?.value || "").trim();
+          const maxPersons = Math.max(1, parseInt(document.querySelector('[data-field="s_max"]')?.value,10) || 1);
+          const pricePerPerson = Math.max(0, parseFloat(document.querySelector('[data-field="s_price"]')?.value) || 0);
+
+          if(!name || !date || !type) return alert("Täytä pakolliset kentät (nimi, päivä, tyyppi).");
+
+          if(state.editSailingId){
+            const s = state.sailings.find(x=>x.id===state.editSailingId);
+            if(!s) return alert("Purjehdusta ei löytynyt.");
+            s.name=name; s.date=date; s.type=type; s.maxPersons=maxPersons; s.pricePerPerson=pricePerPerson;
+            if(!Array.isArray(s.sessions)) s.sessions=[];
+          }else{
+            state.sailings.push({ id: makeId("S"), name, date, type, maxPersons, pricePerPerson, sessions:[] });
+          }
+
+          save();
+          state.modal=null; state.editSailingId=null;
+          render();
+          return;
+        }
+
+        if(a==="save-enrollment"){
+          const customerId = (document.querySelector('[data-field="e_customerId"]')?.value || "").trim();
+          const eventId = (document.querySelector('[data-field="e_eventId"]')?.value || "").trim();
+          const qty = Math.max(1, parseInt(document.querySelector('[data-field="e_qty"]')?.value,10) || 1);
+          let unitGross = parseFloat(document.querySelector('[data-field="e_unitGross"]')?.value) || 0;
+
+          const payerType = (document.querySelector('[data-field="e_payerType"]')?.value || "customer");
+          const companyId = (document.querySelector('[data-field="e_companyId"]')?.value || "");
+          const commType  = (document.querySelector('[data-field="e_commType"]')?.value || "percent");
+          let commValue   = parseFloat(document.querySelector('[data-field="e_commValue"]')?.value) || 0;
+
+          if(!customerId) return alert("Valitse asiakas.");
+          if(!eventId) return alert("Valitse tapahtuma.");
+
+          const s = state.sailings.find(x=>x.id===eventId);
+          if(!s) return alert("Tapahtumaa ei löytynyt.");
+
+          if(!(unitGross>0)) unitGross = Number(s.pricePerPerson||0) || 0;
+
+          // kapasiteetti: booked ilman tätä enrollmenttia
+          const excludeId = state.editEnrollmentId || null;
+          const max = Number(s.maxPersons||0) || 0;
+          const booked = enrolledQty(eventId, excludeId);
+          if(max>0 && (booked + qty) > max){
+            return alert(`Purjehdus on täynnä / ylittyy: ${booked}/${max}. Et voi lisätä ${qty} hlö.`);
+          }
+
+          if(payerType==="company" && !companyId){
+            return alert("Valitse yritys (maksaja = yritys).");
+          }
+
+          // jos maksaja yritys ja provisio 0, ja yrityksellä on oletusprovisio -> käytä sitä (vain %)
+          if(payerType==="company" && companyId && commType==="percent" && !(commValue>0)){
+            const co = state.companies.find(x=>x.id===companyId);
+            if(co && Number(co.defaultCommissionPercent||0)>0){
+              commValue = Number(co.defaultCommissionPercent||0);
+            }
+          }
+
+          if(state.editEnrollmentId){
+            const e = state.enrollments.find(x=>x.id===state.editEnrollmentId);
+            if(!e) return alert("Ilmoittautumista ei löytynyt.");
+            e.customerId = customerId;
+            e.eventId = eventId;
+            e.qty = qty;
+            e.unitPriceGross = unitGross;
+            e.payerType = payerType;
+            e.payerCompanyId = (payerType==="company") ? companyId : "";
+            e.commission = { type: commType, value: commValue };
+          }else{
+            state.enrollments.push({
+              id: makeId("E"),
+              customerId,
+              eventId,
+              qty,
+              unitPriceGross: unitGross,
+              payerType,
+              payerCompanyId: (payerType==="company") ? companyId : "",
+              commission: { type: commType, value: commValue }
+            });
+          }
+
+          save();
+          state.modal=null;
+          state.editEnrollmentId=null;
+          state.editCustomerId=null;
+          render();
+          return;
+        }
+
+        if(a==="save-company"){
+          const name = (document.querySelector('[data-field="co_name"]')?.value || "").trim();
+          if(!name) return alert("Yrityksen nimi on pakollinen.");
+          const dcp = parseFloat(document.querySelector('[data-field="co_dcp"]')?.value) || 0;
+
+          if(state.editCompanyId){
+            const co = state.companies.find(x=>x.id===state.editCompanyId);
+            if(!co) return alert("Yritystä ei löytynyt.");
+            co.name = name;
+            co.defaultCommissionPercent = Math.max(0, dcp);
+          }else{
+            state.companies.push({ id: makeId("CO"), name, defaultCommissionPercent: Math.max(0, dcp) });
+          }
+
+          save();
+          // pysy yritysmodalissa listaa varten
+          state.modal="company";
+          state.editCompanyId=null;
+          render();
           return;
         }
 
@@ -1076,100 +1380,7 @@ label{display:block;font-size:13px;font-weight:800;margin-bottom:6px;color:#3741
           return;
         }
 
-        // Save customer (create/edit + optional enrollment)
-        if(a==="save-customer"){
-          const name = (document.querySelector('[data-field="c_name"]')?.value || "").trim();
-          if(!name) return alert("Nimi on pakollinen.");
-
-          const phone = (document.querySelector('[data-field="c_phone"]')?.value || "").trim();
-          const email = (document.querySelector('[data-field="c_email"]')?.value || "").trim();
-
-          const eventId = (document.querySelector('[data-field="e_eventId"]')?.value || "").trim();
-          const qty = Math.max(1, parseInt(document.querySelector('[data-field="e_qty"]')?.value,10) || 1);
-          let unitGross = parseFloat(document.querySelector('[data-field="e_unitGross"]')?.value) || 0;
-
-          const payerType = (document.querySelector('[data-field="e_payerType"]')?.value || "customer");
-          const companyId = (document.querySelector('[data-field="e_companyId"]')?.value || "");
-          const commType  = (document.querySelector('[data-field="e_commType"]')?.value || "percent");
-          const commValue = parseFloat(document.querySelector('[data-field="e_commValue"]')?.value) || 0;
-
-          let cid = state.editCustomerId;
-          if(cid){
-            const c = state.customers.find(x=>x.id===cid);
-            if(!c) return alert("Asiakasta ei löytynyt.");
-            c.name = name; c.phone = phone; c.email = email;
-          }else{
-            cid = makeId("C");
-            state.customers.push({ id:cid, name, phone, email });
-          }
-
-          // Optional enrollment
-          if(eventId){
-            const s = state.sailings.find(x=>x.id===eventId);
-            if(!s) return alert("Valittua tapahtumaa ei löytynyt.");
-
-            // jos unitGross = 0, käytä purjehduksen hintaa
-            if(!(unitGross>0)) unitGross = Number(s.pricePerPerson||0) || 0;
-
-            // kapasiteettitarkistus (estää ylibuukkauksen)
-            const max = Number(s.maxPersons||0) || 0;
-            const booked = enrolledQty(eventId);
-            if(max>0 && (booked + qty) > max){
-              return alert(`Purjehdus on täynnä / ylittyy: ${booked}/${max}. Et voi lisätä ${qty} hlö.`);
-            }
-
-            // jos maksaja=yritys, vaadi yritys
-            if(payerType==="company" && !companyId){
-              return alert("Valitse yritys (maksaja = yritys).");
-            }
-
-            state.enrollments.push({
-              id: makeId("E"),
-              customerId: cid,
-              eventId,
-              qty,
-              unitPriceGross: unitGross,
-              payerType,
-              payerCompanyId: companyId,
-              commission: { type: commType, value: commValue }
-            });
-          }
-
-          save();
-          state.modal=null; state.editCustomerId=null;
-          render();
-          return;
-        }
-
-        // Save sailing (create/edit)
-        if(a==="save-sailing"){
-          const name = (document.querySelector('[data-field="s_name"]')?.value || "").trim();
-          const date = (document.querySelector('[data-field="s_date"]')?.value || "").trim();
-          const type = (document.querySelector('[data-field="s_type"]')?.value || "").trim();
-          const maxPersons = Math.max(1, parseInt(document.querySelector('[data-field="s_max"]')?.value,10) || 1);
-          const pricePerPerson = Math.max(0, parseFloat(document.querySelector('[data-field="s_price"]')?.value) || 0);
-
-          if(!name || !date || !type) return alert("Täytä pakolliset kentät (nimi, päivä, tyyppi).");
-
-          if(state.editSailingId){
-            const s = state.sailings.find(x=>x.id===state.editSailingId);
-            if(!s) return alert("Purjehdusta ei löytynyt.");
-            s.name=name; s.date=date; s.type=type; s.maxPersons=maxPersons; s.pricePerPerson=pricePerPerson;
-            if(!Array.isArray(s.sessions)) s.sessions=[];
-          }else{
-            state.sailings.push({
-              id: makeId("S"),
-              name, date, type,
-              maxPersons, pricePerPerson,
-              sessions:[]
-            });
-          }
-
-          save();
-          state.modal=null; state.editSailingId=null;
-          render();
-          return;
-        }
+        // toggle-sailing group etc. end
       };
     });
 
@@ -1179,7 +1390,6 @@ label{display:block;font-size:13px;font-weight:800;margin-bottom:6px;color:#3741
       sc.oninput = (e)=>{ state.searchCustomers = e.target.value; render(); };
       sc.onkeydown = (e)=>{ if(e.key==="Enter") e.preventDefault(); };
     }
-
     const ss = document.querySelector('[data-action="search-sailings"]');
     if(ss){
       ss.oninput = (e)=>{ state.searchSailings = e.target.value; render(); };
