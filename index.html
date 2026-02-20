@@ -96,6 +96,7 @@ label{display:block;font-size:13px;font-weight:900;margin-bottom:6px;color:#3741
 
 <script>
 (() => {
+  // Näytä virheet ruudulla (helpottaa iPadilla)
   window.onerror = function(msg, src, line, col, err){
     const el = document.getElementById("app");
     if (!el) return;
@@ -107,9 +108,9 @@ label{display:block;font-size:13px;font-weight:900;margin-bottom:6px;color:#3741
       "</pre>";
   };
 
-  const STORAGE_KEY = "absolut37_v3_full";
+  const STORAGE_KEY = "absolut37_v3_full_plus_register_ref";
 
-  // Myyjä + pankkitiedot laskulle
+  // Laskun antaja (J Sailing) + pankkitiedot
   const ISSUER = {
     name:"J Sailing",
     businessId:"1728993-9",
@@ -135,12 +136,15 @@ label{display:block;font-size:13px;font-weight:900;margin-bottom:6px;color:#3741
     customers:[],
     sailings:[],
     companies:[],
+    invoices:[], // ✅ LASKUREKISTERI
     modal:null,
     editId:null,
     searchCustomers:"",
     searchSailings:"",
     openSailingId:null,
     sailingGroup:"all",
+    registerMonth: monthToday(), // YYYY-MM
+
     invoice:{
       mode:"customer",   // "customer" | "company"
       sailingId:"",
@@ -148,9 +152,9 @@ label{display:block;font-size:13px;font-weight:900;margin-bottom:6px;color:#3741
       companyId:"",
       invoiceNo:"",
       invoiceDate: today(),
-      dueDate: addDaysISO(today(), 14),
-      reference: "",       // viitenumero
-      message: ""          // viesti / selite maksulle
+      dueDate: addDays(today(), 14),
+      reference:"",
+      message:""
     }
   };
 
@@ -159,7 +163,8 @@ label{display:block;font-size:13px;font-weight:900;margin-bottom:6px;color:#3741
       customers:state.customers,
       sailings:state.sailings,
       companies:state.companies,
-      invoice: state.invoice
+      invoices:state.invoices,
+      registerMonth: state.registerMonth
     }));
   }
 
@@ -171,19 +176,15 @@ label{display:block;font-size:13px;font-weight:900;margin-bottom:6px;color:#3741
         state.customers=Array.isArray(d.customers)?d.customers:[];
         state.sailings=Array.isArray(d.sailings)?d.sailings:[];
         state.companies=Array.isArray(d.companies)?d.companies:[];
-        if(d.invoice && typeof d.invoice==="object"){
-          state.invoice = {
-            ...state.invoice,
-            ...d.invoice
-          };
-        }
+        state.invoices=Array.isArray(d.invoices)?d.invoices:[];
+        state.registerMonth = d.registerMonth || monthToday();
       }
     }catch(e){}
 
-    if(!state.invoice.invoiceNo) state.invoice.invoiceNo = "JS-"+today().replaceAll("-","");
-    if(!state.invoice.invoiceDate) state.invoice.invoiceDate = today();
-    if(!state.invoice.dueDate) state.invoice.dueDate = addDaysISO(state.invoice.invoiceDate, 14);
+    if(!state.invoice.invoiceNo) state.invoice.invoiceNo = nextInvoiceNo();
+    if(!state.invoice.reference) state.invoice.reference = makeFinnishReference(state.invoice.invoiceNo);
 
+    // seed jos tyhjä
     if(state.customers.length===0 && state.sailings.length===0 && state.companies.length===0){
       const coId = id("B");
       state.companies.push({id:coId, name:"Esimerkki Oy", businessId:"1234567-8", email:"info@esimerkki.fi", commissionPct:10});
@@ -204,19 +205,47 @@ label{display:block;font-size:13px;font-weight:900;margin-bottom:6px;color:#3741
 
   function id(p){return p + Math.random().toString(16).slice(2,8).toUpperCase();}
   function today(){return new Date().toISOString().slice(0,10);}
+  function monthToday(){ return new Date().toISOString().slice(0,7); }
+  function addDays(iso, n){
+    const d = new Date(iso+"T00:00:00");
+    d.setDate(d.getDate()+n);
+    return d.toISOString().slice(0,10);
+  }
   function esc(s){return String(s||"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[m]));}
   function fmtDate(d){return d ? new Date(d+"T00:00:00").toLocaleDateString("fi-FI") : "";}
   function enrolledCount(sailingId){return state.customers.filter(c=>c.sailingId===sailingId).length;}
   function vatRate(s){ return (s && s.type==="Charter") ? 0.135 : 0.255; }
 
-  function addDaysISO(isoDate, days){
-    try{
-      const d = new Date(isoDate+"T00:00:00");
-      d.setDate(d.getDate() + Number(days||0));
-      return d.toISOString().slice(0,10);
-    }catch(e){
-      return today();
+  // ✅ Suomen viitenumero (tarkiste 7-3-1)
+  function makeFinnishReference(base){
+    const digits = String(base||"").replace(/\D/g,"");
+    if(!digits) return "";
+    const weights = [7,3,1];
+    let sum = 0;
+    let w = 0;
+    for(let i=digits.length-1;i>=0;i--){
+      sum += Number(digits[i]) * weights[w % 3];
+      w++;
     }
+    const check = (10 - (sum % 10)) % 10;
+    return digits + String(check);
+  }
+
+  // ✅ Juokseva laskunumero: JS-YYYYMM-XXX
+  function nextInvoiceNo(){
+    const ym = today().slice(0,7).replaceAll("-","");
+    const prefix = "JS-" + ym + "-";
+    const same = state.invoices
+      .map(i => i.invoiceNo || "")
+      .filter(no => no.startsWith(prefix));
+    let max = 0;
+    for(const no of same){
+      const m = no.slice(prefix.length);
+      const n = parseInt(m,10);
+      if(!Number.isNaN(n)) max = Math.max(max, n);
+    }
+    const next = String(max+1).padStart(3,"0");
+    return prefix + next;
   }
 
   function fillUI(booked,max){
@@ -284,7 +313,8 @@ label{display:block;font-size:13px;font-weight:900;margin-bottom:6px;color:#3741
       ["sailings","Purjehdukset"],
       ["customers","Asiakkaat"],
       ["companies","Tilaajayritykset"],
-      ["invoicing","Laskutus"]
+      ["invoicing","Laskutus"],
+      ["register","Laskurekisteri"]
     ];
     return `<nav>
       ${tabs.map(([id,label])=>`
@@ -299,6 +329,7 @@ label{display:block;font-size:13px;font-weight:900;margin-bottom:6px;color:#3741
     if(state.tab==="customers") return renderCustomers();
     if(state.tab==="companies") return renderCompanies();
     if(state.tab==="invoicing") return renderInvoicing();
+    if(state.tab==="register") return renderRegister();
     return "";
   }
 
@@ -333,6 +364,10 @@ label{display:block;font-size:13px;font-weight:900;margin-bottom:6px;color:#3741
           <div class="note">
             <div style="font-weight:900">Tilaajayrityksiä</div>
             <div style="font-size:28px;font-weight:900">${state.companies.length}</div>
+          </div>
+          <div class="note">
+            <div style="font-weight:900">Laskuja rekisterissä</div>
+            <div style="font-size:28px;font-weight:900">${state.invoices.length}</div>
           </div>
         </div>
       </div>
@@ -403,7 +438,6 @@ label{display:block;font-size:13px;font-weight:900;margin-bottom:6px;color:#3741
 
   function renderSailings(){
     const counts = groupCounts();
-
     const g = SAILING_GROUPS.find(x=>x.id===state.sailingGroup) || SAILING_GROUPS[0];
 
     const term=(state.searchSailings||"").toLowerCase().trim();
@@ -651,31 +685,28 @@ label{display:block;font-size:13px;font-weight:900;margin-bottom:6px;color:#3741
               </select>
             </div>
           `}
-        </div>
-
-        <div class="grid3 noPrint" style="margin-top:12px">
-          <div>
+          <div style="min-width:220px">
             <label>Laskunro</label>
             <input data-action="inv-no" value="${esc(state.invoice.invoiceNo)}">
           </div>
-          <div>
+          <div style="min-width:220px">
             <label>Päivä</label>
             <input type="date" data-action="inv-date" value="${esc(state.invoice.invoiceDate)}">
           </div>
-          <div>
+          <div style="min-width:220px">
             <label>Eräpäivä</label>
             <input type="date" data-action="inv-due" value="${esc(state.invoice.dueDate)}">
           </div>
         </div>
 
-        <div class="grid2 noPrint" style="margin-top:12px">
-          <div>
-            <label>Viitenumero (valinnainen)</label>
-            <input data-action="inv-ref" value="${esc(state.invoice.reference)}" placeholder="esim. 12345">
+        <div class="row noPrint" style="margin-top:10px">
+          <div style="min-width:260px;flex:1">
+            <label>Viitenumero (automaattinen)</label>
+            <input data-action="inv-ref" value="${esc(state.invoice.reference)}" placeholder="Viite">
           </div>
-          <div>
-            <label>Viesti / maksun selite (valinnainen)</label>
-            <input data-action="inv-msg" value="${esc(state.invoice.message)}" placeholder="esim. Kurssi 1 / osallistuja">
+          <div style="min-width:260px;flex:1">
+            <label>Viestikenttä (valinnainen)</label>
+            <input data-action="inv-msg" value="${esc(state.invoice.message||"")}" placeholder="esim. Kiitos tilauksesta">
           </div>
         </div>
 
@@ -686,12 +717,16 @@ label{display:block;font-size:13px;font-weight:900;margin-bottom:6px;color:#3741
             <div>
               <b>LASKU</b><br>
               ${esc(ISSUER.name)}<br>
-              Y-tunnus ${esc(ISSUER.businessId)}
+              Y-tunnus ${esc(ISSUER.businessId)}<br>
+              <div class="small muted" style="margin-top:6px">
+                ${esc(ISSUER.bankName)} • IBAN ${esc(ISSUER.iban)} • BIC ${esc(ISSUER.bic)}
+              </div>
             </div>
             <div>
               Nro: ${esc(state.invoice.invoiceNo)}<br>
               Päivä: ${esc(state.invoice.invoiceDate)}<br>
-              Eräpäivä: <b>${esc(state.invoice.dueDate)}</b>
+              Eräpäivä: ${esc(state.invoice.dueDate)}<br>
+              Viite: ${esc(state.invoice.reference)}
             </div>
           </div>
 
@@ -703,6 +738,8 @@ label{display:block;font-size:13px;font-weight:900;margin-bottom:6px;color:#3741
             ${payerBusinessId ? `<div class="small muted">Y-tunnus ${esc(payerBusinessId)}</div>` : ``}
             ${payerEmail ? `<div><a href="mailto:${esc(payerEmail)}">${esc(payerEmail)}</a></div>` : ``}
           </div>
+
+          ${state.invoice.message ? `<div class="hr"></div><div class="small">${esc(state.invoice.message)}</div>` : ""}
 
           <div class="hr"></div>
 
@@ -729,29 +766,115 @@ label{display:block;font-size:13px;font-weight:900;margin-bottom:6px;color:#3741
             <tr><td>ALV ${ratePct}%</td><td class="r">${Number(vat||0).toFixed(2)} €</td></tr>
             <tr><td><b>Yhteensä</b></td><td class="r"><b>${Number(grossTotal||0).toFixed(2)} €</b></td></tr>
           </table>
-
-          <div class="hr"></div>
-
-          <div class="grid2">
-            <div>
-              <b>Maksutiedot</b><br>
-              Pankki: ${esc(ISSUER.bankName)}<br>
-              IBAN: <b>${esc(ISSUER.iban)}</b><br>
-              BIC: <b>${esc(ISSUER.bic)}</b>
-            </div>
-            <div>
-              ${state.invoice.reference ? `<div><b>Viite:</b> ${esc(state.invoice.reference)}</div>` : `<div class="muted">Viite: (ei asetettu)</div>`}
-              ${state.invoice.message ? `<div style="margin-top:6px"><b>Viesti:</b> ${esc(state.invoice.message)}</div>` : ``}
-            </div>
-          </div>
         </div>
 
         <div class="hr noPrint"></div>
 
         <div class="row noPrint">
+          <button class="btn primary" data-action="save-invoice">Tallenna lasku rekisteriin</button>
           <button class="btn primary" data-action="print">Tulosta / PDF</button>
           <button class="btn secondary" data-action="email">Lähetä sähköpostilla</button>
         </div>
+
+        <div class="small muted noPrint" style="margin-top:10px">
+          Vinkki: Tallennettu lasku näkyy Laskurekisteri-välilehdellä ja tulostettavissa kuukausittain kirjanpitoa varten.
+        </div>
+      </div>
+    `;
+  }
+
+  function renderRegister(){
+    const month = state.registerMonth || monthToday(); // YYYY-MM
+    const list = state.invoices
+      .filter(inv => String(inv.invoiceDate||"").startsWith(month))
+      .slice()
+      .sort((a,b)=>String(a.invoiceDate||"").localeCompare(String(b.invoiceDate||"")) || String(a.invoiceNo||"").localeCompare(String(b.invoiceNo||"")));
+
+    const sums = list.reduce((acc,x)=>{
+      acc.net += Number(x.net||0);
+      acc.vat += Number(x.vat||0);
+      acc.gross += Number(x.gross||0);
+      return acc;
+    },{net:0,vat:0,gross:0});
+
+    const sumByVat = list.reduce((acc,x)=>{
+      const key = String(x.vatRatePct||"");
+      if(!acc[key]) acc[key]={net:0,vat:0,gross:0};
+      acc[key].net += Number(x.net||0);
+      acc[key].vat += Number(x.vat||0);
+      acc[key].gross += Number(x.gross||0);
+      return acc;
+    },{});
+
+    return `
+      <div class="card">
+        <div class="row between noPrint">
+          <div>
+            <h2 style="margin:0 0 6px 0">Laskurekisteri</h2>
+            <div class="muted">Kuukausittainen tulostus kirjanpitoa varten.</div>
+          </div>
+          <div class="row">
+            <div style="min-width:220px">
+              <label>Kuukausi</label>
+              <input type="month" data-action="reg-month" value="${esc(month)}">
+            </div>
+            <button class="btn primary" data-action="print">Tulosta rekisteri</button>
+          </div>
+        </div>
+
+        <div class="hr"></div>
+
+        ${list.length===0 ? `<div class="muted">Ei laskuja valitulla kuukaudella.</div>` : `
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Päivä</th>
+                <th>Laskunro</th>
+                <th>Maksaja</th>
+                <th>Viite</th>
+                <th class="r">Netto</th>
+                <th class="r">ALV</th>
+                <th class="r">Yhteensä</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${list.map(x=>`
+                <tr>
+                  <td>${esc(x.invoiceDate||"")}</td>
+                  <td>${esc(x.invoiceNo||"")}</td>
+                  <td>${esc(x.payerName||"")}</td>
+                  <td>${esc(x.reference||"")}</td>
+                  <td class="r">${Number(x.net||0).toFixed(2)}</td>
+                  <td class="r">${Number(x.vat||0).toFixed(2)}</td>
+                  <td class="r"><b>${Number(x.gross||0).toFixed(2)}</b></td>
+                </tr>
+              `).join("")}
+            </tbody>
+          </table>
+
+          <div class="hr"></div>
+
+          <div class="row" style="gap:18px">
+            <div class="note">
+              <div style="font-weight:900">Yhteensä</div>
+              <div>Netto: <b>${sums.net.toFixed(2)} €</b></div>
+              <div>ALV: <b>${sums.vat.toFixed(2)} €</b></div>
+              <div>Brutto: <b>${sums.gross.toFixed(2)} €</b></div>
+            </div>
+
+            ${Object.keys(sumByVat).sort().map(k=>{
+              const o=sumByVat[k];
+              return `
+                <div class="note">
+                  <div style="font-weight:900">ALV ${esc(k)}%</div>
+                  <div>Netto: <b>${o.net.toFixed(2)} €</b></div>
+                  <div>ALV: <b>${o.vat.toFixed(2)} €</b></div>
+                  <div>Brutto: <b>${o.gross.toFixed(2)} €</b></div>
+                </div>
+              `;
+            }).join("")}
+          </div>
+        `}
       </div>
     `;
   }
@@ -973,9 +1096,13 @@ label{display:block;font-size:13px;font-weight:900;margin-bottom:6px;color:#3741
         state.customers=Array.isArray(data.customers)?data.customers:[];
         state.sailings=Array.isArray(data.sailings)?data.sailings:[];
         state.companies=Array.isArray(data.companies)?data.companies:[];
-        if(data.invoice && typeof data.invoice==="object"){
-          state.invoice = { ...state.invoice, ...data.invoice };
-        }
+        state.invoices=Array.isArray(data.invoices)?data.invoices:[];
+        state.registerMonth = data.registerMonth || monthToday();
+
+        // jos tyhjää, pidä järkevät oletukset
+        if(!state.invoice.invoiceNo) state.invoice.invoiceNo = nextInvoiceNo();
+        state.invoice.reference = makeFinnishReference(state.invoice.invoiceNo);
+
         save();
         render();
       }catch(err){
@@ -985,22 +1112,30 @@ label{display:block;font-size:13px;font-weight:900;margin-bottom:6px;color:#3741
       }
     });
 
-    document.querySelector('[data-action="inv-sailing"]')?.addEventListener("change",(e)=>{ state.invoice.sailingId=e.target.value; save(); render(); });
-    document.querySelector('[data-action="inv-mode"]')?.addEventListener("change",(e)=>{ state.invoice.mode=e.target.value; save(); render(); });
-    document.querySelector('[data-action="inv-customer"]')?.addEventListener("change",(e)=>{ state.invoice.customerId=e.target.value; save(); render(); });
-    document.querySelector('[data-action="inv-company"]')?.addEventListener("change",(e)=>{ state.invoice.companyId=e.target.value; save(); render(); });
+    // Laskutusohjaimet
+    document.querySelector('[data-action="inv-sailing"]')?.addEventListener("change",(e)=>{ state.invoice.sailingId=e.target.value; render(); });
+    document.querySelector('[data-action="inv-mode"]')?.addEventListener("change",(e)=>{ state.invoice.mode=e.target.value; render(); });
+    document.querySelector('[data-action="inv-customer"]')?.addEventListener("change",(e)=>{ state.invoice.customerId=e.target.value; render(); });
+    document.querySelector('[data-action="inv-company"]')?.addEventListener("change",(e)=>{ state.invoice.companyId=e.target.value; render(); });
 
-    document.querySelector('[data-action="inv-no"]')?.addEventListener("input",(e)=>{ state.invoice.invoiceNo=e.target.value; save(); });
-    document.querySelector('[data-action="inv-date"]')?.addEventListener("change",(e)=>{
-      state.invoice.invoiceDate=e.target.value;
-      // jos eräpäivä on tyhjä tai sama kuin vanha logiikka, pidä se automaattisesti 14 pv
-      if(!state.invoice.dueDate) state.invoice.dueDate = addDaysISO(state.invoice.invoiceDate, 14);
-      save(); render();
+    document.querySelector('[data-action="inv-no"]')?.addEventListener("input",(e)=>{
+      state.invoice.invoiceNo=e.target.value;
+      state.invoice.reference = makeFinnishReference(state.invoice.invoiceNo);
+      render();
     });
-    document.querySelector('[data-action="inv-due"]')?.addEventListener("change",(e)=>{ state.invoice.dueDate=e.target.value; save(); render(); });
-    document.querySelector('[data-action="inv-ref"]')?.addEventListener("input",(e)=>{ state.invoice.reference=e.target.value; save(); });
-    document.querySelector('[data-action="inv-msg"]')?.addEventListener("input",(e)=>{ state.invoice.message=e.target.value; save(); });
+    document.querySelector('[data-action="inv-date"]')?.addEventListener("change",(e)=>{ state.invoice.invoiceDate=e.target.value; render(); });
+    document.querySelector('[data-action="inv-due"]')?.addEventListener("change",(e)=>{ state.invoice.dueDate=e.target.value; render(); });
+    document.querySelector('[data-action="inv-ref"]')?.addEventListener("input",(e)=>{ state.invoice.reference=e.target.value; });
+    document.querySelector('[data-action="inv-msg"]')?.addEventListener("input",(e)=>{ state.invoice.message=e.target.value; });
 
+    // Rekisteri: kuukausivalinta
+    document.querySelector('[data-action="reg-month"]')?.addEventListener("change",(e)=>{
+      state.registerMonth = e.target.value || monthToday();
+      save();
+      render();
+    });
+
+    // Yleiset click-actionit
     document.querySelectorAll("[data-action]").forEach(el=>{
       el.onclick=()=>{
         const a=el.dataset.action;
@@ -1065,7 +1200,6 @@ label{display:block;font-size:13px;font-weight:900;margin-bottom:6px;color:#3741
             return alert("Valitse tilaajayritys (tai vaihda laskutus: Asiakas maksaa itse).");
           }
 
-          // kapasiteetti / ylibuukkaus (muokkauksessa huomioi jos sama purjehdus)
           if(sailingId){
             const s=state.sailings.find(x=>x.id===sailingId);
             if(s){
@@ -1167,7 +1301,8 @@ label{display:block;font-size:13px;font-weight:900;margin-bottom:6px;color:#3741
             customers:state.customers,
             sailings:state.sailings,
             companies:state.companies,
-            invoice: state.invoice
+            invoices:state.invoices,
+            registerMonth: state.registerMonth
           },null,2)],{type:"application/json"});
           const url=URL.createObjectURL(blob);
           const x=document.createElement("a");
@@ -1178,10 +1313,109 @@ label{display:block;font-size:13px;font-weight:900;margin-bottom:6px;color:#3741
           return;
         }
 
+        if(a==="save-invoice"){
+          saveInvoiceToRegister();
+          return;
+        }
+
         if(a==="print"){ window.print(); return; }
         if(a==="email"){ sendInvoiceEmail(); return; }
       };
     });
+  }
+
+  function currentInvoiceModel(){
+    const s = state.sailings.find(x=>x.id===state.invoice.sailingId) || null;
+    const rate = vatRate(s);
+    const ratePct = Number((rate*100).toFixed(1));
+    let payerName="", payerEmail="", payerBusinessId="", gross=0, net=0, vat=0;
+
+    if(!s) return { ok:false, reason:"Valitse tapahtuma.", s:null };
+
+    const price = Number(s.pricePerPerson||0);
+
+    if(state.invoice.mode==="customer"){
+      const c = state.customers.find(x=>x.id===state.invoice.customerId);
+      if(!c) return { ok:false, reason:"Valitse asiakas.", s };
+      payerName = c.name||"";
+      payerEmail = c.email||"";
+      gross = price;
+    }else{
+      const co = state.companies.find(x=>x.id===state.invoice.companyId);
+      if(!co) return { ok:false, reason:"Valitse yritys.", s };
+
+      payerName = co.name||"";
+      payerEmail = co.email||"";
+      payerBusinessId = co.businessId||"";
+
+      const cust = state.customers
+        .filter(c => c.sailingId===s.id && c.billTo==="company" && c.companyId===co.id);
+
+      const gross0 = cust.length * price;
+      const commission = gross0 * (Number(co.commissionPct||0)/100);
+      gross = gross0 - commission;
+    }
+
+    net = gross / (1+rate);
+    vat = gross - net;
+
+    return {
+      ok:true,
+      s,
+      payerName, payerEmail, payerBusinessId,
+      gross, net, vat,
+      vatRatePct: ratePct
+    };
+  }
+
+  function saveInvoiceToRegister(){
+    const m = currentInvoiceModel();
+    if(!m.ok){
+      alert(m.reason || "Laskua ei voi tallentaa.");
+      return;
+    }
+
+    const invNo = (state.invoice.invoiceNo||"").trim();
+    if(!invNo){
+      alert("Laskunro puuttuu.");
+      return;
+    }
+
+    const ref = (state.invoice.reference||"").trim();
+    if(!ref){
+      alert("Viite puuttuu.");
+      return;
+    }
+
+    // Tallenna lasku rekisteriin (kirjanpidon yhteenvetoa varten)
+    state.invoices.push({
+      id: id("I"),
+      createdAt: new Date().toISOString(),
+      invoiceNo: invNo,
+      invoiceDate: state.invoice.invoiceDate,
+      dueDate: state.invoice.dueDate,
+      reference: ref,
+      mode: state.invoice.mode,
+      sailingId: state.invoice.sailingId,
+      payerName: m.payerName,
+      payerEmail: m.payerEmail,
+      payerBusinessId: m.payerBusinessId,
+      gross: Number(m.gross||0),
+      net: Number(m.net||0),
+      vat: Number(m.vat||0),
+      vatRatePct: Number(m.vatRatePct||0)
+    });
+
+    // Valmistele seuraava lasku automaattisesti
+    state.invoice.invoiceNo = nextInvoiceNo();
+    state.invoice.reference = makeFinnishReference(state.invoice.invoiceNo);
+    state.invoice.invoiceDate = today();
+    state.invoice.dueDate = addDays(today(), 14);
+    state.invoice.message = "";
+
+    save();
+    alert("Lasku tallennettu laskurekisteriin.");
+    render();
   }
 
   function sendInvoiceEmail(){
@@ -1203,6 +1437,7 @@ label{display:block;font-size:13px;font-weight:900;margin-bottom:6px;color:#3741
     window.location.href=`mailto:${encodeURIComponent(to)}?subject=${subject}&body=${body}`;
   }
 
+  // init
   load();
   render();
 
