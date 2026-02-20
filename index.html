@@ -389,7 +389,7 @@ label{display:block;font-size:13px;font-weight:700;margin-bottom:6px}
     if(state.modal==="customer"){
       return `<div class="overlay" data-action="close-modal">
         <div class="modal" onclick="event.stopPropagation()">
-          <header><h2>Uusi asiakas</h2></header>
+          <header><h2>${state.editCustomerId ? "Muokkaa asiakasta" : "Uusi asiakas"}</h2></header>
           <div class="body">
             <label>Nimi *</label>
             <input data-field="name" value="">
