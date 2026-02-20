@@ -108,13 +108,15 @@ label{display:block;font-size:13px;font-weight:900;margin-bottom:6px;color:#3741
   };
 
   const STORAGE_KEY = "absolut37_v3_full";
+
+  // ✅ Myyjä + pankkitiedot laskulle
   const ISSUER = {
-  name: "J Sailing",
-  businessId: "1728993-9",
-  bankName: "NORDEA",
-  iban: "FI62 1132 3000 4277 43",
-  bic: "NDEAFIHH"
-};
+    name:"J Sailing",
+    businessId:"1728993-9",
+    bankName:"NORDEA",
+    iban:"FI62 1132 3000 4277 43",
+    bic:"NDEAFIHH"
+  };
 
   const SAILING_TYPES = ["Iltapurjehdus","Päiväpurjehdus","Charter","Kurssi","Yritystilaisuus","Purjehdusretki","Muu"];
 
@@ -137,7 +139,7 @@ label{display:block;font-size:13px;font-weight:900;margin-bottom:6px;color:#3741
     editId:null,
     searchCustomers:"",
     searchSailings:"",
-    openSailingId:null,
+    openSailingId:null,          // ✅ tärkeä pilkku korjattu
     sailingGroup:"all",
     invoice:{
       mode:"customer",   // "customer" | "company"
@@ -547,7 +549,6 @@ label{display:block;font-size:13px;font-weight:900;margin-bottom:6px;color:#3741
           payerEmail = co.email||"";
           payerBusinessId = co.businessId||"";
 
-          // yrityslasku: eritellään osallistujat riveille
           const cust = state.customers
             .filter(c => c.sailingId===s.id && c.billTo==="company" && c.companyId===co.id)
             .slice()
@@ -555,7 +556,6 @@ label{display:block;font-size:13px;font-weight:900;margin-bottom:6px;color:#3741
 
           const gross = cust.length * price;
 
-          // yksi rivi per osallistuja (kuvauksessa nimi)
           for(const c of cust){
             lines.push({title:`${s.name} — ${c.name}`, qty:1, unit:price, total:price});
           }
@@ -643,13 +643,6 @@ label{display:block;font-size:13px;font-weight:900;margin-bottom:6px;color:#3741
           <div class="row between">
             <div>
               <b>LASKU</b><br>
-${esc(ISSUER.name)}<br>
-Y-tunnus ${esc(ISSUER.businessId)}
-<div class="small muted" style="margin-top:6px">
-  Maksutiedot: ${esc(ISSUER.bankName)}<br>
-  IBAN ${esc(ISSUER.iban)}<br>
-  BIC ${esc(ISSUER.bic)}
-</div>
               ${esc(ISSUER.name)}<br>
               Y-tunnus ${esc(ISSUER.businessId)}
             </div>
@@ -693,6 +686,15 @@ Y-tunnus ${esc(ISSUER.businessId)}
             <tr><td>ALV ${ratePct}%</td><td class="r">${Number(vat||0).toFixed(2)} €</td></tr>
             <tr><td><b>Yhteensä</b></td><td class="r"><b>${Number(grossTotal||0).toFixed(2)} €</b></td></tr>
           </table>
+
+          <!-- ✅ Maksutiedot (IBAN/BIC) -->
+          <div class="hr"></div>
+          <div>
+            <b>Maksutiedot</b><br>
+            Pankki: ${esc(ISSUER.bankName)}<br>
+            IBAN: <b>${esc(ISSUER.iban)}</b><br>
+            BIC: <b>${esc(ISSUER.bic)}</b>
+          </div>
         </div>
 
         <div class="hr noPrint"></div>
@@ -1118,7 +1120,7 @@ Y-tunnus ${esc(ISSUER.businessId)}
   function sendInvoiceEmail(){
     const box=document.getElementById("invoiceBox");
     if(!box){ alert("Laskua ei löytynyt."); return; }
-    const text=box.innerText;
+    const text=box.innerText; // ✅ sisältää myös Maksutiedot (IBAN/BIC)
 
     let to="";
     if(state.invoice.mode==="customer"){
