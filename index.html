@@ -643,6 +643,13 @@ label{display:block;font-size:13px;font-weight:900;margin-bottom:6px;color:#3741
           <div class="row between">
             <div>
               <b>LASKU</b><br>
+${esc(ISSUER.name)}<br>
+Y-tunnus ${esc(ISSUER.businessId)}
+<div class="small muted" style="margin-top:6px">
+  Maksutiedot: ${esc(ISSUER.bankName)}<br>
+  IBAN ${esc(ISSUER.iban)}<br>
+  BIC ${esc(ISSUER.bic)}
+</div>
               ${esc(ISSUER.name)}<br>
               Y-tunnus ${esc(ISSUER.businessId)}
             </div>
