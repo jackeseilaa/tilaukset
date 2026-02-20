@@ -6,7 +6,6 @@
 <title>Absolut 37 — Tilaukset</title>
 
 <style>
-/* ========= PERUS ========= */
 :root{
   --navy:#234c78;
   --bg:#f3f5f7;
@@ -26,7 +25,7 @@ header h1{margin:0;font-size:32px}
 header .sub{margin-top:6px;opacity:.85;font-size:14px}
 nav{background:#fff;border-bottom:1px solid var(--line);display:flex}
 nav button{
-  flex:1;padding:12px;border:0;background:#fff;font-weight:800;color:#374151;
+  flex:1;padding:12px;border:0;background:#fff;font-weight:900;color:#374151;
   border-bottom:3px solid transparent;cursor:pointer
 }
 nav button.active{border-bottom-color:var(--navy);color:#111827}
@@ -36,16 +35,53 @@ main{max-width:980px;margin:0 auto;padding:18px}
 .row.between{justify-content:space-between}
 .btn{border:0;border-radius:10px;padding:10px 14px;font-weight:900;cursor:pointer}
 .btn.primary{background:var(--btn);color:#fff}
-.btn.secondary{background:var(--btn2)}
+.btn.secondary{background:var(--btn2);color:#111827}
 .btn.danger{background:var(--danger-bg);color:var(--danger)}
 .muted{color:var(--muted)}
 .hr{border-top:1px solid var(--line);margin:14px 0}
-input,select{width:100%;padding:10px;border:1px solid var(--line);border-radius:10px}
-label{display:block;font-size:13px;font-weight:900;margin-bottom:6px}
+input,select,textarea{
+  width:100%;padding:10px;border:1px solid var(--line);
+  border-radius:10px;font-size:15px;background:#fff
+}
+label{display:block;font-size:13px;font-weight:900;margin-bottom:6px;color:#374151}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+@media (max-width:800px){.grid2,.grid3{grid-template-columns:1fr} header h1{font-size:28px}}
+.item{display:flex;justify-content:space-between;gap:12px;padding:12px 0;border-top:1px solid var(--line)}
+.item:first-child{border-top:0}
+.item h3{margin:0 0 4px 0}
+.meta{font-size:14px;color:var(--muted)}
+.pill{background:#eef2ff;padding:4px 10px;border-radius:999px;font-size:12px;font-weight:900;margin-left:8px;display:inline-block}
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.35);display:flex;align-items:center;justify-content:center;padding:18px}
+.modal{background:#fff;border-radius:16px;border:1px solid var(--line);width:min(720px,100%);overflow:hidden}
+.modal header{background:#fff;color:#111;border-bottom:1px solid var(--line);padding:16px}
+.modal .body{padding:18px}
+.small{font-size:12px}
+.note{background:#f8fafc;border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+.badge{display:inline-block;padding:6px 10px;border-radius:999px;background:#eef2f7;font-weight:900;font-size:12px}
+.groupbar{display:flex;gap:8px;flex-wrap:wrap}
+.groupbar .btn{padding:8px 10px;border-radius:999px}
+
+/* Täyttöaste */
+.fillrow{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:6px}
+.fillbar{flex:1;min-width:140px;height:10px;background:#e5e7eb;border-radius:999px;overflow:hidden}
+.fillbar>div{height:100%}
+.filltext{font-size:13px;color:var(--muted);font-weight:900;white-space:nowrap}
+
+/* Kurssipäivät */
+.sessionbox{margin:10px 0 16px 0;padding:12px;background:#f8fafc;border-radius:12px;border:1px solid var(--line)}
+.sessionhead{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+.sessionitem{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding:8px 0;border-top:1px dashed #dbe2ea}
+.sessionitem:first-child{border-top:0;padding-top:0}
+.sessionmeta{font-size:13px;color:var(--muted)}
+
+/* Lasku */
 .table{width:100%;border-collapse:collapse}
-.table th,.table td{border-top:1px solid var(--line);padding:8px}
+.table th,.table td{border-top:1px solid var(--line);padding:8px;vertical-align:top}
 .table .r{text-align:right}
 .invoiceBox{border:1px solid var(--line);border-radius:14px;padding:16px;background:#fff}
+
+/* Print */
 .noPrint{}
 @media print{
   header,nav,.noPrint{display:none!important}
@@ -60,191 +96,1050 @@ label{display:block;font-size:13px;font-weight:900;margin-bottom:6px}
 
 <script>
 (() => {
-
-const STORAGE_KEY="absolut37_v2_2";
-const ISSUER={name:"J Sailing",businessId:"1728993-9"};
-function makeId(p){return p+Math.random().toString(16).slice(2,8).toUpperCase()}
-function today(){return new Date().toISOString().slice(0,10)}
-function esc(s){return String(s||"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[m]))}
-
-const state={
- tab:"invoicing",
- sailings:[],
- customers:[],
- companies:[],
- invoice:{mode:"customer",sailingId:"",customerId:"",companyId:"",invoiceNo:"",invoiceDate:today()}
-};
-
-function load(){
- const raw=localStorage.getItem(STORAGE_KEY);
- if(raw){
-   const d=JSON.parse(raw);
-   state.sailings=d.sailings||[];
-   state.customers=d.customers||[];
-   state.companies=d.companies||[];
- }
- if(!state.invoice.invoiceNo) state.invoice.invoiceNo="JS-"+today().replaceAll("-","");
-}
-function save(){
- localStorage.setItem(STORAGE_KEY,JSON.stringify({
-   sailings:state.sailings,
-   customers:state.customers,
-   companies:state.companies
- }));
-}
-
-function vatRate(s){
- return s.type==="Charter"?0.135:0.255;
-}
-
-function render(){
- document.getElementById("app").innerHTML=
- `<header><h1>Absolut 37</h1><div class="sub">Laskutus</div></header>
-  <main>${renderInvoicing()}</main>`;
- bind();
-}
-
-function renderInvoicing(){
- const s=state.sailings.find(x=>x.id===state.invoice.sailingId)||null;
- const rate=s?vatRate(s):0.255;
- const ratePct=(rate*100).toFixed(1);
-
- let payerName="",payerEmail="",lines=[],grossTotal=0;
-
- if(s){
-   const price=Number(s.pricePerPerson||0);
-   if(state.invoice.mode==="customer"){
-     const c=state.customers.find(x=>x.id===state.invoice.customerId);
-     if(c){
-       payerName=c.name;
-       payerEmail=c.email;
-       lines.push({title:s.name,qty:1,unit:price,total:price});
-       grossTotal=price;
-     }
-   }else{
-     const co=state.companies.find(x=>x.id===state.invoice.companyId);
-     if(co){
-       payerName=co.name;
-       payerEmail=co.email||"";
-       const cust=state.customers.filter(c=>c.companyId===co.id&&c.sailingId===s.id);
-       const gross=cust.length*price;
-       lines.push({title:s.name,qty:cust.length,unit:price,total:gross});
-       const commission=gross*(Number(co.commissionPct||0)/100);
-       if(commission>0){
-         lines.push({title:"Välitysprovisio",qty:1,unit:-commission,total:-commission});
-       }
-       grossTotal=gross-commission;
-     }
-   }
- }
-
- const net=grossTotal/(1+rate);
- const vat=grossTotal-net;
-
- return `
-<div class="card">
-<div class="row between noPrint">
- <div>
-  <label>Tapahtuma</label>
-  <select data-action="inv-sailing">
-   ${state.sailings.map(x=>`<option value="${x.id}" ${x.id===state.invoice.sailingId?"selected":""}>${esc(x.name)}</option>`).join("")}
-  </select>
- </div>
- <div>
-  <label>Malli</label>
-  <select data-action="inv-mode">
-   <option value="customer" ${state.invoice.mode==="customer"?"selected":""}>Asiakaskohtainen</option>
-   <option value="company" ${state.invoice.mode==="company"?"selected":""}>Yrityslasku</option>
-  </select>
- </div>
-</div>
-
-<div class="invoiceBox" id="invoiceBox">
- <div class="row between">
-  <div>
-   <b>LASKU</b><br>
-   ${ISSUER.name}<br>
-   Y-tunnus ${ISSUER.businessId}
-  </div>
-  <div>
-   Nro: ${state.invoice.invoiceNo}<br>
-   Päivä: ${state.invoice.invoiceDate}
-  </div>
- </div>
-
- <div class="hr"></div>
-
- <div>
-  <b>Maksaja:</b><br>
-  ${esc(payerName||"")}<br>
-  ${payerEmail?`<a href="mailto:${esc(payerEmail)}">${esc(payerEmail)}</a>`:""}
- </div>
-
- <div class="hr"></div>
-
- <table class="table">
-  <thead><tr><th>Kuvaus</th><th class="r">Määrä</th><th class="r">€/hlö</th><th class="r">Yht</th></tr></thead>
-  <tbody>
-   ${lines.map(l=>`
-     <tr>
-      <td>${esc(l.title)}</td>
-      <td class="r">${l.qty}</td>
-      <td class="r">${l.unit.toFixed(2)}</td>
-      <td class="r">${l.total.toFixed(2)}</td>
-     </tr>
-   `).join("")}
-  </tbody>
- </table>
-
- <div class="hr"></div>
-
- <table class="table">
-  <tr><td>Netto</td><td class="r">${net.toFixed(2)} €</td></tr>
-  <tr><td>ALV ${ratePct}%</td><td class="r">${vat.toFixed(2)} €</td></tr>
-  <tr><td><b>Yhteensä</b></td><td class="r"><b>${grossTotal.toFixed(2)} €</b></td></tr>
- </table>
-</div>
-
-<div class="hr noPrint"></div>
-
-<div class="row noPrint">
- <button class="btn primary" data-action="print">Tulosta / PDF</button>
- <button class="btn secondary" data-action="email">Lähetä sähköpostilla</button>
-</div>
-
-</div>
-`;
-}
-
-function bind(){
- document.querySelectorAll("[data-action]").forEach(el=>{
-  el.onclick=()=>{
-   const a=el.dataset.action;
-   if(a==="print") window.print();
-   if(a==="email") sendEmail();
-   if(a==="inv-sailing"){}
+  // Virheet ruudulle (iPad/Safari)
+  window.onerror = function(msg, src, line, col, err){
+    const el = document.getElementById("app");
+    if (!el) return;
+    el.innerHTML =
+      "<pre style='padding:16px;color:#b00020;white-space:pre-wrap'>" +
+      "JS ERROR:\\n" + msg + "\\n" +
+      (src || "") + ":" + line + ":" + col + "\\n\\n" +
+      (err && err.stack ? err.stack : "") +
+      "</pre>";
   };
- });
- document.querySelector('[data-action="inv-sailing"]')?.addEventListener("change",e=>{
-   state.invoice.sailingId=e.target.value;
-   render();
- });
- document.querySelector('[data-action="inv-mode"]')?.addEventListener("change",e=>{
-   state.invoice.mode=e.target.value;
-   render();
- });
-}
 
-function sendEmail(){
- const box=document.getElementById("invoiceBox");
- const text=box.innerText;
- const subject=encodeURIComponent("Lasku "+state.invoice.invoiceNo);
- const body=encodeURIComponent(text);
- window.location.href=`mailto:?subject=${subject}&body=${body}`;
-}
+  const STORAGE_KEY = "absolut37_v3_full";
+  const ISSUER = { name:"J Sailing", businessId:"1728993-9" };
 
-load();
-render();
+  const SAILING_TYPES = ["Iltapurjehdus","Päiväpurjehdus","Charter","Kurssi","Yritystilaisuus","Purjehdusretki","Muu"];
+
+  // Ryhmät -> käytetään type-kenttää, ei muuteta dataa
+  const SAILING_GROUPS = [
+    { id:"all", label:"Kaikki", types:null },
+    { id:"courses", label:"Purjehduskurssit", types:["Kurssi"] },
+    { id:"charter", label:"Charter", types:["Charter"] },
+    { id:"evening", label:"Iltapurjehdukset", types:["Iltapurjehdus"] },
+    { id:"trips", label:"Purjehdusretket", types:["Purjehdusretki"] },
+    { id:"otherEdu", label:"Muu koulutus", types:["Yritystilaisuus","Muu"] },
+    { id:"day", label:"Päiväpurjehdukset", types:["Päiväpurjehdus"] },
+  ];
+
+  const state = {
+    tab:"dashboard",
+    customers:[],
+    sailings:[],
+    companies:[],
+    modal:null,          // "customer" | "sailing" | "company" | null
+    editId:null,         // id (customer/sailing/company)
+    searchCustomers:"",
+    searchSailings:"",
+    openSailingId:null,
+    sailingGroup:"all",
+    invoice:{
+      mode:"customer",   // "customer" | "company"
+      sailingId:"",
+      customerId:"",
+      companyId:"",
+      invoiceNo:"",
+      invoiceDate: today()
+    }
+  };
+
+  function save(){
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({
+      customers:state.customers,
+      sailings:state.sailings,
+      companies:state.companies
+    }));
+  }
+
+  function load(){
+    try{
+      const raw=localStorage.getItem(STORAGE_KEY);
+      if(raw){
+        const d=JSON.parse(raw);
+        state.customers=Array.isArray(d.customers)?d.customers:[];
+        state.sailings=Array.isArray(d.sailings)?d.sailings:[];
+        state.companies=Array.isArray(d.companies)?d.companies:[];
+      }
+    }catch(e){}
+
+    // default invoice no
+    if(!state.invoice.invoiceNo) state.invoice.invoiceNo = "JS-"+today().replaceAll("-","");
+
+    // seed jos tyhjä
+    if(state.customers.length===0 && state.sailings.length===0 && state.companies.length===0){
+      const coId = id("B");
+      state.companies.push({id:coId, name:"Esimerkki Oy", businessId:"1234567-8", email:"info@esimerkki.fi", commissionPct:10});
+
+      const sid = id("S");
+      state.sailings.push({id:sid, name:"Kurssi 1", date:today(), type:"Kurssi", maxPersons:4, pricePerPerson:200, sessions:[]});
+
+      state.customers.push({
+        id:id("C"), name:"Testi Seppo", phone:"04012345678", email:"testi@seppo.fi",
+        sailingId:sid,
+        billTo:"self",      // "self" | "company"
+        companyId:""
+      });
+    }
+
+    // default invoice selections if missing
+    if(!state.invoice.sailingId && state.sailings[0]) state.invoice.sailingId = state.sailings[0].id;
+  }
+
+  function id(p){return p + Math.random().toString(16).slice(2,8).toUpperCase();}
+  function today(){return new Date().toISOString().slice(0,10);}
+  function esc(s){return String(s||"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[m]));}
+  function fmtDate(d){return d ? new Date(d+"T00:00:00").toLocaleDateString("fi-FI") : "";}
+  function enrolledCount(sailingId){return state.customers.filter(c=>c.sailingId===sailingId).length;}
+
+  function vatRate(s){ return (s && s.type==="Charter") ? 0.135 : 0.255; }
+
+  function fillUI(booked,max){
+    const m=Math.max(1,Number(max||0)||1);
+    const b=Math.max(0,Number(booked||0)||0);
+    const pct=Math.max(0,Math.min(100,Math.round((b/m)*100)));
+    const color=pct>=100?"#ef4444":(pct>=67?"#f59e0b":"#22c55e");
+    return `
+      <div class="fillrow">
+        <div class="fillbar"><div style="width:${pct}%;background:${color}"></div></div>
+        <div class="filltext">${b} / ${m} (${pct}%)</div>
+      </div>
+    `;
+  }
+
+  function groupCounts(){
+    const counts={};
+    for(const g of SAILING_GROUPS){
+      if(!g.types){counts[g.id]=state.sailings.length; continue;}
+      counts[g.id]=state.sailings.filter(s=>g.types.includes(s.type)).length;
+    }
+    return counts;
+  }
+
+  function render(){
+    // fokus/kurssori talteen (iPad)
+    const ae=document.activeElement;
+    const keep={
+      action: ae?.dataset?.action || null,
+      field:  ae?.dataset?.field  || null,
+      pos: (ae && typeof ae.selectionStart==="number") ? ae.selectionStart : null
+    };
+
+    document.getElementById("app").innerHTML = `
+      ${renderHeader()}
+      ${renderNav()}
+      <main>${renderTab()}</main>
+      ${renderModal()}
+    `;
+
+    bind();
+
+    // fokus takaisin
+    const sel = keep.action ? `[data-action="${keep.action}"]` :
+                keep.field  ? `[data-field="${keep.field}"]` : null;
+    if(sel){
+      const el=document.querySelector(sel);
+      if(el && typeof el.focus==="function"){
+        el.focus();
+        if(keep.pos!==null && typeof el.setSelectionRange==="function"){
+          try{ el.setSelectionRange(keep.pos, keep.pos); }catch(e){}
+        }
+      }
+    }
+  }
+
+  function renderHeader(){
+    return `<header>
+      <h1>Absolut 37</h1>
+      <div class="sub">Tilauksen hallinta</div>
+    </header>`;
+  }
+
+  function renderNav(){
+    const tabs=[
+      ["dashboard","Dashboard"],
+      ["sailings","Purjehdukset"],
+      ["customers","Asiakkaat"],
+      ["companies","Tilaajayritykset"],
+      ["invoicing","Laskutus"]
+    ];
+    return `<nav>
+      ${tabs.map(([id,label])=>`
+        <button data-tab="${id}" class="${state.tab===id?"active":""}">${label}</button>
+      `).join("")}
+    </nav>`;
+  }
+
+  function renderTab(){
+    if(state.tab==="dashboard") return renderDashboard();
+    if(state.tab==="sailings") return renderSailings();
+    if(state.tab==="customers") return renderCustomers();
+    if(state.tab==="companies") return renderCompanies();
+    if(state.tab==="invoicing") return renderInvoicing();
+    return "";
+  }
+
+  function renderDashboard(){
+    return `
+      <div class="card">
+        <div class="row between">
+          <div>
+            <h2 style="margin:0 0 6px 0">Dashboard</h2>
+            <div class="muted">Tallennus: localStorage (tähän laitteeseen)</div>
+          </div>
+          <div class="row">
+            <button class="btn secondary" data-action="backup-json">💾 Varmuuskopio</button>
+            <label class="btn secondary" style="display:inline-flex;align-items:center;gap:8px;cursor:pointer">
+              ♻️ Palauta
+              <input type="file" accept="application/json" data-action="restore-json" style="display:none">
+            </label>
+          </div>
+        </div>
+
+        <div class="hr"></div>
+
+        <div class="row" style="gap:18px">
+          <div class="note">
+            <div style="font-weight:900">Asiakkaita</div>
+            <div style="font-size:28px;font-weight:900">${state.customers.length}</div>
+          </div>
+          <div class="note">
+            <div style="font-weight:900">Purjehduksia</div>
+            <div style="font-size:28px;font-weight:900">${state.sailings.length}</div>
+          </div>
+          <div class="note">
+            <div style="font-weight:900">Tilaajayrityksiä</div>
+            <div style="font-size:28px;font-weight:900">${state.companies.length}</div>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  function renderCustomers(){
+    const term=(state.searchCustomers||"").toLowerCase().trim();
+    const list=state.customers
+      .slice()
+      .sort((a,b)=>(a.name||"").localeCompare(b.name||""))
+      .filter(c =>
+        !term ||
+        (c.name||"").toLowerCase().includes(term) ||
+        (c.phone||"").toLowerCase().includes(term) ||
+        (c.email||"").toLowerCase().includes(term)
+      );
+
+    return `
+      <div class="card">
+        <div class="row between">
+          <div>
+            <h2 style="margin:0 0 6px 0">Asiakkaat</h2>
+            <div class="muted">Lisää, muokkaa, poista. Liitä purjehdukseen ja valitse laskutus.</div>
+          </div>
+          <button class="btn primary" data-action="new-customer">+ Lisää asiakas</button>
+        </div>
+
+        <div class="hr"></div>
+
+        <label>Haku</label>
+        <input data-action="search-customers" value="${esc(state.searchCustomers)}" placeholder="Hae nimellä / puhelin / email">
+
+        <div class="hr"></div>
+
+        ${list.length===0 ? `<div class="muted">Ei osumia.</div>` : `
+          ${list.map(c=>{
+            const s = state.sailings.find(x=>x.id===c.sailingId);
+            const co = state.companies.find(x=>x.id===c.companyId);
+            const billTag = (c.billTo==="company" && co) ? ` <span class="badge">Yritys: ${esc(co.name)}</span>` :
+                           (c.billTo==="self") ? ` <span class="badge">Itse</span>` : ``;
+
+            return `
+              <div class="item">
+                <div>
+                  <h3>
+                    ${esc(c.name||"")}
+                    ${s ? `<span class="pill">${esc(s.name)}</span>` : ``}
+                    ${billTag}
+                  </h3>
+                  <div class="meta">
+                    ${c.email ? `<a href="mailto:${esc(c.email)}">${esc(c.email)}</a>` : ``}
+                    ${c.email && c.phone ? " • " : ""}
+                    ${esc(c.phone||"")}
+                  </div>
+                </div>
+                <div class="row">
+                  <button class="btn secondary" data-action="edit-customer" data-id="${c.id}">Muokkaa</button>
+                  <button class="btn danger" data-action="delete-customer" data-id="${c.id}">Poista</button>
+                </div>
+              </div>
+            `;
+          }).join("")}
+        `}
+      </div>
+    `;
+  }
+
+  function renderSailings(){
+    const counts = groupCounts();
+    const g = SAILING_GROUPS.find(x=>x.id===state.sailingGroup) || SAILING_GROUPS[0];
+
+    const term=(state.searchSailings||"").toLowerCase().trim();
+    let list = state.sailings.slice().sort((a,b)=>(a.date||"").localeCompare(b.date||""));
+
+    if(g.types) list = list.filter(s=>g.types.includes(s.type));
+    if(term){
+      list = list.filter(s =>
+        (s.name||"").toLowerCase().includes(term) ||
+        (s.type||"").toLowerCase().includes(term) ||
+        (s.date||"").includes(term)
+      );
+    }
+
+    return `
+      <div class="card">
+        <div class="row between">
+          <div>
+            <h2 style="margin:0 0 6px 0">Purjehdukset</h2>
+            <div class="muted">Ryhmitelty tyypin mukaan. Valitse ryhmä ja hallitse sen purjehdukset.</div>
+          </div>
+          <button class="btn primary" data-action="new-sailing">+ Lisää purjehdus</button>
+        </div>
+
+        <div class="hr"></div>
+
+        <div class="groupbar">
+          ${SAILING_GROUPS.map(x=>`
+            <button class="btn ${state.sailingGroup===x.id?'primary':'secondary'}"
+              data-action="set-group" data-id="${x.id}">
+              ${esc(x.label)} (${counts[x.id]||0})
+            </button>
+          `).join("")}
+        </div>
+
+        <div class="hr"></div>
+
+        <label>Haku</label>
+        <input data-action="search-sailings" value="${esc(state.searchSailings||"")}" placeholder="Hae nimellä / tyypillä / päivällä (YYYY-MM-DD)">
+
+        <div class="hr"></div>
+
+        ${list.length===0 ? `<div class="muted">Ei purjehduksia tässä ryhmässä.</div>` : `
+          ${list.map(s=>{
+            const booked=enrolledCount(s.id);
+            const max=Number(s.maxPersons||0)||0;
+
+            const sessions = Array.isArray(s.sessions) ? s.sessions : [];
+            const sessionsUI = (s.type==="Kurssi") ? `
+              <div class="sessionbox">
+                <div class="sessionhead">
+                  <div style="font-weight:900">Kurssipäivät</div>
+                  <button class="btn secondary" data-action="add-session" data-id="${s.id}">+ Lisää päivä</button>
+                </div>
+                ${sessions.length===0 ? `<div class="muted">Ei päiviä lisättynä.</div>` : `
+                  ${sessions.map((x,idx)=>`
+                    <div class="sessionitem">
+                      <div>
+                        <div style="font-weight:900">${esc(x.date||"")}${x.start?" klo "+esc(x.start):""}${x.end?"–"+esc(x.end):""}</div>
+                        ${x.note?`<div class="sessionmeta">${esc(x.note)}</div>`:""}
+                      </div>
+                      <button class="btn danger" data-action="delete-session" data-id="${s.id}" data-idx="${idx}">Poista</button>
+                    </div>
+                  `).join("")}
+                `}
+              </div>
+            ` : "";
+
+            const attendeesUI = (state.openSailingId===s.id) ? `
+              <div style="margin:8px 0 16px 0;padding:12px;background:#f8fafc;border-radius:12px;border:1px solid var(--line)">
+                ${state.customers.filter(c=>c.sailingId===s.id).map(c=>`
+                  <div style="padding:6px 0;border-top:1px dashed #dbe2ea">${esc(c.name||"")}</div>
+                `).join("") || `<div class="muted">Ei ilmoittautuneita</div>`}
+              </div>
+            ` : "";
+
+            return `
+              <div class="item">
+                <div style="flex:1">
+                  <h3>
+                    ${esc(s.name||"")}
+                    <span class="pill">${esc(s.type||"")}</span>
+                  </h3>
+                  <div class="meta">
+                    ${fmtDate(s.date)} • Max ${Number(s.maxPersons||0)} hlö • ${Number(s.pricePerPerson||0).toFixed(2)} €/hlö
+                    • Ilmoittautuneet: ${booked}
+                  </div>
+                  ${fillUI(booked,max)}
+                  ${sessionsUI}
+                </div>
+                <div class="row" style="align-items:flex-start">
+                  <button class="btn secondary" data-action="toggle-sailing" data-id="${s.id}">
+                    ${state.openSailingId===s.id?"Piilota asiakkaat":"Näytä asiakkaat"}
+                  </button>
+                  <button class="btn secondary" data-action="edit-sailing" data-id="${s.id}">Muokkaa</button>
+                  <button class="btn danger" data-action="delete-sailing" data-id="${s.id}">Poista</button>
+                </div>
+              </div>
+              ${attendeesUI}
+            `;
+          }).join("")}
+        `}
+      </div>
+    `;
+  }
+
+  function renderCompanies(){
+    const list = state.companies.slice().sort((a,b)=>(a.name||"").localeCompare(b.name||""));
+    return `
+      <div class="card">
+        <div class="row between">
+          <div>
+            <h2 style="margin:0 0 6px 0">Tilaajayritykset</h2>
+            <div class="muted">Yrityksen provisio näkyy vain yritystiedoissa ja yrityslaskulla.</div>
+          </div>
+          <button class="btn primary" data-action="new-company">+ Lisää yritys</button>
+        </div>
+
+        <div class="hr"></div>
+
+        ${list.length===0 ? `<div class="muted">Ei yrityksiä.</div>` : `
+          ${list.map(co=>`
+            <div class="item">
+              <div>
+                <h3>${esc(co.name||"")}</h3>
+                <div class="meta">
+                  ${co.businessId ? `Y-tunnus ${esc(co.businessId)}` : ``}
+                  ${co.businessId && co.email ? " • " : ""}
+                  ${co.email ? `<a href="mailto:${esc(co.email)}">${esc(co.email)}</a>` : ``}
+                  ${((co.businessId||co.email) && (co.commissionPct!=null)) ? " • " : ""}
+                  ${co.commissionPct!=null ? `Provisio ${Number(co.commissionPct||0).toFixed(2)}%` : ``}
+                </div>
+              </div>
+              <div class="row">
+                <button class="btn secondary" data-action="edit-company" data-id="${co.id}">Muokkaa</button>
+                <button class="btn danger" data-action="delete-company" data-id="${co.id}">Poista</button>
+              </div>
+            </div>
+          `).join("")}
+        `}
+      </div>
+    `;
+  }
+
+  function renderInvoicing(){
+    const s = state.sailings.find(x=>x.id===state.invoice.sailingId) || null;
+    const rate = vatRate(s);
+    const ratePct = (rate*100).toFixed(1);
+
+    let payerName="", payerEmail="", payerBusinessId="", lines=[], grossTotal=0;
+
+    if(s){
+      const price = Number(s.pricePerPerson||0);
+
+      if(state.invoice.mode==="customer"){
+        const c = state.customers.find(x=>x.id===state.invoice.customerId);
+        if(c){
+          payerName = c.name||"";
+          payerEmail = c.email||"";
+          lines.push({title:s.name, qty:1, unit:price, total:price});
+          grossTotal = price;
+        }
+      }else{
+        const co = state.companies.find(x=>x.id===state.invoice.companyId);
+        if(co){
+          payerName = co.name||"";
+          payerEmail = co.email||"";
+          payerBusinessId = co.businessId||"";
+
+          // yrityslasku: asiakkaat joilla billTo=company ja companyId=valittu ja sailingId=tapahtuma
+          const cust = state.customers.filter(c =>
+            c.sailingId===s.id && c.billTo==="company" && c.companyId===co.id
+          );
+
+          const gross = cust.length * price;
+          lines.push({title:s.name, qty:cust.length, unit:price, total:gross});
+
+          const commission = gross * (Number(co.commissionPct||0)/100);
+          if(commission>0){
+            lines.push({title:"Välitysprovisio", qty:1, unit:-commission, total:-commission});
+          }
+          grossTotal = gross - commission;
+        }
+      }
+    }
+
+    const net = grossTotal / (1+rate);
+    const vat = grossTotal - net;
+
+    const eventOptions = state.sailings
+      .slice()
+      .sort((a,b)=>(a.date||"").localeCompare(b.date||""))
+      .map(x=>`<option value="${x.id}" ${x.id===state.invoice.sailingId?"selected":""}>${esc(x.name)} (${fmtDate(x.date)})</option>`)
+      .join("");
+
+    const customerOptions = state.customers
+      .slice()
+      .sort((a,b)=>(a.name||"").localeCompare(b.name||""))
+      .map(x=>`<option value="${x.id}" ${x.id===state.invoice.customerId?"selected":""}>${esc(x.name)}</option>`)
+      .join("");
+
+    const companyOptions = state.companies
+      .slice()
+      .sort((a,b)=>(a.name||"").localeCompare(b.name||""))
+      .map(x=>`<option value="${x.id}" ${x.id===state.invoice.companyId?"selected":""}>${esc(x.name)}</option>`)
+      .join("");
+
+    return `
+      <div class="card">
+        <div class="row between noPrint">
+          <div style="min-width:260px;flex:1">
+            <label>Tapahtuma</label>
+            <select data-action="inv-sailing">${eventOptions}</select>
+          </div>
+          <div style="min-width:240px">
+            <label>Malli</label>
+            <select data-action="inv-mode">
+              <option value="customer" ${state.invoice.mode==="customer"?"selected":""}>Asiakaskohtainen</option>
+              <option value="company" ${state.invoice.mode==="company"?"selected":""}>Yrityslasku</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="hr noPrint"></div>
+
+        <div class="row noPrint">
+          ${state.invoice.mode==="customer" ? `
+            <div style="min-width:260px;flex:1">
+              <label>Asiakas</label>
+              <select data-action="inv-customer">
+                <option value="">-- valitse --</option>
+                ${customerOptions}
+              </select>
+            </div>
+          ` : `
+            <div style="min-width:260px;flex:1">
+              <label>Yritys</label>
+              <select data-action="inv-company">
+                <option value="">-- valitse --</option>
+                ${companyOptions}
+              </select>
+            </div>
+          `}
+          <div style="min-width:220px">
+            <label>Laskunro</label>
+            <input data-action="inv-no" value="${esc(state.invoice.invoiceNo)}">
+          </div>
+          <div style="min-width:220px">
+            <label>Päivä</label>
+            <input type="date" data-action="inv-date" value="${esc(state.invoice.invoiceDate)}">
+          </div>
+        </div>
+
+        <div class="hr"></div>
+
+        <div class="invoiceBox" id="invoiceBox">
+          <div class="row between">
+            <div>
+              <b>LASKU</b><br>
+              ${esc(ISSUER.name)}<br>
+              Y-tunnus ${esc(ISSUER.businessId)}
+            </div>
+            <div>
+              Nro: ${esc(state.invoice.invoiceNo)}<br>
+              Päivä: ${esc(state.invoice.invoiceDate)}
+            </div>
+          </div>
+
+          <div class="hr"></div>
+
+          <div>
+            <b>Maksaja:</b><br>
+            ${esc(payerName||"")}
+            ${payerBusinessId ? `<div class="small muted">Y-tunnus ${esc(payerBusinessId)}</div>` : ``}
+            ${payerEmail ? `<div><a href="mailto:${esc(payerEmail)}">${esc(payerEmail)}</a></div>` : ``}
+          </div>
+
+          <div class="hr"></div>
+
+          <table class="table">
+            <thead><tr><th>Kuvaus</th><th class="r">Määrä</th><th class="r">€/hlö</th><th class="r">Yht</th></tr></thead>
+            <tbody>
+              ${lines.length===0 ? `<tr><td colspan="4" class="muted">Valitse tapahtuma ja maksaja.</td></tr>` : `
+                ${lines.map(l=>`
+                  <tr>
+                    <td>${esc(l.title)}</td>
+                    <td class="r">${l.qty}</td>
+                    <td class="r">${Number(l.unit).toFixed(2)}</td>
+                    <td class="r">${Number(l.total).toFixed(2)}</td>
+                  </tr>
+                `).join("")}
+              `}
+            </tbody>
+          </table>
+
+          <div class="hr"></div>
+
+          <table class="table">
+            <tr><td>Netto</td><td class="r">${Number(net||0).toFixed(2)} €</td></tr>
+            <tr><td>ALV ${ratePct}%</td><td class="r">${Number(vat||0).toFixed(2)} €</td></tr>
+            <tr><td><b>Yhteensä</b></td><td class="r"><b>${Number(grossTotal||0).toFixed(2)} €</b></td></tr>
+          </table>
+        </div>
+
+        <div class="hr noPrint"></div>
+
+        <div class="row noPrint">
+          <button class="btn primary" data-action="print">Tulosta / PDF</button>
+          <button class="btn secondary" data-action="email">Lähetä sähköpostilla</button>
+        </div>
+      </div>
+    `;
+  }
+
+  function renderModal(){
+    if(!state.modal) return "";
+
+    if(state.modal==="customer"){
+      const editing = !!state.editId;
+      const c = editing ? state.customers.find(x=>x.id===state.editId) : null;
+
+      const name = c?.name || "";
+      const phone = c?.phone || "";
+      const email = c?.email || "";
+      const sailingId = c?.sailingId || "";
+      const billTo = c?.billTo || "self";
+      const companyId = c?.companyId || "";
+
+      return `
+        <div class="overlay" data-action="close-modal">
+          <div class="modal" onclick="event.stopPropagation()">
+            <header>
+              <div class="row between">
+                <h2 style="margin:0">${editing?"Muokkaa asiakasta":"Uusi asiakas"}</h2>
+                <button class="btn secondary" data-action="close-modal">Sulje</button>
+              </div>
+            </header>
+            <div class="body">
+              <div class="grid2">
+                <div>
+                  <label>Nimi *</label>
+                  <input data-field="name" value="${esc(name)}">
+                </div>
+                <div>
+                  <label>Puhelin</label>
+                  <input data-field="phone" value="${esc(phone)}">
+                </div>
+              </div>
+
+              <div class="grid2" style="margin-top:12px">
+                <div>
+                  <label>Sähköposti</label>
+                  <input data-field="email" value="${esc(email)}">
+                </div>
+                <div>
+                  <label>Purjehdus</label>
+                  <select data-field="sailingId">
+                    <option value="">-- Ei valittu --</option>
+                    ${state.sailings
+                      .slice()
+                      .sort((a,b)=>(a.date||"").localeCompare(b.date||""))
+                      .map(s=>`<option value="${s.id}" ${s.id===sailingId?"selected":""}>${esc(s.name)} (${fmtDate(s.date)})</option>`)
+                      .join("")}
+                  </select>
+                </div>
+              </div>
+
+              <div class="grid2" style="margin-top:12px">
+                <div>
+                  <label>Laskutus</label>
+                  <select data-field="billTo">
+                    <option value="self" ${billTo==="self"?"selected":""}>Asiakas maksaa itse</option>
+                    <option value="company" ${billTo==="company"?"selected":""}>Yritys maksaa</option>
+                  </select>
+                </div>
+                <div>
+                  <label>Tilaajayritys (jos yritys maksaa)</label>
+                  <select data-field="companyId">
+                    <option value="">-- Ei valittu --</option>
+                    ${state.companies
+                      .slice()
+                      .sort((a,b)=>(a.name||"").localeCompare(b.name||""))
+                      .map(co=>`<option value="${co.id}" ${co.id===companyId?"selected":""}>${esc(co.name)}</option>`)
+                      .join("")}
+                  </select>
+                </div>
+              </div>
+
+              <div class="row" style="justify-content:flex-end;margin-top:16px">
+                <button class="btn primary" data-action="save-customer">${editing?"Tallenna muutokset":"Tallenna"}</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    if(state.modal==="sailing"){
+      const editing = !!state.editId;
+      const s = editing ? state.sailings.find(x=>x.id===state.editId) : null;
+
+      const name = s?.name || "";
+      const date = s?.date || today();
+      const type = s?.type || SAILING_TYPES[0];
+      const maxPersons = Number(s?.maxPersons ?? 6);
+      const pricePerPerson = Number(s?.pricePerPerson ?? 0);
+
+      return `
+        <div class="overlay" data-action="close-modal">
+          <div class="modal" onclick="event.stopPropagation()">
+            <header>
+              <div class="row between">
+                <h2 style="margin:0">${editing?"Muokkaa purjehdusta":"Uusi purjehdus"}</h2>
+                <button class="btn secondary" data-action="close-modal">Sulje</button>
+              </div>
+            </header>
+            <div class="body">
+              <label>Nimi *</label>
+              <input data-field="name" value="${esc(name)}">
+
+              <div class="grid2" style="margin-top:12px">
+                <div>
+                  <label>Päivä *</label>
+                  <input type="date" data-field="date" value="${esc(date)}">
+                </div>
+                <div>
+                  <label>Tyyppi *</label>
+                  <select data-field="type">
+                    ${SAILING_TYPES.map(t=>`<option value="${esc(t)}" ${t===type?"selected":""}>${esc(t)}</option>`).join("")}
+                  </select>
+                </div>
+              </div>
+
+              <div class="grid2" style="margin-top:12px">
+                <div>
+                  <label>Max hlö *</label>
+                  <input type="number" min="1" step="1" data-field="maxPersons" value="${esc(String(maxPersons))}">
+                </div>
+                <div>
+                  <label>Hinta/hlö (€) *</label>
+                  <input type="number" min="0" step="0.01" data-field="pricePerPerson" value="${esc(String(pricePerPerson))}">
+                </div>
+              </div>
+
+              <div class="row" style="justify-content:flex-end;margin-top:16px">
+                <button class="btn primary" data-action="save-sailing">${editing?"Tallenna muutokset":"Tallenna"}</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    if(state.modal==="company"){
+      const editing = !!state.editId;
+      const co = editing ? state.companies.find(x=>x.id===state.editId) : null;
+
+      const name = co?.name || "";
+      const businessId = co?.businessId || "";
+      const email = co?.email || "";
+      const commissionPct = (co?.commissionPct!=null) ? String(co.commissionPct) : "0";
+
+      return `
+        <div class="overlay" data-action="close-modal">
+          <div class="modal" onclick="event.stopPropagation()">
+            <header>
+              <div class="row between">
+                <h2 style="margin:0">${editing?"Muokkaa yritystä":"Uusi yritys"}</h2>
+                <button class="btn secondary" data-action="close-modal">Sulje</button>
+              </div>
+            </header>
+            <div class="body">
+              <label>Yrityksen nimi *</label>
+              <input data-field="name" value="${esc(name)}">
+
+              <div class="grid2" style="margin-top:12px">
+                <div>
+                  <label>Y-tunnus</label>
+                  <input data-field="businessId" value="${esc(businessId)}" placeholder="1234567-8">
+                </div>
+                <div>
+                  <label>Sähköposti</label>
+                  <input data-field="email" value="${esc(email)}" placeholder="laskutus@yritys.fi">
+                </div>
+              </div>
+
+              <div style="margin-top:12px">
+                <label>Provisio (%)</label>
+                <input type="number" min="0" step="0.01" data-field="commissionPct" value="${esc(commissionPct)}">
+                <div class="small muted" style="margin-top:6px">Provisio näkyy vain yritystiedoissa ja yrityslaskulla.</div>
+              </div>
+
+              <div class="row" style="justify-content:flex-end;margin-top:16px">
+                <button class="btn primary" data-action="save-company">${editing?"Tallenna muutokset":"Tallenna"}</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    return "";
+  }
+
+  function bind(){
+    // tabit
+    document.querySelectorAll("[data-tab]").forEach(b=>{
+      b.onclick=()=>{ state.tab=b.dataset.tab; render(); };
+    });
+
+    // hakukentät
+    const sc=document.querySelector('[data-action="search-customers"]');
+    if(sc){
+      sc.oninput=e=>{ state.searchCustomers=e.target.value; render(); };
+      sc.onkeydown=e=>{ if(e.key==="Enter") e.preventDefault(); };
+    }
+    const ss=document.querySelector('[data-action="search-sailings"]');
+    if(ss){
+      ss.oninput=e=>{ state.searchSailings=e.target.value; render(); };
+      ss.onkeydown=e=>{ if(e.key==="Enter") e.preventDefault(); };
+    }
+
+    // dashboard restore file
+    document.querySelector('[data-action="restore-json"]')?.addEventListener("change", async (e)=>{
+      const file=e.target.files && e.target.files[0];
+      if(!file) return;
+      try{
+        const text=await file.text();
+        const data=JSON.parse(text);
+        if(!confirm("Palautus korvaa nykyiset tiedot tässä laitteessa. Jatketaanko?")) return;
+
+        state.customers=Array.isArray(data.customers)?data.customers:[];
+        state.sailings=Array.isArray(data.sailings)?data.sailings:[];
+        state.companies=Array.isArray(data.companies)?data.companies:[];
+        save();
+        render();
+      }catch(err){
+        alert("Palautus epäonnistui: tiedosto ei ollut kelvollinen JSON.");
+      }finally{
+        e.target.value="";
+      }
+    });
+
+    // invoicing inputs
+    document.querySelector('[data-action="inv-sailing"]')?.addEventListener("change",(e)=>{ state.invoice.sailingId=e.target.value; render(); });
+    document.querySelector('[data-action="inv-mode"]')?.addEventListener("change",(e)=>{ state.invoice.mode=e.target.value; render(); });
+    document.querySelector('[data-action="inv-customer"]')?.addEventListener("change",(e)=>{ state.invoice.customerId=e.target.value; render(); });
+    document.querySelector('[data-action="inv-company"]')?.addEventListener("change",(e)=>{ state.invoice.companyId=e.target.value; render(); });
+    document.querySelector('[data-action="inv-no"]')?.addEventListener("input",(e)=>{ state.invoice.invoiceNo=e.target.value; });
+    document.querySelector('[data-action="inv-date"]')?.addEventListener("change",(e)=>{ state.invoice.invoiceDate=e.target.value; render(); });
+
+    // click-actionit
+    document.querySelectorAll("[data-action]").forEach(el=>{
+      el.onclick=()=>{
+        const a=el.dataset.action;
+        const itemId=el.dataset.id;
+        const idx=(typeof el.dataset.idx!=="undefined")?Number(el.dataset.idx):null;
+
+        if(a==="set-group"){ state.sailingGroup=itemId; render(); return; }
+
+        if(a==="new-customer"){ state.modal="customer"; state.editId=null; render(); return; }
+        if(a==="edit-customer"){ state.modal="customer"; state.editId=itemId; render(); return; }
+
+        if(a==="new-sailing"){ state.modal="sailing"; state.editId=null; render(); return; }
+        if(a==="edit-sailing"){ state.modal="sailing"; state.editId=itemId; render(); return; }
+
+        if(a==="new-company"){ state.modal="company"; state.editId=null; render(); return; }
+        if(a==="edit-company"){ state.modal="company"; state.editId=itemId; render(); return; }
+
+        if(a==="close-modal"){ state.modal=null; state.editId=null; render(); return; }
+
+        if(a==="toggle-sailing"){
+          state.openSailingId = (state.openSailingId===itemId) ? null : itemId;
+          render();
+          return;
+        }
+
+        if(a==="add-session"){
+          const s = state.sailings.find(x=>x.id===itemId);
+          if(!s) return;
+
+          const date = prompt("Kurssipäivä (YYYY-MM-DD):", today());
+          if(!date) return;
+
+          const start = prompt("Aloitusaika (HH:MM), tyhjä sallittu:", "17:00") || "";
+          const end = prompt("Lopetusaika (HH:MM), tyhjä sallittu:", "20:00") || "";
+          const note = prompt("Lisähuomio (valinnainen):", "") || "";
+
+          if(!Array.isArray(s.sessions)) s.sessions=[];
+          s.sessions.push({date,start,end,note});
+          save(); render(); return;
+        }
+
+        if(a==="delete-session"){
+          const s=state.sailings.find(x=>x.id===itemId);
+          if(!s || !Array.isArray(s.sessions)) return;
+          if(idx===null || Number.isNaN(idx)) return;
+          if(!confirm("Poistetaanko kurssipäivä?")) return;
+          s.sessions.splice(idx,1);
+          save(); render(); return;
+        }
+
+        if(a==="save-customer"){
+          const name=(document.querySelector('[data-field="name"]')?.value||"").trim();
+          if(!name) return alert("Nimi pakollinen");
+
+          const phone=(document.querySelector('[data-field="phone"]')?.value||"").trim();
+          const email=(document.querySelector('[data-field="email"]')?.value||"").trim();
+          const sailingId=(document.querySelector('[data-field="sailingId"]')?.value||"");
+          const billTo=(document.querySelector('[data-field="billTo"]')?.value||"self");
+          const companyId=(document.querySelector('[data-field="companyId"]')?.value||"");
+
+          // yritysvalidaatio
+          if(billTo==="company" && !companyId){
+            return alert("Valitse tilaajayritys (tai vaihda laskutus: Asiakas maksaa itse).");
+          }
+
+          // estä ylibuukkaus: jos uusi asiakas liitetään purjehdukseen joka täynnä
+          if(sailingId){
+            const s=state.sailings.find(x=>x.id===sailingId);
+            if(s){
+              const max=Number(s.maxPersons||0)||0;
+              const booked=enrolledCount(sailingId);
+              const editing = !!state.editId;
+              const wasInSame = editing ? (state.customers.find(x=>x.id===state.editId)?.sailingId===sailingId) : false;
+              // jos muokataan ja oli jo samassa purjehduksessa, ei kasvateta paikkaa
+              const effectiveBooked = wasInSame ? booked-1 : booked;
+              if(max>0 && effectiveBooked>=max){
+                return alert(`Purjehdus on täynnä (${booked}/${max}). Valitse toinen purjehdus tai jätä tyhjäksi.`);
+              }
+            }
+          }
+
+          if(state.editId){
+            const c=state.customers.find(x=>x.id===state.editId);
+            if(!c) return;
+            c.name=name; c.phone=phone; c.email=email; c.sailingId=sailingId; c.billTo=billTo; c.companyId=(billTo==="company")?companyId:"";
+          }else{
+            state.customers.push({id:id("C"), name, phone, email, sailingId, billTo, companyId:(billTo==="company")?companyId:""});
+          }
+
+          save();
+          state.modal=null; state.editId=null;
+          render();
+          return;
+        }
+
+        if(a==="save-sailing"){
+          const name=(document.querySelector('[data-field="name"]')?.value||"").trim();
+          const date=(document.querySelector('[data-field="date"]')?.value||"").trim();
+          const type=(document.querySelector('[data-field="type"]')?.value||"").trim();
+          const maxPersons=parseInt(document.querySelector('[data-field="maxPersons"]')?.value,10)||1;
+          const pricePerPerson=parseFloat(document.querySelector('[data-field="pricePerPerson"]')?.value)||0;
+
+          if(!name||!date||!type) return alert("Täytä pakolliset kentät (nimi, päivä, tyyppi).");
+
+          if(state.editId){
+            const s=state.sailings.find(x=>x.id===state.editId);
+            if(!s) return;
+            s.name=name; s.date=date; s.type=type; s.maxPersons=maxPersons; s.pricePerPerson=pricePerPerson;
+            if(!Array.isArray(s.sessions)) s.sessions=[];
+          }else{
+            state.sailings.push({id:id("S"), name, date, type, maxPersons, pricePerPerson, sessions:[]});
+          }
+
+          // default invoice selection
+          if(!state.invoice.sailingId) state.invoice.sailingId = state.sailings[0]?.id || "";
+
+          save();
+          state.modal=null; state.editId=null;
+          render();
+          return;
+        }
+
+        if(a==="save-company"){
+          const name=(document.querySelector('[data-field="name"]')?.value||"").trim();
+          if(!name) return alert("Yrityksen nimi on pakollinen.");
+
+          const businessId=(document.querySelector('[data-field="businessId"]')?.value||"").trim();
+          const email=(document.querySelector('[data-field="email"]')?.value||"").trim();
+          const commissionPct=parseFloat(document.querySelector('[data-field="commissionPct"]')?.value)||0;
+
+          if(state.editId){
+            const co=state.companies.find(x=>x.id===state.editId);
+            if(!co) return;
+            co.name=name; co.businessId=businessId; co.email=email; co.commissionPct=commissionPct;
+          }else{
+            state.companies.push({id:id("B"), name, businessId, email, commissionPct});
+          }
+
+          save();
+          state.modal=null; state.editId=null;
+          render();
+          return;
+        }
+
+        if(a==="delete-customer"){
+          if(!confirm("Poistetaanko asiakas?")) return;
+          state.customers=state.customers.filter(c=>c.id!==itemId);
+          save(); render(); return;
+        }
+
+        if(a==="delete-sailing"){
+          if(!confirm("Poistetaanko purjehdus?")) return;
+          state.sailings=state.sailings.filter(s=>s.id!==itemId);
+          if(state.openSailingId===itemId) state.openSailingId=null;
+          // asiakkaiden sailingId:t jätetään (näkyy tyhjänä pillinä jos purjehdus poistuu)
+          save(); render(); return;
+        }
+
+        if(a==="delete-company"){
+          if(!confirm("Poistetaanko yritys?")) return;
+          const cid=itemId;
+          state.companies=state.companies.filter(co=>co.id!==cid);
+          // asiakkaista irrotetaan yritys
+          state.customers.forEach(c=>{ if(c.companyId===cid){ c.companyId=""; if(c.billTo==="company") c.billTo="self"; }});
+          save(); render(); return;
+        }
+
+        if(a==="backup-json"){
+          const blob=new Blob([JSON.stringify({customers:state.customers,sailings:state.sailings,companies:state.companies},null,2)],{type:"application/json"});
+          const url=URL.createObjectURL(blob);
+          const x=document.createElement("a");
+          x.href=url;
+          x.download="absolut37_backup_"+today()+".json";
+          x.click();
+          URL.revokeObjectURL(url);
+          return;
+        }
+
+        if(a==="print"){ window.print(); return; }
+        if(a==="email"){ sendInvoiceEmail(); return; }
+      };
+    });
+  }
+
+  function sendInvoiceEmail(){
+    const box=document.getElementById("invoiceBox");
+    if(!box){ alert("Laskua ei löytynyt."); return; }
+    const text=box.innerText;
+
+    // vastaanottaja: yritetään päätellä valinnan mukaan
+    let to="";
+    if(state.invoice.mode==="customer"){
+      const c=state.customers.find(x=>x.id===state.invoice.customerId);
+      to=c?.email||"";
+    }else{
+      const co=state.companies.find(x=>x.id===state.invoice.companyId);
+      to=co?.email||"";
+    }
+
+    const subject=encodeURIComponent("Lasku "+(state.invoice.invoiceNo||""));
+    const body=encodeURIComponent(text);
+    window.location.href=`mailto:${encodeURIComponent(to)}?subject=${subject}&body=${body}`;
+  }
+
+  // init
+  load();
+  render();
 
 })();
 </script>
