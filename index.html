@@ -109,7 +109,7 @@ label{display:block;font-size:13px;font-weight:900;margin-bottom:6px;color:#3741
 
   const STORAGE_KEY = "absolut37_v3_full";
 
-  // ✅ Myyjä + pankkitiedot laskulle
+  // Myyjä + pankkitiedot laskulle
   const ISSUER = {
     name:"J Sailing",
     businessId:"1728993-9",
@@ -139,7 +139,7 @@ label{display:block;font-size:13px;font-weight:900;margin-bottom:6px;color:#3741
     editId:null,
     searchCustomers:"",
     searchSailings:"",
-    openSailingId:null,          // ✅ tärkeä pilkku korjattu
+    openSailingId:null,
     sailingGroup:"all",
     invoice:{
       mode:"customer",   // "customer" | "company"
@@ -147,7 +147,10 @@ label{display:block;font-size:13px;font-weight:900;margin-bottom:6px;color:#3741
       customerId:"",
       companyId:"",
       invoiceNo:"",
-      invoiceDate: today()
+      invoiceDate: today(),
+      dueDate: addDaysISO(today(), 14),
+      reference: "",       // viitenumero
+      message: ""          // viesti / selite maksulle
     }
   };
 
@@ -155,7 +158,8 @@ label{display:block;font-size:13px;font-weight:900;margin-bottom:6px;color:#3741
     localStorage.setItem(STORAGE_KEY, JSON.stringify({
       customers:state.customers,
       sailings:state.sailings,
-      companies:state.companies
+      companies:state.companies,
+      invoice: state.invoice
     }));
   }
 
@@ -167,10 +171,19 @@ label{display:block;font-size:13px;font-weight:900;margin-bottom:6px;color:#3741
         state.customers=Array.isArray(d.customers)?d.customers:[];
         state.sailings=Array.isArray(d.sailings)?d.sailings:[];
         state.companies=Array.isArray(d.companies)?d.companies:[];
+        if(d.invoice && typeof d.invoice==="object"){
+          state.invoice = {
+            ...state.invoice,
+            ...d.invoice
+          };
+        }
       }
     }catch(e){}
 
     if(!state.invoice.invoiceNo) state.invoice.invoiceNo = "JS-"+today().replaceAll("-","");
+    if(!state.invoice.invoiceDate) state.invoice.invoiceDate = today();
+    if(!state.invoice.dueDate) state.invoice.dueDate = addDaysISO(state.invoice.invoiceDate, 14);
+
     if(state.customers.length===0 && state.sailings.length===0 && state.companies.length===0){
       const coId = id("B");
       state.companies.push({id:coId, name:"Esimerkki Oy", businessId:"1234567-8", email:"info@esimerkki.fi", commissionPct:10});
@@ -195,6 +208,16 @@ label{display:block;font-size:13px;font-weight:900;margin-bottom:6px;color:#3741
   function fmtDate(d){return d ? new Date(d+"T00:00:00").toLocaleDateString("fi-FI") : "";}
   function enrolledCount(sailingId){return state.customers.filter(c=>c.sailingId===sailingId).length;}
   function vatRate(s){ return (s && s.type==="Charter") ? 0.135 : 0.255; }
+
+  function addDaysISO(isoDate, days){
+    try{
+      const d = new Date(isoDate+"T00:00:00");
+      d.setDate(d.getDate() + Number(days||0));
+      return d.toISOString().slice(0,10);
+    }catch(e){
+      return today();
+    }
+  }
 
   function fillUI(booked,max){
     const m=Math.max(1,Number(max||0)||1);
@@ -380,6 +403,7 @@ label{display:block;font-size:13px;font-weight:900;margin-bottom:6px;color:#3741
 
   function renderSailings(){
     const counts = groupCounts();
+
     const g = SAILING_GROUPS.find(x=>x.id===state.sailingGroup) || SAILING_GROUPS[0];
 
     const term=(state.searchSailings||"").toLowerCase().trim();
@@ -627,13 +651,31 @@ label{display:block;font-size:13px;font-weight:900;margin-bottom:6px;color:#3741
               </select>
             </div>
           `}
-          <div style="min-width:220px">
+        </div>
+
+        <div class="grid3 noPrint" style="margin-top:12px">
+          <div>
             <label>Laskunro</label>
             <input data-action="inv-no" value="${esc(state.invoice.invoiceNo)}">
           </div>
-          <div style="min-width:220px">
+          <div>
             <label>Päivä</label>
             <input type="date" data-action="inv-date" value="${esc(state.invoice.invoiceDate)}">
+          </div>
+          <div>
+            <label>Eräpäivä</label>
+            <input type="date" data-action="inv-due" value="${esc(state.invoice.dueDate)}">
+          </div>
+        </div>
+
+        <div class="grid2 noPrint" style="margin-top:12px">
+          <div>
+            <label>Viitenumero (valinnainen)</label>
+            <input data-action="inv-ref" value="${esc(state.invoice.reference)}" placeholder="esim. 12345">
+          </div>
+          <div>
+            <label>Viesti / maksun selite (valinnainen)</label>
+            <input data-action="inv-msg" value="${esc(state.invoice.message)}" placeholder="esim. Kurssi 1 / osallistuja">
           </div>
         </div>
 
@@ -648,7 +690,8 @@ label{display:block;font-size:13px;font-weight:900;margin-bottom:6px;color:#3741
             </div>
             <div>
               Nro: ${esc(state.invoice.invoiceNo)}<br>
-              Päivä: ${esc(state.invoice.invoiceDate)}
+              Päivä: ${esc(state.invoice.invoiceDate)}<br>
+              Eräpäivä: <b>${esc(state.invoice.dueDate)}</b>
             </div>
           </div>
 
@@ -687,13 +730,19 @@ label{display:block;font-size:13px;font-weight:900;margin-bottom:6px;color:#3741
             <tr><td><b>Yhteensä</b></td><td class="r"><b>${Number(grossTotal||0).toFixed(2)} €</b></td></tr>
           </table>
 
-          <!-- ✅ Maksutiedot (IBAN/BIC) -->
           <div class="hr"></div>
-          <div>
-            <b>Maksutiedot</b><br>
-            Pankki: ${esc(ISSUER.bankName)}<br>
-            IBAN: <b>${esc(ISSUER.iban)}</b><br>
-            BIC: <b>${esc(ISSUER.bic)}</b>
+
+          <div class="grid2">
+            <div>
+              <b>Maksutiedot</b><br>
+              Pankki: ${esc(ISSUER.bankName)}<br>
+              IBAN: <b>${esc(ISSUER.iban)}</b><br>
+              BIC: <b>${esc(ISSUER.bic)}</b>
+            </div>
+            <div>
+              ${state.invoice.reference ? `<div><b>Viite:</b> ${esc(state.invoice.reference)}</div>` : `<div class="muted">Viite: (ei asetettu)</div>`}
+              ${state.invoice.message ? `<div style="margin-top:6px"><b>Viesti:</b> ${esc(state.invoice.message)}</div>` : ``}
+            </div>
           </div>
         </div>
 
@@ -924,6 +973,9 @@ label{display:block;font-size:13px;font-weight:900;margin-bottom:6px;color:#3741
         state.customers=Array.isArray(data.customers)?data.customers:[];
         state.sailings=Array.isArray(data.sailings)?data.sailings:[];
         state.companies=Array.isArray(data.companies)?data.companies:[];
+        if(data.invoice && typeof data.invoice==="object"){
+          state.invoice = { ...state.invoice, ...data.invoice };
+        }
         save();
         render();
       }catch(err){
@@ -933,12 +985,21 @@ label{display:block;font-size:13px;font-weight:900;margin-bottom:6px;color:#3741
       }
     });
 
-    document.querySelector('[data-action="inv-sailing"]')?.addEventListener("change",(e)=>{ state.invoice.sailingId=e.target.value; render(); });
-    document.querySelector('[data-action="inv-mode"]')?.addEventListener("change",(e)=>{ state.invoice.mode=e.target.value; render(); });
-    document.querySelector('[data-action="inv-customer"]')?.addEventListener("change",(e)=>{ state.invoice.customerId=e.target.value; render(); });
-    document.querySelector('[data-action="inv-company"]')?.addEventListener("change",(e)=>{ state.invoice.companyId=e.target.value; render(); });
-    document.querySelector('[data-action="inv-no"]')?.addEventListener("input",(e)=>{ state.invoice.invoiceNo=e.target.value; });
-    document.querySelector('[data-action="inv-date"]')?.addEventListener("change",(e)=>{ state.invoice.invoiceDate=e.target.value; render(); });
+    document.querySelector('[data-action="inv-sailing"]')?.addEventListener("change",(e)=>{ state.invoice.sailingId=e.target.value; save(); render(); });
+    document.querySelector('[data-action="inv-mode"]')?.addEventListener("change",(e)=>{ state.invoice.mode=e.target.value; save(); render(); });
+    document.querySelector('[data-action="inv-customer"]')?.addEventListener("change",(e)=>{ state.invoice.customerId=e.target.value; save(); render(); });
+    document.querySelector('[data-action="inv-company"]')?.addEventListener("change",(e)=>{ state.invoice.companyId=e.target.value; save(); render(); });
+
+    document.querySelector('[data-action="inv-no"]')?.addEventListener("input",(e)=>{ state.invoice.invoiceNo=e.target.value; save(); });
+    document.querySelector('[data-action="inv-date"]')?.addEventListener("change",(e)=>{
+      state.invoice.invoiceDate=e.target.value;
+      // jos eräpäivä on tyhjä tai sama kuin vanha logiikka, pidä se automaattisesti 14 pv
+      if(!state.invoice.dueDate) state.invoice.dueDate = addDaysISO(state.invoice.invoiceDate, 14);
+      save(); render();
+    });
+    document.querySelector('[data-action="inv-due"]')?.addEventListener("change",(e)=>{ state.invoice.dueDate=e.target.value; save(); render(); });
+    document.querySelector('[data-action="inv-ref"]')?.addEventListener("input",(e)=>{ state.invoice.reference=e.target.value; save(); });
+    document.querySelector('[data-action="inv-msg"]')?.addEventListener("input",(e)=>{ state.invoice.message=e.target.value; save(); });
 
     document.querySelectorAll("[data-action]").forEach(el=>{
       el.onclick=()=>{
@@ -1004,6 +1065,7 @@ label{display:block;font-size:13px;font-weight:900;margin-bottom:6px;color:#3741
             return alert("Valitse tilaajayritys (tai vaihda laskutus: Asiakas maksaa itse).");
           }
 
+          // kapasiteetti / ylibuukkaus (muokkauksessa huomioi jos sama purjehdus)
           if(sailingId){
             const s=state.sailings.find(x=>x.id===sailingId);
             if(s){
@@ -1101,7 +1163,12 @@ label{display:block;font-size:13px;font-weight:900;margin-bottom:6px;color:#3741
         }
 
         if(a==="backup-json"){
-          const blob=new Blob([JSON.stringify({customers:state.customers,sailings:state.sailings,companies:state.companies},null,2)],{type:"application/json"});
+          const blob=new Blob([JSON.stringify({
+            customers:state.customers,
+            sailings:state.sailings,
+            companies:state.companies,
+            invoice: state.invoice
+          },null,2)],{type:"application/json"});
           const url=URL.createObjectURL(blob);
           const x=document.createElement("a");
           x.href=url;
@@ -1120,7 +1187,7 @@ label{display:block;font-size:13px;font-weight:900;margin-bottom:6px;color:#3741
   function sendInvoiceEmail(){
     const box=document.getElementById("invoiceBox");
     if(!box){ alert("Laskua ei löytynyt."); return; }
-    const text=box.innerText; // ✅ sisältää myös Maksutiedot (IBAN/BIC)
+    const text=box.innerText;
 
     let to="";
     if(state.invoice.mode==="customer"){
