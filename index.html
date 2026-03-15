@@ -347,6 +347,87 @@ input:focus,select:focus,textarea:focus{
 .legend{display:flex;gap:14px;flex-wrap:wrap;margin:10px 0}
 .legend-item{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600}
 
+
+/* KALENTERI */
+.cal-grid{
+  display:grid;
+  grid-template-columns:repeat(7,1fr);
+  gap:3px;
+  margin-top:10px;
+}
+.cal-dayname{
+  text-align:center;
+  font-size:11px;
+  font-weight:700;
+  color:var(--muted);
+  padding:6px 2px;
+  text-transform:uppercase;
+  letter-spacing:.5px;
+}
+.cal-cell{
+  min-height:90px;
+  background:#fff;
+  border:1px solid var(--line);
+  border-radius:8px;
+  padding:5px;
+  vertical-align:top;
+  position:relative;
+}
+.cal-cell.other-month{
+  background:#f8fafc;
+  opacity:.5;
+}
+.cal-cell.today{
+  border-color:var(--navy);
+  border-width:2px;
+}
+.cal-date{
+  font-size:12px;
+  font-weight:700;
+  color:#64748b;
+  margin-bottom:4px;
+}
+.cal-cell.today .cal-date{
+  color:var(--navy);
+  background:var(--navy);
+  color:#fff;
+  width:22px;height:22px;
+  border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  font-size:11px;
+}
+.cal-event{
+  display:block;
+  padding:2px 5px;
+  border-radius:5px;
+  font-size:10px;
+  font-weight:600;
+  margin-bottom:2px;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  cursor:pointer;
+  border:none;
+  text-align:left;
+  width:100%;
+}
+.cal-event.type-Kurssi{background:#dbeafe;color:#1e40af}
+.cal-event.type-Charter{background:#d1fae5;color:#065f46}
+.cal-event.type-Iltapurjehdus{background:#ede9fe;color:#5b21b6}
+.cal-event.type-Päiväpurjehdus{background:#fef3c7;color:#92400e}
+.cal-event.type-Purjehdusretki{background:#fee2e2;color:#991b1b}
+.cal-event.type-Yritystilaisuus{background:#e0e7ff;color:#3730a3}
+.cal-event.type-Muu{background:#f1f5f9;color:#475569}
+.cal-nav{display:flex;align-items:center;gap:12px}
+.cal-month-title{font-family:'DM Serif Display',serif;font-size:22px;color:var(--navy);min-width:180px;text-align:center}
+.cal-legend{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.cal-legend-item{display:flex;align-items:center;gap:5px;font-size:11px;font-weight:600}
+.cal-legend-dot{width:10px;height:10px;border-radius:3px}
+@media(max-width:700px){
+  .cal-cell{min-height:60px}
+  .cal-event{font-size:9px;padding:1px 3px}
+}
+
 /* print */
 @media print{
   header.app-header,nav.tabs,.noPrint{display:none!important}
@@ -407,7 +488,8 @@ input:focus,select:focus,textarea:focus{
       invoiceDate: today(),
       type:"full" // "full" | "reservation"
     },
-    registerMonth: today().slice(0,7)
+    registerMonth: today().slice(0,7),
+    calendarMonth: today().slice(0,7)
   };
 
   function save(){
@@ -680,6 +762,7 @@ input:focus,select:focus,textarea:focus{
   function renderNav(){
     const tabs=[
       ["dashboard","⚓ Dashboard"],
+      ["calendar","📅 Kalenteri"],
       ["sailings","⛵ Purjehdukset"],
       ["customers","👤 Asiakkaat"],
       ["companies","🏢 Yritykset"],
@@ -694,11 +777,112 @@ input:focus,select:focus,textarea:focus{
 
   function renderTab(){
     if(state.tab==="dashboard") return renderDashboard();
+    if(state.tab==="calendar")  return renderCalendar();
     if(state.tab==="sailings")  return renderSailings();
     if(state.tab==="customers") return renderCustomers();
     if(state.tab==="companies") return renderCompanies();
     if(state.tab==="invoicing") return renderInvoicing();
     return "";
+  }
+
+
+  function renderCalendar(){
+    const [year, month] = state.calendarMonth.split("-").map(Number);
+    const monthNames = ["Tammikuu","Helmikuu","Maaliskuu","Huhtikuu","Toukokuu","Kesäkuu",
+                        "Heinäkuu","Elokuu","Syyskuu","Lokakuu","Marraskuu","Joulukuu"];
+    const dayNames = ["Ma","Ti","Ke","To","Pe","La","Su"];
+
+    // First day of month (0=Sun..6=Sat), convert to Mon-based
+    const firstDay = new Date(year, month-1, 1).getDay();
+    const startOffset = (firstDay === 0) ? 6 : firstDay - 1;
+    const daysInMonth = new Date(year, month, 0).getDate();
+    const daysInPrev  = new Date(year, month-1, 0).getDate();
+
+    const todayStr = today();
+
+    // Build event map: date string -> sailings[]
+    const eventMap = {};
+    for(const s of state.sailings){
+      if(!s.date) continue;
+      if(!eventMap[s.date]) eventMap[s.date] = [];
+      eventMap[s.date].push(s);
+      // Also add sessions
+      for(const sess of (s.sessions||[])){
+        if(!sess.date) continue;
+        if(!eventMap[sess.date]) eventMap[sess.date] = [];
+        // Mark as session event
+        eventMap[sess.date].push({...s, _sessionLabel: sess.start?(s.name+" klo "+sess.start):s.name, _isSession:true});
+      }
+    }
+
+    // Build cells
+    const totalCells = Math.ceil((startOffset + daysInMonth) / 7) * 7;
+    let cells = "";
+    for(let i=0; i<totalCells; i++){
+      let cellDay, cellMonth, cellYear, otherMonth=false;
+      if(i < startOffset){
+        cellDay = daysInPrev - startOffset + i + 1;
+        cellMonth = month===1?12:month-1;
+        cellYear  = month===1?year-1:year;
+        otherMonth=true;
+      } else if(i >= startOffset + daysInMonth){
+        cellDay = i - startOffset - daysInMonth + 1;
+        cellMonth = month===12?1:month+1;
+        cellYear  = month===12?year+1:year;
+        otherMonth=true;
+      } else {
+        cellDay = i - startOffset + 1;
+        cellMonth = month;
+        cellYear  = year;
+      }
+      const dateStr = cellYear+"-"+String(cellMonth).padStart(2,"0")+"-"+String(cellDay).padStart(2,"0");
+      const isToday = dateStr===todayStr;
+      const events = eventMap[dateStr]||[];
+
+      const evHTML = events.slice(0,3).map(s=>{
+        const typeClass = "type-"+(s.type||"Muu").replace(/\s/g,"_");
+        const label = s._sessionLabel || s.name;
+        const booked = s._isSession ? "" : ` (${enrolledCount(s.id)}/${s.maxPersons||0})`;
+        return `<button class="cal-event ${typeClass}" data-action="edit-sailing" data-id="${s.id}" title="${esc(label)}">${esc(label)}${booked}</button>`;
+      }).join("");
+      const moreHTML = events.length>3 ? `<div style="font-size:10px;color:var(--muted);padding:1px 4px">+${events.length-3} lisää</div>` : "";
+
+      cells += `<div class="cal-cell${otherMonth?" other-month":""}${isToday?" today":""}">
+        <div class="cal-date">${cellDay}</div>
+        ${evHTML}${moreHTML}
+      </div>`;
+    }
+
+    const TYPES = ["Kurssi","Charter","Iltapurjehdus","Päiväpurjehdus","Purjehdusretki","Yritystilaisuus","Muu"];
+    const legendHTML = TYPES.map(t=>`
+      <div class="cal-legend-item">
+        <div class="cal-legend-dot cal-event type-${t.replace(/\s/g,"_")}"></div>
+        ${esc(t)}
+      </div>
+    `).join("");
+
+    const prevMonth = month===1 ? year-1+"-12" : year+"-"+String(month-1).padStart(2,"0");
+    const nextMonth = month===12 ? year+1+"-01" : year+"-"+String(month+1).padStart(2,"0");
+
+    return `
+      <div class="card">
+        <div class="row between">
+          <div class="cal-nav">
+            <button class="btn secondary sm" data-action="cal-prev" data-month="${prevMonth}">‹ Edellinen</button>
+            <div class="cal-month-title">${monthNames[month-1]} ${year}</div>
+            <button class="btn secondary sm" data-action="cal-next" data-month="${nextMonth}">Seuraava ›</button>
+          </div>
+          <button class="btn secondary sm" data-action="cal-today">Tänään</button>
+        </div>
+
+        <div class="cal-legend">${legendHTML}</div>
+
+        <div class="cal-grid" style="margin-top:14px">
+          ${dayNames.map(d=>`<div class="cal-dayname">${d}</div>`).join("")}
+          ${cells}
+        </div>
+      </div>
+    `;
   }
 
   function renderDashboard(){
@@ -1456,6 +1640,8 @@ input:focus,select:focus,textarea:focus{
         const itemId=el.dataset.id;
         const idx=(typeof el.dataset.idx!=="undefined")?Number(el.dataset.idx):null;
 
+        if(a==="cal-prev"||a==="cal-next"){state.calendarMonth=el.dataset.month;render();return;}
+        if(a==="cal-today"){state.calendarMonth=today().slice(0,7);render();return;}
         if(a==="set-group"){state.sailingGroup=itemId;render();return;}
         if(a==="new-customer"){state.modal="customer";state.editId=null;render();return;}
         if(a==="edit-customer"){state.modal="customer";state.editId=itemId;render();return;}
