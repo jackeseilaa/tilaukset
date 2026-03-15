@@ -489,7 +489,8 @@ input:focus,select:focus,textarea:focus{
       type:"full" // "full" | "reservation"
     },
     registerMonth: today().slice(0,7),
-    calendarMonth: today().slice(0,7)
+    calendarMonth: today().slice(0,7),
+    editSession: null // {sailingId, idx}
   };
 
   function save(){
@@ -833,7 +834,8 @@ input:focus,select:focus,textarea:focus{
             label: s.name,
             timeLabel: timeLabel,
             note: sess.note || "",
-            _isSession: true
+            _isSession: true,
+            _sessIdx: s.sessions.indexOf(sess)
           });
         }
       }
@@ -868,7 +870,9 @@ input:focus,select:focus,textarea:focus{
         const booked = ev._isSession ? "" : ` (${enrolledCount(ev.id)}/${ev.maxPersons||0})`;
         const timePart = ev.timeLabel ? `<span style="opacity:.75;font-size:9px;display:block;margin-top:1px">${esc(ev.timeLabel)}</span>` : "";
         const titleAttr = ev.timeLabel ? ev.name+" "+ev.timeLabel : ev.name;
-        return `<button class="cal-event ${typeClass}" data-action="edit-sailing" data-id="${ev.id}" title="${esc(titleAttr)}" style="padding:3px 5px">
+        const action = ev._isSession ? "edit-session-cal" : "edit-sailing";
+        const sesIdx  = ev._isSession ? String(ev._sessIdx) : "";
+        return `<button class="cal-event ${typeClass}" data-action="${action}" data-id="${ev.id}" data-idx="${sesIdx}" title="${esc(titleAttr)}" style="padding:3px 5px">
           <span style="display:block">${esc(ev.label)}${booked}</span>
           ${timePart}
         </button>`;
@@ -1358,6 +1362,7 @@ input:focus,select:focus,textarea:focus{
   function renderModal(){
     if(!state.modal) return "";
     if(state.modal==="register") return renderRegisterModal();
+    if(state.modal==="session") return renderSessionModal();
     if(state.modal==="customer"||state.modal==="sailing"||state.modal==="company") return renderEditModal();
     return "";
   }
@@ -1433,6 +1438,53 @@ input:focus,select:focus,textarea:focus{
                 </tbody>
               </table>
             `}
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+
+  function renderSessionModal(){
+    const {sailingId, idx} = state.editSession || {};
+    const s = state.sailings.find(x=>x.id===sailingId);
+    if(!s || !Array.isArray(s.sessions) || !s.sessions[idx]) return "";
+    const sess = s.sessions[idx];
+    const dayNum = idx + 1;
+
+    return `
+      <div class="overlay" data-action="close-modal">
+        <div class="modal" onclick="event.stopPropagation()" style="max-width:480px">
+          <div class="modal-head">
+            <div class="row between">
+              <div>
+                <div class="modal-title">Kurssipäivä ${dayNum}</div>
+                <div class="card-sub" style="margin-top:3px">${esc(s.name)} · ${esc(sess.date||"")}</div>
+              </div>
+              <button class="btn secondary sm" data-action="close-modal">Sulje</button>
+            </div>
+          </div>
+          <div class="modal-body">
+            <div class="grid2">
+              <div class="field">
+                <label class="lbl">Aloitusaika</label>
+                <input type="time" data-field="sess-start" value="${esc(sess.start||"")}">
+              </div>
+              <div class="field">
+                <label class="lbl">Lopetusaika</label>
+                <input type="time" data-field="sess-end" value="${esc(sess.end||"")}">
+              </div>
+            </div>
+            <div class="field">
+              <label class="lbl">Lisähuomio</label>
+              <textarea data-field="sess-note" rows="3" style="resize:vertical">${esc(sess.note||"")}</textarea>
+            </div>
+            <div class="infobox blue">
+              💡 Voit muuttaa vain tämän päivän kellonaikaa ja huomiota. Kurssin nimi ja muut tiedot muutetaan Purjehdukset-välilehdellä.
+            </div>
+            <div class="row" style="justify-content:flex-end;margin-top:16px">
+              <button class="btn primary" data-action="save-session-modal">Tallenna</button>
+            </div>
           </div>
         </div>
       </div>
@@ -1669,6 +1721,21 @@ input:focus,select:focus,textarea:focus{
         const idx=(typeof el.dataset.idx!=="undefined")?Number(el.dataset.idx):null;
 
         if(a==="cal-prev"||a==="cal-next"){state.calendarMonth=el.dataset.month;render();return;}
+        if(a==="edit-session-cal"){
+          const sidx = el.dataset.idx!==""?Number(el.dataset.idx):null;
+          if(sidx===null||isNaN(sidx)) return;
+          state.editSession={sailingId:itemId, idx:sidx};
+          state.modal="session"; render(); return;
+        }
+        if(a==="save-session-modal"){
+          const {sailingId, idx} = state.editSession||{};
+          const s=state.sailings.find(x=>x.id===sailingId);
+          if(!s||!s.sessions[idx]) return;
+          s.sessions[idx].start = document.querySelector('[data-field="sess-start"]')?.value||"";
+          s.sessions[idx].end   = document.querySelector('[data-field="sess-end"]')?.value||"";
+          s.sessions[idx].note  = document.querySelector('[data-field="sess-note"]')?.value||"";
+          save(); state.modal=null; state.editSession=null; render(); return;
+        }
         if(a==="cal-today"){state.calendarMonth=today().slice(0,7);render();return;}
         if(a==="set-group"){state.sailingGroup=itemId;render();return;}
         if(a==="new-customer"){state.modal="customer";state.editId=null;render();return;}
