@@ -473,7 +473,7 @@ function gcalButton(sailing, sessionIdx){
   const isCourse = sailing.type==="Kurssi";
   const hasSessions = isCourse && Array.isArray(sailing.sessions) && sailing.sessions.length>0;
 
-  if(hasSessions && sessionIdx!=null){
+  if(sessionIdx!=null && hasSessions){
     // Yksittäinen kurssipäivä
     const sess = sailing.sessions[sessionIdx];
     if(!sess||!sess.date) return "";
@@ -496,13 +496,17 @@ function gcalButton(sailing, sessionIdx){
         📅 Lisää kalenteriin
       </a>`;
     }
-  } else if(!hasSessions) {
-    // Yksittäinen purjehdus (ei kurssipäiviä)
+  } else {
+    // Kurssin tai purjehduksen tason nappi
     const gcKey = `gcal_${sailing.id}`;
     const added = sailing[gcKey];
     const addedDate = sailing[gcKey+"_date"]||"";
+    // Kursseilla näytetään kurssin nimi ja aloituspäivä
     const url = gcalUrl(
-      sailing.name, sailing.date, sailing.startTime||null, sailing.endTime||null,
+      sailing.name,
+      sailing.date,
+      sailing.startTime||null,
+      sailing.endTime||null,
       `${sailing.name} · ${sailing.type} · J Sailing · Absolut 37`
     );
     if(added){
@@ -517,7 +521,6 @@ function gcalButton(sailing, sessionIdx){
       </a>`;
     }
   }
-  return "";
 }
 
 // Merkitse kalenteriin lisätyksi Firestoreen
@@ -945,8 +948,9 @@ function renderSailings(){
             </div>
           `:"";
 
-          // Google Calendar -nappi ei-kurssi purjehduksille
-          const gcalUI = !isCourse ? `<div class="row" style="margin-top:8px">${gcalButton(s, null)}</div>` : "";
+          // Google Calendar -nappi — kaikille purjehduksille
+          // Kursseille näytetään nappi kurssin tasolla, ei-kursseille suoraan
+          const gcalUI = `<div class="row" style="margin-top:8px">${gcalButton(s, null)}</div>`;
 
           const attendeesUI=state.openSailingId===s.id?`
             <div style="margin:6px 0 14px;padding:14px;background:rgba(232,244,253,.5);border-radius:10px;border:1px solid var(--line-bright)">
