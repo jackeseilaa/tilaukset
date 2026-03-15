@@ -365,7 +365,7 @@ input:focus,select:focus,textarea:focus{
   letter-spacing:.5px;
 }
 .cal-cell{
-  min-height:90px;
+  min-height:100px;
   background:#fff;
   border:1px solid var(--line);
   border-radius:8px;
@@ -800,18 +800,42 @@ input:focus,select:focus,textarea:focus{
 
     const todayStr = today();
 
-    // Build event map: date string -> sailings[]
+    // Build event map: date string -> events[]
     const eventMap = {};
+
     for(const s of state.sailings){
       if(!s.date) continue;
-      if(!eventMap[s.date]) eventMap[s.date] = [];
-      eventMap[s.date].push(s);
-      // Also add sessions
-      for(const sess of (s.sessions||[])){
-        if(!sess.date) continue;
-        if(!eventMap[sess.date]) eventMap[sess.date] = [];
-        // Mark as session event
-        eventMap[sess.date].push({...s, _sessionLabel: sess.start?(s.name+" klo "+sess.start):s.name, _isSession:true});
+
+      const isCourse = s.type === "Kurssi";
+      const hasSessions = isCourse && Array.isArray(s.sessions) && s.sessions.length > 0;
+
+      if(!hasSessions){
+        // Näytä purjehdus sen omalla päivällä
+        if(!eventMap[s.date]) eventMap[s.date] = [];
+        eventMap[s.date].push({
+          id: s.id, name: s.name, type: s.type,
+          maxPersons: s.maxPersons,
+          label: s.name,
+          timeLabel: "",
+          _isSession: false
+        });
+      } else {
+        // Kurssilla on kurssipäivät — näytä jokainen erikseen
+        for(const sess of s.sessions){
+          if(!sess.date) continue;
+          if(!eventMap[sess.date]) eventMap[sess.date] = [];
+          let timeLabel = "";
+          if(sess.start && sess.end)   timeLabel = sess.start + "–" + sess.end;
+          else if(sess.start)          timeLabel = "klo " + sess.start;
+          eventMap[sess.date].push({
+            id: s.id, name: s.name, type: s.type,
+            maxPersons: s.maxPersons,
+            label: s.name,
+            timeLabel: timeLabel,
+            note: sess.note || "",
+            _isSession: true
+          });
+        }
       }
     }
 
@@ -839,13 +863,17 @@ input:focus,select:focus,textarea:focus{
       const isToday = dateStr===todayStr;
       const events = eventMap[dateStr]||[];
 
-      const evHTML = events.slice(0,3).map(s=>{
-        const typeClass = "type-"+(s.type||"Muu").replace(/\s/g,"_");
-        const label = s._sessionLabel || s.name;
-        const booked = s._isSession ? "" : ` (${enrolledCount(s.id)}/${s.maxPersons||0})`;
-        return `<button class="cal-event ${typeClass}" data-action="edit-sailing" data-id="${s.id}" title="${esc(label)}">${esc(label)}${booked}</button>`;
+      const evHTML = events.slice(0,4).map(ev=>{
+        const typeClass = "type-"+(ev.type||"Muu");
+        const booked = ev._isSession ? "" : ` (${enrolledCount(ev.id)}/${ev.maxPersons||0})`;
+        const timePart = ev.timeLabel ? `<span style="opacity:.75;font-size:9px;display:block;margin-top:1px">${esc(ev.timeLabel)}</span>` : "";
+        const titleAttr = ev.timeLabel ? ev.name+" "+ev.timeLabel : ev.name;
+        return `<button class="cal-event ${typeClass}" data-action="edit-sailing" data-id="${ev.id}" title="${esc(titleAttr)}" style="padding:3px 5px">
+          <span style="display:block">${esc(ev.label)}${booked}</span>
+          ${timePart}
+        </button>`;
       }).join("");
-      const moreHTML = events.length>3 ? `<div style="font-size:10px;color:var(--muted);padding:1px 4px">+${events.length-3} lisää</div>` : "";
+      const moreHTML = events.length>4 ? `<div style="font-size:10px;color:var(--muted);padding:1px 4px">+${events.length-4} lisää</div>` : "";
 
       cells += `<div class="cal-cell${otherMonth?" other-month":""}${isToday?" today":""}">
         <div class="cal-date">${cellDay}</div>
