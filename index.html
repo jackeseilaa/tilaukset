@@ -1,2132 +1,2025 @@
 <!DOCTYPE html>
 <html lang="fi">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Absolut 37 — Tilaukset</title>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="apple-mobile-web-app-title" content="J Sailing"/>
+<meta name="theme-color" content="#0a1628"/>
+<link rel="manifest" href="manifest.json"/>
+<link rel="apple-touch-icon" href="icon-512.png"/>
+<title>J Sailing — Hallintapaneeli</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400;1,600&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
 <style>
+/* ══════════════════════════════════════
+   DESIGN TOKENS — Deep Ocean Nautical
+   ══════════════════════════════════════ */
 :root{
-  --navy:#1a3a5c;
-  --navy2:#22527a;
-  --teal:#0d7a6e;
-  --bg:#f0f4f7;
-  --card:#ffffff;
-  --muted:#6b7280;
-  --line:#e2e8f0;
-  --btn:#1a3a5c;
-  --btn2:#eef2f7;
+  --ocean-surf:   #0a4272;
 
-  /* Varausmaksulogiikka */
-  --red-bg:#fff0f0;
-  --red:#c0392b;
-  --red-border:#f5c6c3;
-  --green-bg:#edfaf3;
-  --green:#166b47;
-  --green-border:#b2e8ce;
-  --yellow-bg:#fffbeb;
-  --yellow:#92400e;
-  --yellow-border:#fde68a;
+  --text:         #111827;
+  --text-muted:   #374151;
+  --text-light:   #6b7280;
 
-  --radius:14px;
-  --shadow: 0 2px 12px rgba(26,58,92,.09);
+  --green:        #166534;
+  --green-bg:     #dcfce7;
+  --green-border: #86efac;
+
+  --red:          #991b1b;
+  --red-bg:       #fee2e2;
+  --red-border:   #fca5a5;
+
+  --amber:        #92400e;
+  --amber-bg:     #fef3c7;
+  --amber-border: #fcd34d;
+
+  --blue-accent:  #1e40af;
+  --blue-bg:      #dbeafe;
+
+  --gold:         #92400e;
+  --gold-light:   #b45309;
+
+  --silver:       #111827;
+  --silver-dim:   #1f2937;
+  --silver-muted: #374151;
+
+  --white:        #111827;
+  --line:         #e5e7eb;
+  --line-bright:  #d1d5db;
+  --card-bg:      #ffffff;
+  --card-border:  #e5e7eb;
+
+  --shadow:       0 1px 3px rgba(0,0,0,.12), 0 1px 2px rgba(0,0,0,.08);
+  --shadow-lg:    0 4px 16px rgba(0,0,0,.12), 0 2px 6px rgba(0,0,0,.08);
+
+  --radius:       12px;
+  --radius-sm:    8px;
+
+
+  --safe-top:    env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
 }
-*{box-sizing:border-box;margin:0;padding:0}
+
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+
+html{height:100%}
+
 body{
-  font-family:'DM Sans',system-ui,sans-serif;
-  background:var(--bg);
-  color:#1a2535;
+  font-family:'Outfit',system-ui,sans-serif;
+  background:var(--ocean-deep);
+  color:var(--text);
   min-height:100vh;
+  min-height:100dvh;
+  overflow-x:hidden;
 }
 
-/* HEADER */
-header.app-header{
-  background:linear-gradient(135deg, var(--navy) 0%, #0f2d4a 100%);
-  color:#fff;
-  padding:20px 28px 18px;
-  display:flex;align-items:center;gap:16px;
-  border-bottom:3px solid rgba(255,255,255,.08);
+/* ── Animated ocean background ── */
+body::before{
+  content:"";
+  position:fixed;inset:0;
+  background:#f3f4f6;
+  z-index:-1;
 }
-header.app-header .logo{
-  font-family:'DM Serif Display',serif;
-  font-size:28px;
+
+/* ══ AUTH SCREEN ══ */
+.auth-screen{
+  min-height:100vh;
+  display:flex;align-items:center;justify-content:center;
+  padding:24px;
+}
+.auth-card{
+  background:rgba(255,255,255,.95);
+  border:1px solid var(--line-bright);
+  border-radius:24px;
+  padding:48px 40px;
+  width:min(420px,100%);
+  text-align:center;
+  backdrop-filter:blur(20px);
+  box-shadow:var(--shadow-lg);
+}
+.auth-emblem{
+  font-size:52px;
+  margin-bottom:16px;
+  filter:drop-shadow(0 0 20px rgba(201,168,76,.4));
+}
+.auth-title{
+  font-family:'Cormorant Garamond',serif;
+  font-size:36px;
+  font-weight:600;
+  color:#0a4272;
   letter-spacing:-.5px;
+  margin-bottom:6px;
 }
-header.app-header .logo em{
-  font-style:italic;
-  color:#7ecff0;
+.auth-title em{color:var(--gold);font-style:italic}
+.auth-sub{
+  font-size:14px;
+  color:var(--text-muted);
+  margin-bottom:32px;
+  line-height:1.6;
 }
-header.app-header .sub{
-  font-size:13px;
-  opacity:.7;
-  font-weight:400;
-  margin-top:2px;
+.btn-google{
+  display:inline-flex;align-items:center;gap:12px;
+  background:#fff;color:#1a1a2e;
+  border:none;border-radius:12px;
+  padding:14px 28px;
+  font-family:'Outfit',sans-serif;
+  font-size:15px;font-weight:600;
+  cursor:pointer;
+  transition:transform .15s,box-shadow .15s;
+  box-shadow:0 4px 16px rgba(0,0,0,.3);
+  width:100%;justify-content:center;
 }
-header.app-header .hbadge{
-  margin-left:auto;
-  background:rgba(255,255,255,.1);
-  border:1px solid rgba(255,255,255,.15);
-  border-radius:999px;
-  padding:5px 14px;
+.btn-google:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,0,0,.4)}
+.btn-google:active{transform:translateY(0)}
+.btn-google svg{width:20px;height:20px;flex-shrink:0}
+.auth-note{
+  margin-top:20px;
   font-size:12px;
-  font-weight:600;
-  letter-spacing:.5px;
+  color:var(--text-muted);
+  line-height:1.5;
 }
 
-/* NAV */
-nav.tabs{
-  background:#fff;
-  border-bottom:1.5px solid var(--line);
-  display:flex;
-  overflow-x:auto;
-  box-shadow:0 2px 8px rgba(26,58,92,.05);
+/* ══ LOADING ══ */
+.loader{
+  position:fixed;inset:0;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:16px;
+  z-index:200;
 }
-nav.tabs button{
-  flex:1;min-width:100px;
-  padding:13px 10px;
-  border:0;
-  background:#fff;
-  font-family:'DM Sans',sans-serif;
-  font-weight:600;
-  font-size:13px;
-  color:#64748b;
-  border-bottom:3px solid transparent;
-  cursor:pointer;
-  transition:color .15s, border-color .15s;
+.loader-ring{
+  width:48px;height:48px;
+  border:3px solid var(--line-bright);
+  border-top-color:var(--gold);
+  border-radius:50%;
+  animation:spin .8s linear infinite;
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loader-text{font-size:13px;color:var(--text-muted)}
+
+/* ══ APP LAYOUT ══ */
+.app{display:flex;flex-direction:column;min-height:100vh;min-height:100dvh}
+
+/* ── Top bar ── */
+.topbar{
+  background:#ffffff;
+  border-bottom:2px solid #0a4272;
+  box-shadow:0 2px 8px rgba(0,0,0,.08);
+  padding:0 20px;
+  padding-top:var(--safe-top);
+  display:flex;align-items:center;gap:16px;
+  height:calc(60px + var(--safe-top));
+  position:sticky;top:0;z-index:50;
+}
+.topbar-logo{
+  font-family:'Cormorant Garamond',serif;
+  font-size:22px;font-weight:600;
+  color:#0a4272;
+  letter-spacing:-.3px;
   white-space:nowrap;
 }
-nav.tabs button.active{
-  border-bottom-color:var(--navy);
-  color:var(--navy);
+.topbar-logo em{color:var(--gold);font-style:italic}
+.topbar-spacer{flex:1}
+.topbar-user{
+  display:flex;align-items:center;gap:8px;
+  font-size:13px;color:var(--text-muted);
 }
-nav.tabs button:hover:not(.active){
-  color:#374151;
-  background:#f8fafc;
+.topbar-avatar{
+  width:30px;height:30px;
+  border-radius:50%;
+  border:2px solid var(--gold-dim);
+  object-fit:cover;
+}
+.topbar-avatar-placeholder{
+  width:30px;height:30px;
+  border-radius:50%;
+  background:var(--ocean-surf);
+  border:2px solid var(--gold-dim);
+  display:flex;align-items:center;justify-content:center;
+  font-size:13px;font-weight:700;
+  color:var(--ocean-surf);
+}
+.btn-signout{
+  border:1px solid var(--line-bright);
+  background:transparent;
+  color:var(--text-muted);
+  border-radius:8px;
+  padding:5px 10px;
+  font-size:12px;font-weight:500;
+  cursor:pointer;
+  font-family:'Outfit',sans-serif;
+  color:var(--text-muted);
+  transition:color .15s,border-color .15s;
+}
+.btn-signout:hover{color:var(--red);border-color:var(--red)}
+
+/* ── Nav tabs ── */
+.nav-tabs{
+  background:#ffffff;
+  border-bottom:1.5px solid #d1d5db;
+  display:flex;
+  overflow-x:auto;
+  scrollbar-width:none;
+}
+.nav-tabs::-webkit-scrollbar{display:none}
+.nav-tab{
+  flex:1;min-width:80px;
+  padding:12px 8px;
+  border:none;border-bottom:2px solid transparent;
+  background:transparent;
+  color:var(--text-muted);
+  font-family:'Outfit',sans-serif;
+  font-size:12px;font-weight:600;
+  cursor:pointer;
+  color:var(--text-muted);
+  transition:color .15s,border-color .15s;
+  white-space:nowrap;
+  letter-spacing:.3px;
+  text-transform:uppercase;
+}
+.nav-tab.active{
+  color:#0a4272;
+  border-bottom-color:#0a4272;
+}
+.nav-tab:hover:not(.active){color:var(--silver)}
+
+/* ── Main content ── */
+.main-content{
+  flex:1;
+  max-width:1080px;
+  margin:0 auto;
+  width:100%;
+  padding:20px 16px;
+  padding-bottom:calc(20px + var(--safe-bottom));
 }
 
-main{max-width:1040px;margin:0 auto;padding:20px 16px}
-
-/* CARDS */
+/* ══ CARDS ══ */
 .card{
-  background:#fff;
-  border:1px solid var(--line);
+  background:#ffffff;
+  border:1px solid #e5e7eb;
   border-radius:var(--radius);
   padding:20px;
-  box-shadow:var(--shadow);
+  box-shadow:0 1px 3px rgba(0,0,0,.10);
   margin-bottom:16px;
 }
 .card-title{
-  font-family:'DM Serif Display',serif;
-  font-size:22px;
-  color:var(--navy);
-  margin-bottom:4px;
+  font-family:'Cormorant Garamond',serif;
+  font-size:26px;font-weight:700;
+  color:#0a4272;
+  letter-spacing:-.4px;
 }
-.card-sub{font-size:13px;color:var(--muted)}
+.card-title em{color:var(--gold);font-style:italic}
+.card-sub{font-size:13px;color:#374151;margin-top:3px;font-weight:500}
 
-/* BTNS */
+/* ══ BUTTONS ══ */
 .btn{
   display:inline-flex;align-items:center;gap:6px;
-  border:0;border-radius:10px;
+  border:none;border-radius:var(--radius-sm);
   padding:9px 16px;
-  font-family:'DM Sans',sans-serif;
-  font-weight:600;font-size:13px;
+  font-family:'Outfit',sans-serif;
+  font-size:13px;font-weight:600;
   cursor:pointer;
-  transition:opacity .15s, transform .1s;
+  transition:opacity .15s,transform .1s,box-shadow .15s;
   white-space:nowrap;
+  letter-spacing:.2px;
 }
-.btn:hover{opacity:.88}
-.btn:active{transform:scale(.97)}
-.btn.primary{background:var(--navy);color:#fff}
-.btn.secondary{background:var(--btn2);color:#1a2535}
-.btn.teal{background:var(--teal);color:#fff}
-.btn.danger{background:#fff0f0;color:var(--red);border:1px solid var(--red-border)}
-.btn.sm{padding:6px 12px;font-size:12px;border-radius:8px}
+.btn:hover{opacity:.85}
+.btn:active{transform:scale(.96)}
 
-/* FORMS */
+.btn-primary{
+  background:#0a4272;
+  color:#ffffff;
+  box-shadow:0 2px 8px rgba(10,66,114,.3);
+}
+.btn-primary:hover{background:#083458;box-shadow:0 4px 12px rgba(10,66,114,.4)}
+
+.btn-secondary{
+  background:#f3f4f6;
+  color:#1f2937;
+  border:1px solid #d1d5db;
+}
+.btn-secondary:hover{background:#e5e7eb}
+
+.btn-teal{
+  background:#166534;
+  color:#ffffff;
+  box-shadow:0 2px 8px rgba(22,101,52,.3);
+}
+
+.btn-danger{
+  background:#fee2e2;
+  color:#991b1b;
+  border:1px solid #fca5a5;
+}
+
+.btn-sm{padding:6px 12px;font-size:12px;border-radius:7px}
+
+/* ══ FORM ELEMENTS ══ */
 .field{margin-bottom:14px}
-label.lbl{display:block;font-size:12px;font-weight:700;margin-bottom:5px;color:#475569;letter-spacing:.4px;text-transform:uppercase}
+.lbl{
+  display:block;
+  font-size:11px;font-weight:800;
+  color:#374151;
+  letter-spacing:.5px;
+  text-transform:uppercase;
+  margin-bottom:6px;
+}
 input,select,textarea{
-  width:100%;padding:9px 12px;
-  border:1.5px solid var(--line);
-  border-radius:10px;
-  font-family:'DM Sans',sans-serif;
+  width:100%;
+  padding:10px 13px;
+  background:#ffffff;
+  border:1.5px solid #d1d5db;
+  border-radius:var(--radius-sm);
+  color:#111827;
+  font-family:'Outfit',sans-serif;
   font-size:14px;
-  background:#fff;
-  color:#1a2535;
   transition:border-color .15s;
+  -webkit-appearance:none;
 }
 input:focus,select:focus,textarea:focus{
   outline:none;
-  border-color:var(--navy2);
+  border-color:#0a4272;
+  box-shadow:0 0 0 3px rgba(10,66,114,.15);
 }
+input::placeholder{color:var(--text-muted)}
+select option{background:#ffffff;color:#111827}
 
-/* GRID */
+/* ══ GRID ══ */
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
 .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}
-@media(max-width:720px){.grid2,.grid3{grid-template-columns:1fr}}
+@media(max-width:680px){.grid2,.grid3{grid-template-columns:1fr}}
 
-/* ROW */
+/* ══ UTILS ══ */
 .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
-.row.between{justify-content:space-between}
-.hr{border-top:1px solid var(--line);margin:16px 0}
-.muted{color:var(--muted);font-size:13px}
+.row-between{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.hr{border-top:1.5px solid #e5e7eb;margin:16px 0}
+.muted{color:#6b7280;font-size:13px}
 .small{font-size:12px}
 
-/* PILL / BADGE */
-.pill{
-  display:inline-block;
+/* ══ STATUS BADGES ══ */
+.badge{
+  display:inline-flex;align-items:center;gap:5px;
   padding:3px 10px;
   border-radius:999px;
-  font-size:11px;
-  font-weight:700;
-  margin-left:6px;
-  background:#eef2ff;
-  color:var(--navy);
+  font-size:11px;font-weight:700;
+  letter-spacing:.3px;
 }
-.badge{
+.badge-green{background:#dcfce7;color:#166534;border:1px solid #86efac;font-weight:700}
+.badge-red{background:#fee2e2;color:#991b1b;border:1px solid #fca5a5;font-weight:700}
+.badge-amber{background:#fef3c7;color:#92400e;border:1px solid #fcd34d;font-weight:700}
+.badge-blue{background:#dbeafe;color:#1e40af;border:1px solid #93c5fd;font-weight:700}
+.badge-silver{background:#f3f4f6;color:#1f2937;border:1px solid #d1d5db;font-weight:700}
+
+.pill{
   display:inline-block;
-  padding:4px 10px;
+  padding:2px 8px;
   border-radius:999px;
-  background:#eef2f7;
-  font-weight:700;
-  font-size:11px;
+  font-size:11px;font-weight:700;
+  background:rgba(201,168,76,.15);
+  color:var(--ocean-surf);
+  border:1px solid rgba(201,168,76,.25);
+  margin-left:6px;
 }
 
-/* VARAUSMAKSU STATUSBADGET */
-.status-badge{
-  display:inline-flex;align-items:center;gap:5px;
-  padding:4px 10px;
-  border-radius:999px;
-  font-size:11px;
-  font-weight:700;
-  border:1.5px solid transparent;
-}
-.status-badge.pending{
-  background:var(--red-bg);
-  color:var(--red);
-  border-color:var(--red-border);
-}
-.status-badge.paid{
-  background:var(--green-bg);
-  color:var(--green);
-  border-color:var(--green-border);
-}
-.status-badge.reserve{
-  background:var(--yellow-bg);
-  color:var(--yellow);
-  border-color:var(--yellow-border);
-}
+/* ══ STATUS DOT ══ */
+.dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;display:inline-block}
+.dot-green{background:#16a34a}
+.dot-red{background:#dc2626}
+.dot-amber{background:#d97706}
 
-/* ITEM LIST */
+/* ══ LIST ITEMS ══ */
 .item{
   display:flex;justify-content:space-between;gap:14px;
   padding:14px 0;
   border-top:1px solid var(--line);
 }
-.item:first-child{border-top:0}
-.item h3{margin:0 0 4px 0;font-size:15px;font-weight:600}
-.meta{font-size:13px;color:var(--muted);margin-top:3px}
+.item:first-child{border-top:none}
+.item h3{
+  font-size:15px;font-weight:600;
+  color:#111827;
+  margin-bottom:4px;
+}
+.item .meta{font-size:13px;color:#374151;margin-top:3px;line-height:1.5;font-weight:500}
 
-/* TÄYTTÖASTE */
+/* ══ FILL BAR ══ */
 .fillrow{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:8px}
 .fillbar-wrap{
-  flex:1;min-width:120px;height:8px;
-  background:#e5e7eb;border-radius:999px;overflow:hidden;
-  display:flex;gap:1px;
+  flex:1;min-width:100px;height:6px;
+  background:rgba(200,216,232,.1);
+  border-radius:999px;overflow:hidden;
+  display:flex;
 }
-.fillbar-confirmed{height:100%;background:var(--green);transition:width .3s}
-.fillbar-reserve{height:100%;background:var(--yellow);transition:width .3s}
-.filltext{font-size:12px;color:var(--muted);font-weight:700;white-space:nowrap}
+.fillbar-green{height:100%;background:var(--green);transition:width .4s}
+.fillbar-amber{height:100%;background:var(--amber);transition:width .4s}
+.filltext{font-size:12px;color:#374151;font-weight:700;white-space:nowrap}
 
-/* ASIAKAS KORTIT (kurssissa) */
+/* ══ ATTENDEE CARDS ══ */
 .attendee-card{
   display:flex;align-items:center;justify-content:space-between;gap:10px;
-  padding:10px 12px;
+  padding:10px 13px;
   border-radius:10px;
-  border:1.5px solid transparent;
+  border:1px solid transparent;
   margin-bottom:6px;
-  transition:background .15s;
 }
-.attendee-card.confirmed{
-  background:var(--green-bg);
-  border-color:var(--green-border);
-}
-.attendee-card.pending{
-  background:var(--red-bg);
-  border-color:var(--red-border);
-}
-.attendee-card.reserve{
-  background:var(--yellow-bg);
-  border-color:var(--yellow-border);
-}
-.dot{
-  width:10px;height:10px;
-  border-radius:50%;
-  flex-shrink:0;
-}
-.dot.green{background:var(--green)}
-.dot.red{background:var(--red)}
-.dot.yellow{background:var(--yellow)}
+.attendee-card.paid{background:#dcfce7;border-color:#86efac}
+.attendee-card.pending{background:#fee2e2;border-color:#fca5a5}
+.attendee-card.reserve{background:#fef3c7;border-color:#fcd34d}
 
-/* SESSION */
-.sessionbox{
-  margin:10px 0 16px 0;
+/* ══ SESSION BOX ══ */
+.session-box{
+  margin:10px 0 14px;
   padding:14px;
   background:#f8fafc;
-  border-radius:12px;
-  border:1px solid var(--line);
+  border-radius:10px;
+  border:1px solid #e5e7eb;
 }
-.sessionitem{
-  display:flex;justify-content:space-between;align-items:flex-start;gap:12px;
+.session-item{
+  display:flex;justify-content:space-between;align-items:center;gap:10px;
   padding:8px 0;
-  border-top:1px dashed #dbe2ea;
+  border-top:1px dashed rgba(200,216,232,.1);
 }
-.sessionitem:first-child{border-top:0;padding-top:0}
+.session-item:first-child{border-top:none;padding-top:0}
 
-/* GROUPBAR */
-.groupbar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:2px}
-.groupbar .btn{padding:7px 12px;border-radius:999px;font-size:12px}
+/* ══ GROUPBAR ══ */
+.groupbar{display:flex;gap:8px;flex-wrap:wrap}
+.groupbar .btn{padding:6px 12px;border-radius:999px;font-size:11px}
 
-/* NOTE */
-.note{
-  background:#f8fafc;
-  border:1px solid var(--line);
-  border-radius:12px;
-  padding:14px 16px;
-}
-.stat-val{font-size:30px;font-weight:700;font-family:'DM Serif Display',serif;color:var(--navy);margin-top:4px}
-
-/* MODAL */
-.overlay{
-  position:fixed;inset:0;
-  background:rgba(15,35,55,.4);
-  display:flex;align-items:center;justify-content:center;
-  padding:18px;
-  z-index:100;
-  backdrop-filter:blur(4px);
-}
-.modal{
-  background:#fff;
-  border-radius:18px;
-  border:1px solid var(--line);
-  width:min(860px,100%);
-  max-height:90vh;
-  overflow:auto;
-  box-shadow:0 20px 60px rgba(0,0,0,.18);
-}
-.modal .modal-head{
-  background:#fff;
-  padding:18px 20px;
-  border-bottom:1px solid var(--line);
-  position:sticky;top:0;z-index:2;
-}
-.modal .modal-body{padding:20px}
-.modal-title{font-family:'DM Serif Display',serif;font-size:20px;color:var(--navy)}
-
-/* INFO BOX */
+/* ══ INFO BOXES ══ */
 .infobox{
   padding:10px 14px;
   border-radius:10px;
   font-size:13px;
+  line-height:1.5;
   margin:10px 0;
 }
-.infobox.green{background:var(--green-bg);color:var(--green);border:1px solid var(--green-border)}
-.infobox.red{background:var(--red-bg);color:var(--red);border:1px solid var(--red-border)}
-.infobox.yellow{background:var(--yellow-bg);color:var(--yellow);border:1px solid var(--yellow-border)}
-.infobox.blue{background:#eff6ff;color:#1e40af;border:1px solid #bfdbfe}
+.infobox-blue{background:#dbeafe;color:#1e3a8a;border:1px solid #93c5fd}
+.infobox-green{background:#dcfce7;color:#14532d;border:1px solid #86efac}
+.infobox-amber{background:#fef3c7;color:#78350f;border:1px solid #fcd34d}
+.infobox-red{background:#fee2e2;color:#7f1d1d;border:1px solid #fca5a5}
 
-/* LASKU */
-.table{width:100%;border-collapse:collapse}
-.table th,.table td{border-top:1px solid var(--line);padding:9px;vertical-align:top;font-size:14px}
-.table .r{text-align:right}
-.invoiceBox{border:1.5px solid var(--line);border-radius:14px;padding:20px;background:#fff}
-
-/* LEGEND */
-.legend{display:flex;gap:14px;flex-wrap:wrap;margin:10px 0}
-.legend-item{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600}
-
-
-
-/* PIN-SUOJAUS */
-.pin-overlay{
+/* ══ MODAL ══ */
+.overlay{
   position:fixed;inset:0;
-  background:linear-gradient(135deg, #1a3a5c 0%, #0f2d4a 100%);
+  background:rgba(5,12,24,.7);
+  backdrop-filter:blur(8px);
   display:flex;align-items:center;justify-content:center;
-  z-index:9999;
+  padding:16px;
+  z-index:100;
 }
-.pin-box{
-  background:#fff;
+.modal{
+  background:#ffffff;
+  border:1px solid var(--line-bright);
   border-radius:20px;
-  padding:36px 32px;
-  width:min(360px,90vw);
-  text-align:center;
-  box-shadow:0 20px 60px rgba(0,0,0,.3);
+  width:min(860px,100%);
+  max-height:92vh;
+  overflow:auto;
+  box-shadow:var(--shadow-lg);
+  scrollbar-width:thin;
+  scrollbar-color:var(--silver-muted) transparent;
 }
-.pin-logo{
-  font-family:'DM Serif Display',serif;
-  font-size:28px;
-  color:#1a3a5c;
-  margin-bottom:4px;
+.modal-head{
+  padding:18px 22px;
+  border-bottom:1px solid var(--line);
+  position:sticky;top:0;
+  background:#ffffff;
+  border-bottom:1.5px solid #e5e7eb;
+  z-index:2;
 }
-.pin-logo em{font-style:italic;color:#0d7a6e}
-.pin-sub{font-size:13px;color:#6b7280;margin-bottom:24px}
-.pin-dots{
-  display:flex;justify-content:center;gap:10px;margin-bottom:20px;
+.modal-title{
+  font-family:'Cormorant Garamond',serif;
+  font-size:22px;font-weight:600;
+  color:var(--ocean-surf);
 }
-.pin-dot{
-  width:14px;height:14px;
-  border-radius:50%;
-  border:2px solid #cbd5e1;
-  background:#fff;
-  transition:background .15s,border-color .15s;
-}
-.pin-dot.filled{background:#1a3a5c;border-color:#1a3a5c}
-.pin-keypad{
-  display:grid;
-  grid-template-columns:repeat(3,1fr);
-  gap:10px;
-  margin-bottom:16px;
-}
-.pin-key{
-  border:1.5px solid #e2e8f0;
-  border-radius:12px;
-  padding:14px;
-  font-size:20px;
-  font-weight:700;
-  color:#1a3a5c;
-  background:#fff;
-  cursor:pointer;
-  transition:background .1s,transform .1s;
-  font-family:'DM Sans',sans-serif;
-}
-.pin-key:hover{background:#f0f4f7}
-.pin-key:active{transform:scale(.94);background:#e2e8f0}
-.pin-key.zero{grid-column:2}
-.pin-key.del{background:#fff0f0;color:#c0392b;border-color:#f5c6c3}
-.pin-error{
-  color:#c0392b;
-  font-size:13px;
-  font-weight:600;
-  min-height:20px;
-  margin-top:4px;
-  animation: shake .3s;
-}
-@keyframes shake{
-  0%,100%{transform:translateX(0)}
-  25%{transform:translateX(-6px)}
-  75%{transform:translateX(6px)}
-}
+.modal-body{padding:22px}
 
-/* KALENTERI */
+/* ══ CALENDAR ══ */
+.cal-nav-bar{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.cal-month-label{
+  font-family:'Cormorant Garamond',serif;
+  font-size:28px;font-weight:700;
+  color:#0a4272;
+  min-width:220px;text-align:center;
+  letter-spacing:-.5px;
+}
 .cal-grid{
   display:grid;
   grid-template-columns:repeat(7,1fr);
-  gap:3px;
-  margin-top:10px;
+  gap:4px;
+  margin-top:14px;
 }
 .cal-dayname{
   text-align:center;
-  font-size:11px;
-  font-weight:700;
-  color:var(--muted);
-  padding:6px 2px;
+  font-size:11px;font-weight:800;
+  color:#374151;
+  padding:8px 2px;
   text-transform:uppercase;
-  letter-spacing:.5px;
+  letter-spacing:.8px;
+  border-bottom:2px solid #e5e7eb;
+  margin-bottom:4px;
 }
 .cal-cell{
-  min-height:100px;
-  background:#fff;
-  border:1px solid var(--line);
-  border-radius:8px;
-  padding:5px;
-  vertical-align:top;
+  min-height:96px;
+  background:#ffffff;
+  border:1px solid #e5e7eb;
+  border-radius:10px;
+  padding:6px;
   position:relative;
+  transition:border-color .15s;
 }
-.cal-cell.other-month{
-  background:#f8fafc;
-  opacity:.5;
-}
-.cal-cell.today{
-  border-color:var(--navy);
-  border-width:2px;
-}
+.cal-cell:hover{border-color:var(--silver-muted)}
+.cal-cell.other-month{opacity:.3}
+.cal-cell.today{border-color:#0a4272;border-width:2px}
 .cal-date{
-  font-size:12px;
-  font-weight:700;
-  color:#64748b;
+  font-size:12px;font-weight:800;
+  color:var(--text);
   margin-bottom:4px;
 }
 .cal-cell.today .cal-date{
-  color:var(--navy);
-  background:var(--navy);
-  color:#fff;
-  width:22px;height:22px;
+  background:#0a4272;
+  color:#ffffff;
+  width:20px;height:20px;
   border-radius:50%;
   display:flex;align-items:center;justify-content:center;
-  font-size:11px;
+  font-size:10px;
 }
 .cal-event{
-  display:block;
-  padding:2px 5px;
+  display:block;width:100%;
+  padding:4px 6px;
   border-radius:5px;
-  font-size:10px;
-  font-weight:600;
-  margin-bottom:2px;
-  white-space:nowrap;
-  overflow:hidden;
-  text-overflow:ellipsis;
+  font-size:11px;font-weight:700;
+  margin-bottom:3px;
   cursor:pointer;
-  border:none;
-  text-align:left;
-  width:100%;
+  border:none;text-align:left;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  font-family:'Outfit',sans-serif;
+  transition:opacity .1s;
 }
-.cal-event.type-Kurssi{background:#dbeafe;color:#1e40af}
-.cal-event.type-Charter{background:#d1fae5;color:#065f46}
-.cal-event.type-Iltapurjehdus{background:#ede9fe;color:#5b21b6}
-.cal-event.type-Päiväpurjehdus{background:#fef3c7;color:#92400e}
-.cal-event.type-Purjehdusretki{background:#fee2e2;color:#991b1b}
-.cal-event.type-Yritystilaisuus{background:#e0e7ff;color:#3730a3}
-.cal-event.type-Muu{background:#f1f5f9;color:#475569}
-.cal-nav{display:flex;align-items:center;gap:12px}
-.cal-month-title{font-family:'DM Serif Display',serif;font-size:22px;color:var(--navy);min-width:180px;text-align:center}
-.cal-legend{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
-.cal-legend-item{display:flex;align-items:center;gap:5px;font-size:11px;font-weight:600}
+.cal-event:hover{opacity:.8}
+.cal-event:active{transform:scale(.96)}
+
+.type-Kurssi{background:#c8e8f8;color:#083a6a;border:1px solid #90c8ec;font-weight:700}
+.type-Charter{background:#c0f0dc;color:#064a28;border:1px solid #70d4a0;font-weight:700}
+.type-Iltapurjehdus{background:#e4d0f8;color:#3a0870;border:1px solid #b888e8;font-weight:700}
+.type-Päiväpurjehdus{background:#fde8b0;color:#5a3200;border:1px solid #f0b840;font-weight:700}
+.type-Purjehdusretki{background:#fcc8c8;color:#620808;border:1px solid #e88080;font-weight:700}
+.type-Yritystilaisuus{background:#dce8f4;color:#0a2a4a;border:1px solid #90b4d4;font-weight:700}
+.type-Muu{background:#e4e4ec;color:#1a1a34;border:1px solid #a8a8c4;font-weight:700}
+
+.cal-legend{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
+.cal-legend-item{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text-muted);font-weight:500}
 .cal-legend-dot{width:10px;height:10px;border-radius:3px}
-@media(max-width:700px){
-  .cal-cell{min-height:60px}
-  .cal-event{font-size:9px;padding:1px 3px}
+
+/* ══ DASHBOARD STATS ══ */
+.stats-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(140px,1fr));
+  gap:12px;
+  margin:16px 0;
+}
+.stat-card{
+  background:#ffffff;
+  border:1px solid #e5e7eb;
+  border-radius:12px;
+  padding:16px;
+  text-align:center;
+}
+.stat-val{
+  font-family:'Cormorant Garamond',serif;
+  font-size:38px;font-weight:700;
+  color:#0a4272;
+  line-height:1;
+  margin:4px 0;
+}
+.stat-label{font-size:11px;color:#374151;font-weight:800;text-transform:uppercase;letter-spacing:.5px}
+
+/* ══ INVOICE ══ */
+.invoice-box{
+  border:1px solid var(--line-bright);
+  border-radius:14px;
+  padding:22px;
+  background:#fafbfc;
 }
 
-/* print */
+/* ══ SYNC INDICATOR ══ */
+.sync-dot{
+  width:7px;height:7px;
+  border-radius:50%;
+  background:#16a34a;
+  display:inline-block;
+  margin-right:5px;
+}
+.sync-dot.syncing{
+  background:#d97706;
+  animation:pulse .8s ease-in-out infinite;
+}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+
+.table{width:100%;border-collapse:collapse}
+.table th,.table td{
+  border-top:1px solid var(--line);
+  padding:9px 10px;
+  font-size:13px;
+  vertical-align:top;
+}
+.table th{font-size:11px;font-weight:800;color:#374151;text-transform:uppercase;letter-spacing:.4px;background:#f9fafb}
+.r{text-align:right}
+
+/* ══ FIREBASE STATUS ══ */
+.firebase-setup{
+  background:#fef3c7;
+  border:1.5px solid #f59e0b;
+  border-radius:12px;
+  padding:16px 18px;
+  margin-bottom:16px;
+  font-size:13px;
+  color:#78350f;
+  font-weight:500;
+  line-height:1.6;
+}
+.firebase-setup code{
+  background:#fde68a;
+  padding:1px 6px;
+  border-radius:4px;
+  font-family:monospace;
+  font-size:12px;
+  color:#78350f;
+  font-weight:700;
+}
+
+/* ══ PRINT ══ */
 @media print{
-  header.app-header,nav.tabs,.noPrint{display:none!important}
-  body{background:#fff}
-  .card{border:0;box-shadow:none}
+  .topbar,.nav-tabs,.noPrint,header{display:none!important}
+  body{background:#fff;color:#000}
+  .card{border:none;box-shadow:none;background:#fff}
+  .invoice-box{border:1px solid #ccc}
+  .main-content{padding:0;max-width:none}
+}
+
+/* ══ RESPONSIVE ══ */
+@media(max-width:600px){
+  .cal-cell{min-height:64px}
+  .cal-event{font-size:9px;padding:2px 4px}
+  .topbar-user .name{display:none}
+  .main-content{padding:12px 10px}
 }
 </style>
 </head>
 <body>
-<div id="app"></div>
+<div id="app">
+  <div class="loader">
+    <div class="loader-ring"></div>
+    <div class="loader-text">Ladataan…</div>
+  </div>
+</div>
 
-<script>
-(() => {
-  window.onerror = function(msg, src, line, col, err){
-    const el = document.getElementById("app");
-    if(!el) return;
-    el.innerHTML = `<pre style='padding:16px;color:#b00020;white-space:pre-wrap'>JS ERROR:\n${msg}\n${src}:${line}:${col}\n\n${err?.stack||""}</pre>`;
-  };
+<!-- Firebase 10 SDK -->
+<script type="module">
+import { initializeApp }           from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged }
+  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getFirestore, collection, doc, getDocs, addDoc, setDoc, updateDoc, deleteDoc, onSnapshot, query, orderBy, serverTimestamp }
+  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
+// ══════════════════════════════════════════════════════
+//  🔧 FIREBASE CONFIG — Vaihda omat arvosi tähän!
+//  1. Mene console.firebase.google.com
+//  2. Luo projekti "jsailing"
+//  3. Lisää verkkosovellus → kopioi config tähän
+//  4. Ota Firestore käyttöön (test mode)
+//  5. Ota Authentication → Google käyttöön
+// ══════════════════════════════════════════════════════
+const FIREBASE_CONFIG = {
+apiKey:            "AIzaSyB7Dp5_5fN0Iko-4Jn1D2Dp6NNNih63U00",
+  authDomain:        "jsailing-f716c.firebaseapp.com",
+  projectId:         "jsailing-f716c",
+  storageBucket:     "jsailing-f716c.firebasestorage.app",
+  messagingSenderId: "543523103696",
+  appId:             "1:543523103696:web:439a312efa6aec398a8fd5"
+};
 
-  // ─── PIN-SUOJAUS ───
-  const CORRECT_PIN = "135720";
-  const PIN_SESSION_KEY = "absolut37_pin_ok";
+// ══ Sallittu sähköposti (vain sinä pääset sisään) ══
+const ALLOWED_EMAIL = "jacke.seilaa@gmail.com";
 
-  function isPinUnlocked(){
-    return sessionStorage.getItem(PIN_SESSION_KEY) === "1";
+const ISSUER = { name:"J Sailing", businessId:"1728993-9" };
+const BANK   = { iban:"FI62 1132 3000 4277 43", bic:"NDEAFIHH" };
+
+const SAILING_TYPES = ["Iltapurjehdus","Päiväpurjehdus","Charter","Kurssi","Yritystilaisuus","Purjehdusretki","Muu"];
+const SAILING_GROUPS = [
+  {id:"all",     label:"Kaikki",            types:null},
+  {id:"courses", label:"Kurssit",            types:["Kurssi"]},
+  {id:"charter", label:"Charter",            types:["Charter"]},
+  {id:"evening", label:"Iltapurjehdukset",   types:["Iltapurjehdus"]},
+  {id:"trips",   label:"Retket",             types:["Purjehdusretki"]},
+  {id:"day",     label:"Päiväpurjehdukset",  types:["Päiväpurjehdus"]},
+  {id:"other",   label:"Muut",               types:["Yritystilaisuus","Muu"]},
+];
+
+// ── Check if config is filled ──
+const CONFIG_READY = !FIREBASE_CONFIG.apiKey.includes("KORVAA");
+
+let app, auth, db;
+if(CONFIG_READY){
+  app  = initializeApp(FIREBASE_CONFIG);
+  auth = getAuth(app);
+  db   = getFirestore(app);
+}
+
+// ══════════════════════════════════════════════════════
+//  STATE
+// ══════════════════════════════════════════════════════
+const state = {
+  tab:"dashboard",
+  user:null,
+  customers:[],
+  sailings:[],
+  companies:[],
+  invoices:[],
+  modal:null,
+  editId:null,
+  editSession:null,
+  searchCustomers:"",
+  searchSailings:"",
+  openSailingId:null,
+  sailingGroup:"all",
+  calendarMonth: today().slice(0,7),
+  registerMonth: today().slice(0,7),
+  syncing:false,
+  invoice:{
+    mode:"customer",
+    sailingId:"",
+    customerId:"",
+    companyId:"",
+    invoiceDate:today(),
+    type:"full"
   }
+};
 
-  function renderPinScreen(error){
-    return `
-      <div class="pin-overlay" id="pinOverlay">
-        <div class="pin-box">
-          <div class="pin-logo">Absolut <em>37</em></div>
-          <div class="pin-sub">Syötä PIN-koodi</div>
-          <div class="pin-dots" id="pinDots">
-            ${Array(CORRECT_PIN.length).fill(0).map(()=>'<div class="pin-dot"></div>').join("")}
-          </div>
-          <div class="pin-keypad">
-            ${[1,2,3,4,5,6,7,8,9].map(n=>`<button class="pin-key" data-pin="${n}">${n}</button>`).join("")}
-            <button class="pin-key zero" data-pin="0">0</button>
-            <button class="pin-key del" data-pin="del">⌫</button>
-          </div>
-          <div class="pin-error" id="pinError">${error||""}</div>
-        </div>
+// ══════════════════════════════════════════════════════
+//  HELPERS
+// ══════════════════════════════════════════════════════
+function today(){ return new Date().toISOString().slice(0,10); }
+function esc(s){ return String(s||"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[m])); }
+function fmtDate(d){ return d ? new Date(d+"T00:00:00").toLocaleDateString("fi-FI") : ""; }
+function genId(p){ return p+Math.random().toString(16).slice(2,8).toUpperCase(); }
+function vatRate(s){ return (s?.type==="Charter") ? 0.135 : 0.255; }
+
+function enrolledCount(sid){ return state.customers.filter(c=>c.sailingId===sid).length; }
+function confirmedCount(sid){ return state.customers.filter(c=>c.sailingId===sid&&c.reservationStatus==="paid").length; }
+function pendingCount(sid){ return state.customers.filter(c=>c.sailingId===sid&&c.reservationStatus==="pending").length; }
+function reserveCount(sid){ return state.customers.filter(c=>c.sailingId===sid&&c.reservationStatus==="reserve").length; }
+
+function finnishReference(digits){
+  digits = String(digits||"").replace(/\D/g,"");
+  if(!digits) return "";
+  const w=[7,3,1]; let sum=0,wi=0;
+  for(let i=digits.length-1;i>=0;i--){ sum+=Number(digits[i])*w[wi%3]; wi++; }
+  return digits+String((10-(sum%10))%10);
+}
+
+function nextInvoiceNumber(){
+  const year = new Date().getFullYear();
+  let max=0;
+  for(const inv of state.invoices){
+    const m=String(inv.invoiceNo||"").match(/^JS-(\d{4})-(\d+)$/);
+    if(m&&Number(m[1])===year) max=Math.max(max,Number(m[2]));
+  }
+  return `JS-${year}-${String(max+1).padStart(3,"0")}`;
+}
+
+function statusBadge(status){
+  if(status==="paid")    return `<span class="badge badge-green">✓ Vahvistettu</span>`;
+  if(status==="pending") return `<span class="badge badge-red">● Varausmaksu odottaa</span>`;
+  if(status==="reserve") return `<span class="badge badge-amber">◎ Varapaikka</span>`;
+  return "";
+}
+
+function fillUI(sid, maxPersons, reserveSlots){
+  const max  = Math.max(1,Number(maxPersons||0)||1);
+  const rsv  = Math.max(0,Number(reserveSlots||0)||0);
+  const total= max+rsv;
+  const conf = confirmedCount(sid);
+  const pend = pendingCount(sid);
+  const confPct = Math.min(100,Math.round((conf/total)*100));
+  const pendPct = Math.min(100-confPct,Math.round((pend/total)*100));
+  return `
+    <div class="fillrow">
+      <div class="fillbar-wrap">
+        <div class="fillbar-green" style="width:${confPct}%"></div>
+        <div class="fillbar-amber" style="width:${pendPct}%"></div>
       </div>
-    `;
+      <div class="filltext">
+        <span style="color:var(--green)">✓${conf}</span>
+        ${pend>0?`<span style="color:var(--red)"> ●${pend}</span>`:""}
+        ${reserveCount(sid)>0?`<span style="color:var(--amber)"> ◎${reserveCount(sid)}</span>`:""}
+        <span style="color:var(--text-muted)"> / ${max}+${rsv}</span>
+      </div>
+    </div>
+  `;
+}
+
+function groupCounts(){
+  const c={};
+  for(const g of SAILING_GROUPS){
+    c[g.id] = g.types ? state.sailings.filter(s=>g.types.includes(s.type)).length : state.sailings.length;
   }
+  return c;
+}
 
-  let pinBuffer = "";
+function computeInvoice(){
+  const s = state.sailings.find(x=>x.id===state.invoice.sailingId)||null;
+  const rate    = vatRate(s);
+  const ratePct = (rate*100).toFixed(1);
+  const isRes   = state.invoice.type==="reservation";
+  let payerName="",payerEmail="",payerBusinessId="",lines=[],grossTotal=0,eventName="";
 
-  function initPin(){
-    if(isPinUnlocked()){ initApp(); return; }
-    document.getElementById("app").innerHTML = renderPinScreen();
-    bindPin();
+  if(s){
+    eventName = s.name||"";
+    const price = isRes ? Number(s.reservationFee||0) : Number(s.pricePerPerson||0);
+
+    if(state.invoice.mode==="customer"){
+      const c = state.customers.find(x=>x.id===state.invoice.customerId);
+      if(c){
+        payerName=c.name||""; payerEmail=c.email||"";
+        const desc = isRes?`${s.name} — varausmaksu — ${c.name}`:`${s.name} — ${c.name}`;
+        lines.push({title:desc,qty:1,unit:price,total:price});
+        grossTotal=price;
+      }
+    } else {
+      const co = state.companies.find(x=>x.id===state.invoice.companyId);
+      if(co){
+        payerName=co.name||""; payerEmail=co.email||""; payerBusinessId=co.businessId||"";
+        const cust = state.customers
+          .filter(c=>c.sailingId===s.id&&c.billTo==="company"&&c.companyId===co.id)
+          .sort((a,b)=>(a.name||"").localeCompare(b.name||""));
+        const gross = cust.length*price;
+        for(const c of cust){
+          lines.push({title:isRes?`${s.name} — varausmaksu — ${c.name}`:`${s.name} — ${c.name}`,qty:1,unit:price,total:price});
+        }
+        const comm = gross*(Number(co.commissionPct||0)/100);
+        if(comm>0) lines.push({title:"Välitysprovisio",qty:1,unit:-comm,total:-comm});
+        grossTotal = gross-comm;
+      }
+    }
   }
+  const net = (grossTotal||0)/(1+rate);
+  const vat = (grossTotal||0)-net;
+  const invNo = nextInvoiceNumber();
+  return {sailing:s,rate,ratePct,payerName,payerEmail,payerBusinessId,lines,grossTotal,net,vat,
+    reference:finnishReference(invNo.replace(/\D/g,"")),invNo,eventName,isReservation:isRes};
+}
 
-  function bindPin(){
-    document.querySelectorAll("[data-pin]").forEach(btn=>{
-      btn.onclick = ()=>{
-        const v = btn.dataset.pin;
-        if(v==="del"){
-          pinBuffer = pinBuffer.slice(0,-1);
-        } else {
-          if(pinBuffer.length >= CORRECT_PIN.length) return;
-          pinBuffer += v;
-        }
-        updatePinDots();
-        if(pinBuffer.length === CORRECT_PIN.length){
-          if(pinBuffer === CORRECT_PIN){
-            sessionStorage.setItem(PIN_SESSION_KEY,"1");
-            document.getElementById("app").innerHTML="";
-            initApp();
-          } else {
-            document.getElementById("app").innerHTML = renderPinScreen("Väärä PIN-koodi — yritä uudelleen");
-            pinBuffer="";
-            bindPin();
-          }
-        }
-      };
+function monthSummary(month){
+  const rows=state.invoices.filter(x=>String(x.invoiceDate||"").slice(0,7)===month);
+  const s={all:{net:0,vat:0,gross:0,count:0},r255:{net:0,vat:0,gross:0,count:0},r135:{net:0,vat:0,gross:0,count:0}};
+  for(const x of rows){
+    const r=Number(x.vatRatePct||0);
+    const b=(Math.abs(r-25.5)<.2)?"r255":(Math.abs(r-13.5)<.2)?"r135":null;
+    if(b){s[b].net+=Number(x.net||0);s[b].vat+=Number(x.vat||0);s[b].gross+=Number(x.grossTotal||0);s[b].count+=1;}
+    s.all.net+=Number(x.net||0);s.all.vat+=Number(x.vat||0);s.all.gross+=Number(x.grossTotal||0);s.all.count+=1;
+  }
+  return s;
+}
+
+// ══════════════════════════════════════════════════════
+//  FIRESTORE CRUD
+// ══════════════════════════════════════════════════════
+async function fsAdd(col, data){
+  if(!db) return genId("X");
+  state.syncing=true; renderSyncIndicator();
+  try{
+    const ref = await addDoc(collection(db, col), {...data, updatedAt:serverTimestamp()});
+    return ref.id;
+  }finally{state.syncing=false; renderSyncIndicator();}
+}
+
+async function fsSet(col, id, data){
+  if(!db) return;
+  state.syncing=true; renderSyncIndicator();
+  try{
+    await setDoc(doc(db, col, id), {...data, updatedAt:serverTimestamp()}, {merge:true});
+  }finally{state.syncing=false; renderSyncIndicator();}
+}
+
+async function fsDel(col, id){
+  if(!db) return;
+  state.syncing=true; renderSyncIndicator();
+  try{
+    await deleteDoc(doc(db, col, id));
+  }finally{state.syncing=false; renderSyncIndicator();}
+}
+
+function renderSyncIndicator(){
+  const el = document.getElementById("syncDot");
+  if(!el) return;
+  el.className = "sync-dot" + (state.syncing?" syncing":"");
+}
+
+// ══════════════════════════════════════════════════════
+//  REAL-TIME LISTENERS
+// ══════════════════════════════════════════════════════
+const unsubscribers = [];
+
+function startListeners(uid){
+  const cols = ["sailings","customers","companies","invoices"];
+  for(const col of cols){
+    const unsub = onSnapshot(collection(db, col), snap=>{
+      state[col] = snap.docs.map(d=>({id:d.id,...d.data()}));
+      if(!state.invoice.sailingId && state.sailings.length>0)
+        state.invoice.sailingId = state.sailings[0].id;
+      render();
     });
-
-    // Näppäimistötuki
-    document.onkeydown = (e)=>{
-      if(!document.getElementById("pinOverlay")) return;
-      if(e.key>="0"&&e.key<="9") document.querySelector(`[data-pin="${e.key}"]`)?.click();
-      if(e.key==="Backspace") document.querySelector('[data-pin="del"]')?.click();
-    };
+    unsubscribers.push(unsub);
   }
+}
 
-  function updatePinDots(){
-    const dots = document.querySelectorAll(".pin-dot");
-    dots.forEach((d,i)=> d.classList.toggle("filled", i < pinBuffer.length));
-  }
+function stopListeners(){
+  unsubscribers.forEach(u=>u());
+  unsubscribers.length=0;
+}
 
-  function initApp(){
-    document.onkeydown = null;
-    load();
-    render();
-  }
-  // ─── / PIN-SUOJAUS ───
+// ══════════════════════════════════════════════════════
+//  RENDER ENGINE
+// ══════════════════════════════════════════════════════
+function render(){
+  const ae=document.activeElement;
+  const keepAction=ae?.dataset?.action||null;
+  const keepField=ae?.dataset?.field||null;
+  const keepPos=(ae&&typeof ae.selectionStart==="number")?ae.selectionStart:null;
 
-  const STORAGE_KEY = "absolut37_v4_reservations";
-  const ISSUER = { name:"J Sailing", businessId:"1728993-9" };
-  const BANK = { bankName:"NORDEA", iban:"FI62 1132 3000 4277 43", bic:"NDEAFIHH" };
+  document.getElementById("app").innerHTML =
+    renderTopBar() + renderNavTabs() +
+    `<div class="main-content">${CONFIG_READY?"":renderSetupBanner()}${renderTab()}</div>` +
+    renderModal();
 
-  const SAILING_TYPES = ["Iltapurjehdus","Päiväpurjehdus","Charter","Kurssi","Yritystilaisuus","Purjehdusretki","Muu"];
-  const SAILING_GROUPS = [
-    { id:"all",     label:"Kaikki",           types:null },
-    { id:"courses", label:"Kurssit",           types:["Kurssi"] },
-    { id:"charter", label:"Charter",           types:["Charter"] },
-    { id:"evening", label:"Iltapurjehdukset",  types:["Iltapurjehdus"] },
-    { id:"trips",   label:"Retket",            types:["Purjehdusretki"] },
-    { id:"day",     label:"Päiväpurjehdukset", types:["Päiväpurjehdus"] },
-    { id:"other",   label:"Muut",              types:["Yritystilaisuus","Muu"] },
+  bind();
+
+  const sel = keepAction?`[data-action="${keepAction}"]`:keepField?`[data-field="${keepField}"]`:null;
+  if(sel){ const el=document.querySelector(sel); if(el){ el.focus(); if(keepPos!==null&&typeof el.setSelectionRange==="function"){ try{el.setSelectionRange(keepPos,keepPos);}catch(e){} } } }
+}
+
+function renderSetupBanner(){
+  return `
+    <div class="firebase-setup">
+      ⚙️ <strong>Firebase ei ole vielä konfiguroitu.</strong> Sovellus toimii, mutta data tallennetaan vain muistiin (ei pysyvää tallennusta).<br>
+      Avaa <code>index.html</code>, etsi <code>FIREBASE_CONFIG</code> ja korvaa arvot omilla Firebase-projektin tiedoilla.
+      Myös <code>ALLOWED_EMAIL</code> pitää asettaa omaksi sähköpostiksi.
+    </div>
+  `;
+}
+
+function renderTopBar(){
+  const u = state.user;
+  const syncEl = CONFIG_READY ? `<span id="syncDot" class="sync-dot"></span>` : "";
+  return `
+    <div class="topbar">
+      <div class="topbar-logo">J <em>Sailing</em></div>
+      <div style="font-size:11px;color:var(--text-muted)">${syncEl}Absolut 37</div>
+      <div class="topbar-spacer"></div>
+      <div class="topbar-user">
+        ${u?.photoURL
+          ? `<img src="${esc(u.photoURL)}" class="topbar-avatar" alt="">`
+          : `<div class="topbar-avatar-placeholder">${(u?.displayName||u?.email||"?")[0].toUpperCase()}</div>`}
+        <span class="name" style="font-size:12px;color:var(--text-muted)">${esc(u?.displayName||u?.email||"")}</span>
+        <button class="btn-signout" data-action="sign-out">Kirjaudu ulos</button>
+      </div>
+    </div>
+  `;
+}
+
+function renderNavTabs(){
+  const tabs=[
+    ["dashboard","⚓ Dashboard"],
+    ["calendar","📅 Kalenteri"],
+    ["sailings","⛵ Purjehdukset"],
+    ["customers","👤 Asiakkaat"],
+    ["companies","🏢 Yritykset"],
+    ["invoicing","🧾 Laskutus"],
   ];
+  return `<nav class="nav-tabs">
+    ${tabs.map(([id,label])=>`<button class="nav-tab ${state.tab===id?"active":""}" data-tab="${id}">${label}</button>`).join("")}
+  </nav>`;
+}
 
-  // ASIAKAS STATUS:
-  // "pending"  = varattu, varausmaksu lähetetty mutta ei maksettu → punainen
-  // "paid"     = varausmaksu maksettu, paikka vahvistettu → vihreä
-  // "reserve"  = varapaikalla → keltainen
+function renderTab(){
+  if(state.tab==="dashboard") return renderDashboard();
+  if(state.tab==="calendar")  return renderCalendar();
+  if(state.tab==="sailings")  return renderSailings();
+  if(state.tab==="customers") return renderCustomers();
+  if(state.tab==="companies") return renderCompanies();
+  if(state.tab==="invoicing") return renderInvoicing();
+  return "";
+}
 
-  const state = {
-    tab:"dashboard",
-    customers:[],
-    sailings:[],
-    companies:[],
-    invoices:[],
-    modal:null,
-    editId:null,
-    searchCustomers:"",
-    searchSailings:"",
-    openSailingId:null,
-    sailingGroup:"all",
-    invoice:{
-      mode:"customer",
-      sailingId:"",
-      customerId:"",
-      companyId:"",
-      invoiceNo:"",
-      invoiceDate: today(),
-      type:"full" // "full" | "reservation"
-    },
-    registerMonth: today().slice(0,7),
-    calendarMonth: today().slice(0,7),
-    editSession: null // {sailingId, idx}
-  };
+// ── DASHBOARD ──
+function renderDashboard(){
+  const totalConf = state.customers.filter(c=>c.reservationStatus==="paid").length;
+  const totalPend = state.customers.filter(c=>c.reservationStatus==="pending").length;
+  const totalRes  = state.customers.filter(c=>c.reservationStatus==="reserve").length;
 
-  function save(){
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({
-      customers:state.customers,
-      sailings:state.sailings,
-      companies:state.companies,
-      invoices:state.invoices
-    }));
-  }
+  const upcoming = state.sailings
+    .filter(s=>s.date>=today())
+    .sort((a,b)=>(a.date||"").localeCompare(b.date||""))
+    .slice(0,5);
 
-  function load(){
-    try{
-      const raw = localStorage.getItem(STORAGE_KEY);
-      // Try old key migration
-      if(!raw){
-        const old = localStorage.getItem("absolut37_v3_full_register_v2");
-        if(old){
-          const d = JSON.parse(old);
-          state.customers = Array.isArray(d.customers)?d.customers:[];
-          state.sailings  = Array.isArray(d.sailings)?d.sailings:[];
-          state.companies = Array.isArray(d.companies)?d.companies:[];
-          state.invoices  = Array.isArray(d.invoices)?d.invoices:[];
-          // Migrate: add reservationStatus to customers
-          state.customers.forEach(c=>{ if(!c.reservationStatus) c.reservationStatus="paid"; });
-          save();
-        }
-      } else {
-        const d = JSON.parse(raw);
-        state.customers = Array.isArray(d.customers)?d.customers:[];
-        state.sailings  = Array.isArray(d.sailings)?d.sailings:[];
-        state.companies = Array.isArray(d.companies)?d.companies:[];
-        state.invoices  = Array.isArray(d.invoices)?d.invoices:[];
-      }
-    }catch(e){}
-
-    if(!state.invoice.invoiceNo) state.invoice.invoiceNo = "JS-"+today().replaceAll("-","");
-
-    if(state.customers.length===0 && state.sailings.length===0 && state.companies.length===0){
-      const coId = genId("B");
-      state.companies.push({id:coId, name:"Esimerkki Oy", businessId:"1234567-8", email:"info@esimerkki.fi", commissionPct:10});
-      const sid = genId("S");
-      state.sailings.push({
-        id:sid, name:"Merenkulkukurssi 1", date:today(), type:"Kurssi",
-        maxPersons:4, reserveSlots:2, pricePerPerson:350, reservationFee:80, sessions:[]
-      });
-      const c1 = genId("C");
-      const c2 = genId("C");
-      const c3 = genId("C");
-      state.customers.push(
-        {id:c1, name:"Matti Merimies", phone:"0401111111", email:"matti@esimerkki.fi", sailingId:sid, billTo:"self", companyId:"", reservationStatus:"paid"},
-        {id:c2, name:"Siiri Seteli",   phone:"0402222222", email:"siiri@esimerkki.fi", sailingId:sid, billTo:"self", companyId:"", reservationStatus:"pending"},
-        {id:c3, name:"Janne Vara",     phone:"0403333333", email:"janne@esimerkki.fi", sailingId:sid, billTo:"self", companyId:"", reservationStatus:"reserve"}
-      );
-    }
-
-    // Ensure all sailings have reserveSlots and reservationFee
-    state.sailings.forEach(s=>{
-      if(s.reserveSlots==null) s.reserveSlots = 2;
-      if(s.reservationFee==null) s.reservationFee = 0;
-    });
-
-    if(!state.invoice.sailingId && state.sailings[0]) state.invoice.sailingId = state.sailings[0].id;
-  }
-
-  function genId(p){ return p + Math.random().toString(16).slice(2,8).toUpperCase(); }
-  function today(){ return new Date().toISOString().slice(0,10); }
-  function esc(s){ return String(s||"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[m])); }
-  function fmtDate(d){ return d ? new Date(d+"T00:00:00").toLocaleDateString("fi-FI") : ""; }
-
-  function getSailingCustomers(sailingId){
-    return state.customers.filter(c=>c.sailingId===sailingId);
-  }
-  function confirmedCount(sailingId){
-    return state.customers.filter(c=>c.sailingId===sailingId && c.reservationStatus==="paid").length;
-  }
-  function pendingCount(sailingId){
-    return state.customers.filter(c=>c.sailingId===sailingId && c.reservationStatus==="pending").length;
-  }
-  function reserveCount(sailingId){
-    return state.customers.filter(c=>c.sailingId===sailingId && c.reservationStatus==="reserve").length;
-  }
-  function enrolledCount(sailingId){
-    return state.customers.filter(c=>c.sailingId===sailingId).length;
-  }
-
-  function vatRate(s){ return (s && s.type==="Charter") ? 0.135 : 0.255; }
-
-  function finnishReference(baseDigits){
-    const digits = String(baseDigits||"").replace(/\D/g,"");
-    if(!digits) return "";
-    const weights=[7,3,1];
-    let sum=0, wi=0;
-    for(let i=digits.length-1;i>=0;i--){ sum += Number(digits[i]) * weights[wi%3]; wi++; }
-    return digits + String((10-(sum%10))%10);
-  }
-
-  function nextInvoiceNumber(){
-    const year = new Date().getFullYear();
-    // Etsi korkein järjestysnumero tänä vuonna
-    let max = 0;
-    for(const inv of state.invoices){
-      // Formaatti JS-YYYY-NNN
-      const m = String(inv.invoiceNo||"").match(/^JS-(\d{4})-(\d+)$/);
-      if(m && Number(m[1])===year){
-        max = Math.max(max, Number(m[2]));
-      }
-    }
-    const seq = String(max+1).padStart(3,"0");
-    return `JS-${year}-${seq}`;
-  }
-
-  function invoiceReference(){
-    const base = (state.invoice.invoiceNo||"").replace(/\D/g,"") || today().replaceAll("-","");
-    return finnishReference(base);
-  }
-
-  function groupCounts(){
-    const counts={};
-    for(const g of SAILING_GROUPS){
-      if(!g.types){counts[g.id]=state.sailings.length; continue;}
-      counts[g.id]=state.sailings.filter(s=>g.types.includes(s.type)).length;
-    }
-    return counts;
-  }
-
-  // FILL UI with confirmed (green) + pending (red) + reserve (yellow) segments
-  function fillUI(sailingId, maxPersons, reserveSlots){
-    const max = Math.max(1, Number(maxPersons||0)||1);
-    const rsv = Math.max(0, Number(reserveSlots||0)||0);
-    const total = max + rsv;
-
-    const conf = confirmedCount(sailingId);
-    const pend = pendingCount(sailingId);
-    const res  = reserveCount(sailingId);
-
-    const confPct = Math.min(100, Math.round((conf/total)*100));
-    const pendPct = Math.min(100-confPct, Math.round((pend/total)*100));
-
-    const mainFull = (conf+pend) >= max;
-
-    return `
-      <div class="fillrow">
-        <div class="fillbar-wrap">
-          <div class="fillbar-confirmed" style="width:${confPct}%"></div>
-          <div class="fillbar-reserve" style="width:${pendPct}%"></div>
+  return `
+    <div class="card">
+      <div class="row-between">
+        <div>
+          <div class="card-title">Dashboard</div>
+          <div class="card-sub">${CONFIG_READY?"Synkronoitu Firebaseen · data turvassa":"Demo-tila · ei tallennusta"}</div>
         </div>
-        <div class="filltext">
-          <span style="color:#166b47">✓${conf}</span>
-          ${pend>0?`<span style="color:#c0392b"> ●${pend} odottaa</span>`:""}
-          ${res>0?`<span style="color:#92400e"> ◎${res} vara</span>`:""}
-          <span style="color:#94a3b8"> / max ${max}+${rsv}</span>
+        <div class="row">
+          <button class="btn btn-secondary noPrint" data-action="export-json">💾 Varmuuskopio</button>
+          <label class="btn btn-secondary noPrint" style="cursor:pointer">
+            ♻️ Palauta
+            <input type="file" accept="application/json" data-action="restore-json" style="display:none">
+          </label>
         </div>
       </div>
-    `;
-  }
 
-  function statusBadge(status){
-    if(status==="paid")    return `<span class="status-badge paid">✓ Vahvistettu</span>`;
-    if(status==="pending") return `<span class="status-badge pending">● Varausmaksu odottaa</span>`;
-    if(status==="reserve") return `<span class="status-badge reserve">◎ Varapaikka</span>`;
-    return "";
-  }
-
-  function computeInvoice(){
-    const s = state.sailings.find(x=>x.id===state.invoice.sailingId)||null;
-    const rate = vatRate(s);
-    const ratePct = (rate*100).toFixed(1);
-
-    let payerName="", payerEmail="", payerBusinessId="";
-    let lines=[], grossTotal=0, eventName="";
-
-    const isReservation = (state.invoice.type==="reservation");
-
-    if(s){
-      eventName = s.name||"";
-      const fullPrice = Number(s.pricePerPerson||0);
-      const resFee   = Number(s.reservationFee||0);
-      const price = isReservation ? resFee : fullPrice;
-
-      if(state.invoice.mode==="customer"){
-        const c = state.customers.find(x=>x.id===state.invoice.customerId);
-        if(c){
-          payerName  = c.name||"";
-          payerEmail = c.email||"";
-          const desc = isReservation ? `${s.name} — varausmaksu — ${c.name}` : `${s.name} — ${c.name}`;
-          lines.push({title:desc, qty:1, unit:price, total:price});
-          grossTotal = price;
-        }
-      }else{
-        const co = state.companies.find(x=>x.id===state.invoice.companyId);
-        if(co){
-          payerName      = co.name||"";
-          payerEmail     = co.email||"";
-          payerBusinessId= co.businessId||"";
-          const cust = state.customers
-            .filter(c=>c.sailingId===s.id && c.billTo==="company" && c.companyId===co.id)
-            .slice().sort((a,b)=>(a.name||"").localeCompare(b.name||""));
-          const gross = cust.length * price;
-          for(const c of cust){
-            const desc = isReservation ? `${s.name} — varausmaksu — ${c.name}` : `${s.name} — ${c.name}`;
-            lines.push({title:desc, qty:1, unit:price, total:price});
-          }
-          const commission = gross * (Number(co.commissionPct||0)/100);
-          if(commission>0) lines.push({title:"Välitysprovisio", qty:1, unit:-commission, total:-commission});
-          grossTotal = gross - commission;
-        }
-      }
-    }
-
-    const net = (grossTotal||0)/(1+rate);
-    const vat = (grossTotal||0)-net;
-
-    return {
-      sailing:s, rate, ratePct,
-      payerName, payerEmail, payerBusinessId,
-      lines, grossTotal, net, vat,
-      reference:invoiceReference(),
-      eventName, isReservation
-    };
-  }
-
-  function monthSummary(month){
-    const rows = state.invoices.filter(x=>String(x.invoiceDate||"").slice(0,7)===month);
-    const sum = {
-      m:month,
-      r255:{net:0,vat:0,gross:0,count:0},
-      r135:{net:0,vat:0,gross:0,count:0},
-      all:{net:0,vat:0,gross:0,count:0}
-    };
-    for(const x of rows){
-      const r=Number(x.vatRatePct||0);
-      const bucket=(Math.abs(r-25.5)<0.2)?"r255":(Math.abs(r-13.5)<0.2)?"r135":null;
-      if(bucket){sum[bucket].net+=Number(x.net||0);sum[bucket].vat+=Number(x.vat||0);sum[bucket].gross+=Number(x.grossTotal||0);sum[bucket].count+=1;}
-      sum.all.net+=Number(x.net||0);sum.all.vat+=Number(x.vat||0);sum.all.gross+=Number(x.grossTotal||0);sum.all.count+=1;
-    }
-    return sum;
-  }
-
-  // ─────────────── RENDER ───────────────
-  function render(){
-    const ae=document.activeElement;
-    const keepAction=ae?.dataset?.action||null;
-    const keepField=ae?.dataset?.field||null;
-    const keepPos=(ae&&typeof ae.selectionStart==="number")?ae.selectionStart:null;
-
-    document.getElementById("app").innerHTML =
-      renderHeader() + renderNav() + `<main>${renderTab()}</main>` + renderModal();
-
-    bind();
-
-    const sel = keepAction ? `[data-action="${keepAction}"]` :
-                keepField  ? `[data-field="${keepField}"]`   : null;
-    if(sel){
-      const el=document.querySelector(sel);
-      if(el){ el.focus(); if(keepPos!==null&&typeof el.setSelectionRange==="function"){ try{el.setSelectionRange(keepPos,keepPos);}catch(e){} } }
-    }
-  }
-
-  function renderHeader(){
-    return `<header class="app-header">
-      <div>
-        <div class="logo">Absolut <em>37</em></div>
-        <div class="sub">Tilauksen hallinta · J Sailing</div>
+      <div class="stats-grid">
+        <div class="stat-card"><div class="stat-label">Purjehdukset</div><div class="stat-val">${state.sailings.length}</div></div>
+        <div class="stat-card"><div class="stat-label">Asiakkaat</div><div class="stat-val">${state.customers.length}</div></div>
+        <div class="stat-card"><div class="stat-label">Vahvistettu</div><div class="stat-val" style="color:var(--green)">${totalConf}</div></div>
+        <div class="stat-card"><div class="stat-label">Odottaa</div><div class="stat-val" style="color:var(--red)">${totalPend}</div></div>
+        <div class="stat-card"><div class="stat-label">Varapaikalla</div><div class="stat-val" style="color:var(--amber)">${totalRes}</div></div>
+        <div class="stat-card"><div class="stat-label">Laskut</div><div class="stat-val">${state.invoices.length}</div></div>
       </div>
-      <div class="hbadge">2026</div>
-    </header>`;
-  }
 
-  function renderNav(){
-    const tabs=[
-      ["dashboard","⚓ Dashboard"],
-      ["calendar","📅 Kalenteri"],
-      ["sailings","⛵ Purjehdukset"],
-      ["customers","👤 Asiakkaat"],
-      ["companies","🏢 Yritykset"],
-      ["invoicing","🧾 Laskutus"]
-    ];
-    return `<nav class="tabs">
-      ${tabs.map(([id,label])=>`
-        <button data-tab="${id}" class="${state.tab===id?"active":""}">${label}</button>
-      `).join("")}
-    </nav>`;
-  }
+      ${totalPend>0?`<div class="infobox infobox-amber">⏳ ${totalPend} asiakkaalla varausmaksu maksamatta</div>`:""}
 
-  function renderTab(){
-    if(state.tab==="dashboard") return renderDashboard();
-    if(state.tab==="calendar")  return renderCalendar();
-    if(state.tab==="sailings")  return renderSailings();
-    if(state.tab==="customers") return renderCustomers();
-    if(state.tab==="companies") return renderCompanies();
-    if(state.tab==="invoicing") return renderInvoicing();
-    return "";
-  }
-
-
-  function renderCalendar(){
-    const [year, month] = state.calendarMonth.split("-").map(Number);
-    const monthNames = ["Tammikuu","Helmikuu","Maaliskuu","Huhtikuu","Toukokuu","Kesäkuu",
-                        "Heinäkuu","Elokuu","Syyskuu","Lokakuu","Marraskuu","Joulukuu"];
-    const dayNames = ["Ma","Ti","Ke","To","Pe","La","Su"];
-
-    // First day of month (0=Sun..6=Sat), convert to Mon-based
-    const firstDay = new Date(year, month-1, 1).getDay();
-    const startOffset = (firstDay === 0) ? 6 : firstDay - 1;
-    const daysInMonth = new Date(year, month, 0).getDate();
-    const daysInPrev  = new Date(year, month-1, 0).getDate();
-
-    const todayStr = today();
-
-    // Build event map: date string -> events[]
-    const eventMap = {};
-
-    for(const s of state.sailings){
-      if(!s.date) continue;
-
-      const isCourse = s.type === "Kurssi";
-      const hasSessions = isCourse && Array.isArray(s.sessions) && s.sessions.length > 0;
-
-      if(!hasSessions){
-        // Näytä purjehdus sen omalla päivällä
-        if(!eventMap[s.date]) eventMap[s.date] = [];
-        eventMap[s.date].push({
-          id: s.id, name: s.name, type: s.type,
-          maxPersons: s.maxPersons,
-          label: s.name,
-          timeLabel: "",
-          _isSession: false
-        });
-      } else {
-        // Kurssilla on kurssipäivät — näytä jokainen erikseen
-        for(const sess of s.sessions){
-          if(!sess.date) continue;
-          if(!eventMap[sess.date]) eventMap[sess.date] = [];
-          let timeLabel = "";
-          if(sess.start && sess.end)   timeLabel = sess.start + "–" + sess.end;
-          else if(sess.start)          timeLabel = "klo " + sess.start;
-          eventMap[sess.date].push({
-            id: s.id, name: s.name, type: s.type,
-            maxPersons: s.maxPersons,
-            label: s.name,
-            timeLabel: timeLabel,
-            note: sess.note || "",
-            _isSession: true,
-            _sessIdx: s.sessions.indexOf(sess)
-          });
-        }
-      }
-    }
-
-    // Build cells
-    const totalCells = Math.ceil((startOffset + daysInMonth) / 7) * 7;
-    let cells = "";
-    for(let i=0; i<totalCells; i++){
-      let cellDay, cellMonth, cellYear, otherMonth=false;
-      if(i < startOffset){
-        cellDay = daysInPrev - startOffset + i + 1;
-        cellMonth = month===1?12:month-1;
-        cellYear  = month===1?year-1:year;
-        otherMonth=true;
-      } else if(i >= startOffset + daysInMonth){
-        cellDay = i - startOffset - daysInMonth + 1;
-        cellMonth = month===12?1:month+1;
-        cellYear  = month===12?year+1:year;
-        otherMonth=true;
-      } else {
-        cellDay = i - startOffset + 1;
-        cellMonth = month;
-        cellYear  = year;
-      }
-      const dateStr = cellYear+"-"+String(cellMonth).padStart(2,"0")+"-"+String(cellDay).padStart(2,"0");
-      const isToday = dateStr===todayStr;
-      const events = eventMap[dateStr]||[];
-
-      const evHTML = events.slice(0,4).map(ev=>{
-        const typeClass = "type-"+(ev.type||"Muu");
-        const booked = ev._isSession ? "" : ` (${enrolledCount(ev.id)}/${ev.maxPersons||0})`;
-        const timePart = ev.timeLabel ? `<span style="opacity:.75;font-size:9px;display:block;margin-top:1px">${esc(ev.timeLabel)}</span>` : "";
-        const titleAttr = ev.timeLabel ? ev.name+" "+ev.timeLabel : ev.name;
-        const action = ev._isSession ? "edit-session-cal" : "edit-sailing";
-        const sesIdx  = ev._isSession ? String(ev._sessIdx) : "";
-        return `<button class="cal-event ${typeClass}" data-action="${action}" data-id="${ev.id}" data-idx="${sesIdx}" title="${esc(titleAttr)}" style="padding:3px 5px">
-          <span style="display:block">${esc(ev.label)}${booked}</span>
-          ${timePart}
-        </button>`;
-      }).join("");
-      const moreHTML = events.length>4 ? `<div style="font-size:10px;color:var(--muted);padding:1px 4px">+${events.length-4} lisää</div>` : "";
-
-      cells += `<div class="cal-cell${otherMonth?" other-month":""}${isToday?" today":""}">
-        <div class="cal-date">${cellDay}</div>
-        ${evHTML}${moreHTML}
-      </div>`;
-    }
-
-    const TYPES = ["Kurssi","Charter","Iltapurjehdus","Päiväpurjehdus","Purjehdusretki","Yritystilaisuus","Muu"];
-    const legendHTML = TYPES.map(t=>`
-      <div class="cal-legend-item">
-        <div class="cal-legend-dot cal-event type-${t.replace(/\s/g,"_")}"></div>
-        ${esc(t)}
-      </div>
-    `).join("");
-
-    const prevMonth = month===1 ? year-1+"-12" : year+"-"+String(month-1).padStart(2,"0");
-    const nextMonth = month===12 ? year+1+"-01" : year+"-"+String(month+1).padStart(2,"0");
-
-    return `
-      <div class="card">
-        <div class="row between">
-          <div class="cal-nav">
-            <button class="btn secondary sm" data-action="cal-prev" data-month="${prevMonth}">‹ Edellinen</button>
-            <div class="cal-month-title">${monthNames[month-1]} ${year}</div>
-            <button class="btn secondary sm" data-action="cal-next" data-month="${nextMonth}">Seuraava ›</button>
-          </div>
-          <button class="btn secondary sm" data-action="cal-today">Tänään</button>
-        </div>
-
-        <div class="cal-legend">${legendHTML}</div>
-
-        <div class="cal-grid" style="margin-top:14px">
-          ${dayNames.map(d=>`<div class="cal-dayname">${d}</div>`).join("")}
-          ${cells}
-        </div>
-      </div>
-    `;
-  }
-
-  function renderDashboard(){
-    const totalConf = state.customers.filter(c=>c.reservationStatus==="paid").length;
-    const totalPend = state.customers.filter(c=>c.reservationStatus==="pending").length;
-    const totalRes  = state.customers.filter(c=>c.reservationStatus==="reserve").length;
-
-    return `
-      <div class="card">
-        <div class="row between">
-          <div>
-            <div class="card-title">Dashboard</div>
-            <div class="card-sub">Tallennus: tämä laite (localStorage)</div>
-          </div>
-          <div class="row">
-            <button class="btn secondary" data-action="backup-json">💾 Varmuuskopio</button>
-            <label class="btn secondary" style="display:inline-flex;align-items:center;gap:8px;cursor:pointer">
-              ♻️ Palauta
-              <input type="file" accept="application/json" data-action="restore-json" style="display:none">
-            </label>
-          </div>
-        </div>
-
+      ${upcoming.length>0?`
         <div class="hr"></div>
-
-        <div class="row" style="gap:14px">
-          <div class="note"><div style="font-weight:700;font-size:12px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted)">Asiakkaita</div><div class="stat-val">${state.customers.length}</div></div>
-          <div class="note"><div style="font-weight:700;font-size:12px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted)">Purjehduksia</div><div class="stat-val">${state.sailings.length}</div></div>
-          <div class="note"><div style="font-weight:700;font-size:12px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted)">Yrityksiä</div><div class="stat-val">${state.companies.length}</div></div>
-          <div class="note"><div style="font-weight:700;font-size:12px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted)">Laskurekisteri</div><div class="stat-val">${state.invoices.length}</div></div>
-        </div>
-
-        <div class="hr"></div>
-
-        <div style="font-weight:700;font-size:13px;margin-bottom:10px;color:var(--navy)">Varausmaksutilanne — kaikki asiakkaat</div>
-        <div class="legend">
-          <div class="legend-item"><span class="dot green"></span> Vahvistettu (${totalConf})</div>
-          <div class="legend-item"><span class="dot red"></span> Varausmaksu odottaa (${totalPend})</div>
-          <div class="legend-item"><span class="dot yellow"></span> Varapaikalla (${totalRes})</div>
-        </div>
-
-        ${totalPend>0 ? `
-          <div class="infobox yellow" style="margin-top:10px">
-            ⏳ ${totalPend} asiakkaalla varausmaksu maksamatta — muistuta tai lähetä lasku laskutus-välilehdeltä.
+        <div style="font-weight:700;font-size:12px;text-transform:uppercase;letter-spacing:.6px;color:var(--text-muted);margin-bottom:10px">Tulevat purjehdukset</div>
+        ${upcoming.map(s=>`
+          <div class="item">
+            <div>
+              <h3>${esc(s.name||"")} <span class="pill">${esc(s.type||"")}</span></h3>
+              <div class="meta">${fmtDate(s.date)} · ${confirmedCount(s.id)} vahvistettu / ${Number(s.maxPersons||0)} max</div>
+            </div>
+            <button class="btn btn-secondary btn-sm" data-action="edit-sailing" data-id="${s.id}">Avaa</button>
           </div>
-        ` : ""}
-      </div>
-    `;
+        `).join("")}
+      `:""}
+    </div>
+  `;
+}
+
+// ── CALENDAR ──
+function renderCalendar(){
+  const [year,month] = state.calendarMonth.split("-").map(Number);
+  const monthNames=["Tammikuu","Helmikuu","Maaliskuu","Huhtikuu","Toukokuu","Kesäkuu","Heinäkuu","Elokuu","Syyskuu","Lokakuu","Marraskuu","Joulukuu"];
+  const dayNames=["Ma","Ti","Ke","To","Pe","La","Su"];
+
+  const firstDay = new Date(year,month-1,1).getDay();
+  const startOffset = firstDay===0?6:firstDay-1;
+  const daysInMonth = new Date(year,month,0).getDate();
+  const daysInPrev  = new Date(year,month-1,0).getDate();
+  const todayStr    = today();
+
+  // Build event map
+  const eventMap={};
+  for(const s of state.sailings){
+    if(!s.date) continue;
+    const isCourse=s.type==="Kurssi";
+    const hasSessions=isCourse&&Array.isArray(s.sessions)&&s.sessions.length>0;
+    if(!hasSessions){
+      if(!eventMap[s.date]) eventMap[s.date]=[];
+      eventMap[s.date].push({id:s.id,name:s.name,type:s.type,maxPersons:s.maxPersons,timeLabel:"",_isSession:false});
+    } else {
+      for(let i=0;i<s.sessions.length;i++){
+        const sess=s.sessions[i];
+        if(!sess.date) continue;
+        if(!eventMap[sess.date]) eventMap[sess.date]=[];
+        let tl="";
+        if(sess.start&&sess.end) tl=sess.start+"–"+sess.end;
+        else if(sess.start) tl="klo "+sess.start;
+        eventMap[sess.date].push({id:s.id,name:s.name,type:s.type,maxPersons:s.maxPersons,timeLabel:tl,_isSession:true,_sessIdx:i});
+      }
+    }
   }
 
-  function renderCustomers(){
-    const term=(state.searchCustomers||"").toLowerCase().trim();
-    const list=state.customers
-      .slice()
-      .sort((a,b)=>{
-        // Sort: pending first, then reserve, then paid
-        const order={pending:0,reserve:1,paid:2};
-        const oa=(order[a.reservationStatus]??1);
-        const ob=(order[b.reservationStatus]??1);
-        if(oa!==ob) return oa-ob;
-        return (a.name||"").localeCompare(b.name||"");
-      })
-      .filter(c =>
-        !term ||
-        (c.name||"").toLowerCase().includes(term) ||
-        (c.phone||"").toLowerCase().includes(term) ||
-        (c.email||"").toLowerCase().includes(term)
-      );
+  const totalCells=Math.ceil((startOffset+daysInMonth)/7)*7;
+  let cells="";
+  for(let i=0;i<totalCells;i++){
+    let d,m,y,other=false;
+    if(i<startOffset){d=daysInPrev-startOffset+i+1;m=month===1?12:month-1;y=month===1?year-1:year;other=true;}
+    else if(i>=startOffset+daysInMonth){d=i-startOffset-daysInMonth+1;m=month===12?1:month+1;y=month===12?year+1:year;other=true;}
+    else{d=i-startOffset+1;m=month;y=year;}
+    const ds=y+"-"+String(m).padStart(2,"0")+"-"+String(d).padStart(2,"0");
+    const isToday=ds===todayStr;
+    const evs=eventMap[ds]||[];
 
-    return `
-      <div class="card">
-        <div class="row between">
-          <div>
-            <div class="card-title">Asiakkaat</div>
-            <div class="card-sub">Varausmaksu: punainen = odottaa · vihreä = maksettu · keltainen = varapaikka</div>
-          </div>
-          <button class="btn primary" data-action="new-customer">+ Lisää asiakas</button>
+    const evHTML=evs.slice(0,3).map(ev=>{
+      const tc="type-"+ev.type;
+      const booked=ev._isSession?"":` (${enrolledCount(ev.id)}/${ev.maxPersons||0})`;
+      const action=ev._isSession?"edit-session-cal":"edit-sailing";
+      const sidx=ev._isSession?String(ev._sessIdx):"";
+      const tl=ev.timeLabel?`<span style="display:block;opacity:.75;font-size:9px">${esc(ev.timeLabel)}</span>`:"";
+      return `<button class="cal-event ${tc}" data-action="${action}" data-id="${ev.id}" data-idx="${sidx}" style="padding:3px 5px">
+        <span style="display:block">${esc(ev.name)}${booked}</span>${tl}
+      </button>`;
+    }).join("");
+    const more=evs.length>3?`<div style="font-size:9px;color:var(--text-muted);padding:1px 4px">+${evs.length-3}</div>`:"";
+
+    cells+=`<div class="cal-cell${other?" other-month":""}${isToday?" today":""}">
+      <div class="cal-date">${d}</div>
+      ${evHTML}${more}
+    </div>`;
+  }
+
+  const TYPES=["Kurssi","Charter","Iltapurjehdus","Päiväpurjehdus","Purjehdusretki","Yritystilaisuus","Muu"];
+  const prev=month===1?`${year-1}-12`:`${year}-${String(month-1).padStart(2,"0")}`;
+  const next=month===12?`${year+1}-01`:`${year}-${String(month+1).padStart(2,"0")}`;
+
+  return `
+    <div class="card">
+      <div class="row-between">
+        <div class="cal-nav-bar">
+          <button class="btn btn-secondary btn-sm" data-action="cal-nav" data-month="${prev}">‹</button>
+          <div class="cal-month-label">${monthNames[month-1]} ${year}</div>
+          <button class="btn btn-secondary btn-sm" data-action="cal-nav" data-month="${next}">›</button>
         </div>
+        <button class="btn btn-secondary btn-sm" data-action="cal-today">Tänään</button>
+      </div>
+      <div class="cal-legend">
+        ${TYPES.map(t=>`<div class="cal-legend-item"><div class="cal-legend-dot cal-event type-${t}"></div>${esc(t)}</div>`).join("")}
+      </div>
+      <div class="cal-grid">
+        ${dayNames.map(d=>`<div class="cal-dayname">${d}</div>`).join("")}
+        ${cells}
+      </div>
+    </div>
+  `;
+}
 
-        <div class="hr"></div>
+// ── SAILINGS ──
+function renderSailings(){
+  const counts=groupCounts();
+  const g=SAILING_GROUPS.find(x=>x.id===state.sailingGroup)||SAILING_GROUPS[0];
+  const term=(state.searchSailings||"").toLowerCase();
+  let list=state.sailings.slice().sort((a,b)=>(a.date||"").localeCompare(b.date||""));
+  if(g.types) list=list.filter(s=>g.types.includes(s.type));
+  if(term) list=list.filter(s=>(s.name||"").toLowerCase().includes(term)||(s.type||"").toLowerCase().includes(term)||(s.date||"").includes(term));
 
-        <div class="legend">
-          <div class="legend-item"><span class="dot red"></span> Varausmaksu odottaa</div>
-          <div class="legend-item"><span class="dot green"></span> Vahvistettu</div>
-          <div class="legend-item"><span class="dot yellow"></span> Varapaikka</div>
+  return `
+    <div class="card">
+      <div class="row-between">
+        <div>
+          <div class="card-title">Purjehdukset</div>
+          <div class="card-sub">Hallitse purjehdukset, kurssipäivät ja osallistujat</div>
         </div>
+        <button class="btn btn-primary" data-action="new-sailing">+ Uusi purjehdus</button>
+      </div>
+      <div class="hr"></div>
+      <div class="groupbar">
+        ${SAILING_GROUPS.map(x=>`
+          <button class="btn ${state.sailingGroup===x.id?"btn-primary":"btn-secondary"}" data-action="set-group" data-id="${x.id}">
+            ${esc(x.label)} (${counts[x.id]||0})
+          </button>
+        `).join("")}
+      </div>
+      <div class="hr"></div>
+      <div class="field">
+        <label class="lbl">Haku</label>
+        <input data-action="search-sailings" value="${esc(state.searchSailings)}" placeholder="Hae nimellä, tyypillä tai päivällä…">
+      </div>
+      ${list.length===0?`<div class="muted">Ei purjehduksia.</div>`:`
+        ${list.map(s=>{
+          const max=Number(s.maxPersons||0),rsv=Number(s.reserveSlots||0),resFee=Number(s.reservationFee||0);
+          const sessions=Array.isArray(s.sessions)?s.sessions:[];
+          const isCourse=s.type==="Kurssi";
 
-        <div class="hr"></div>
-
-        <div class="field">
-          <label class="lbl">Haku</label>
-          <input data-action="search-customers" value="${esc(state.searchCustomers)}" placeholder="Hae nimellä / puhelin / email">
-        </div>
-
-        ${list.length===0 ? `<div class="muted">Ei osumia.</div>` : `
-          ${list.map(c=>{
-            const s = state.sailings.find(x=>x.id===c.sailingId);
-            const co = state.companies.find(x=>x.id===c.companyId);
-            const status = c.reservationStatus || "pending";
-            const dotClass = status==="paid"?"green":status==="reserve"?"yellow":"red";
-
-            return `
-              <div class="item">
-                <div style="display:flex;align-items:flex-start;gap:10px;flex:1">
-                  <div class="dot ${dotClass}" style="margin-top:6px;flex-shrink:0"></div>
-                  <div>
-                    <h3 style="display:flex;align-items:center;flex-wrap:wrap;gap:4px">
-                      ${esc(c.name||"")}
-                      ${s ? `<span class="pill">${esc(s.name)}</span>` : ""}
-                    </h3>
-                    <div class="meta" style="margin-top:4px">
-                      ${statusBadge(status)}
+          const sessUI=isCourse?`
+            <div class="session-box">
+              <div class="row-between" style="margin-bottom:10px">
+                <div style="font-size:12px;font-weight:700;color:var(--silver)">Kurssipäivät</div>
+                <button class="btn btn-secondary btn-sm" data-action="add-session" data-id="${s.id}">+ Lisää päivä</button>
+              </div>
+              ${sessions.length===0?`<div class="muted small">Ei päiviä lisättynä.</div>`:`
+                ${sessions.map((x,idx)=>`
+                  <div class="session-item">
+                    <div>
+                      <div style="font-weight:600;font-size:13px;color:var(--white)">${esc(x.date||"")}${x.start?" klo "+esc(x.start):""}${x.end?"–"+esc(x.end):""}</div>
+                      ${x.note?`<div class="small muted">${esc(x.note)}</div>`:""}
                     </div>
-                    <div class="meta">
-                      ${c.email ? `<a href="mailto:${esc(c.email)}" style="color:var(--navy2)">${esc(c.email)}</a>` : ""}
-                      ${c.email && c.phone ? " · " : ""}
-                      ${esc(c.phone||"")}
-                      ${co && c.billTo==="company" ? ` · <span class="badge">${esc(co.name)}</span>` : ""}
+                    <div class="row">
+                      <button class="btn btn-secondary btn-sm" data-action="edit-session-direct" data-id="${s.id}" data-idx="${idx}">Muokkaa</button>
+                      <button class="btn btn-danger btn-sm" data-action="delete-session" data-id="${s.id}" data-idx="${idx}">Poista</button>
                     </div>
                   </div>
-                </div>
-                <div class="row" style="align-items:flex-start;flex-shrink:0">
-                  ${status==="pending" ? `<button class="btn teal sm" data-action="confirm-payment" data-id="${c.id}">✓ Merkitse maksetuksi</button>` : ""}
-                  <button class="btn secondary sm" data-action="edit-customer" data-id="${c.id}">Muokkaa</button>
-                  <button class="btn danger sm" data-action="delete-customer" data-id="${c.id}">Poista</button>
+                `).join("")}
+              `}
+            </div>
+          `:"";
+
+          const attendeesUI=state.openSailingId===s.id?`
+            <div style="margin:6px 0 14px;padding:14px;background:rgba(232,244,253,.5);border-radius:10px;border:1px solid var(--line-bright)">
+              <div class="row-between" style="margin-bottom:10px">
+                <div style="font-size:12px;font-weight:700;color:var(--silver)">Osallistujat</div>
+                <div class="row">
+                  <span class="badge badge-green">✓${confirmedCount(s.id)}</span>
+                  <span class="badge badge-red">●${pendingCount(s.id)}</span>
+                  <span class="badge badge-amber">◎${reserveCount(s.id)}</span>
                 </div>
               </div>
-            `;
-          }).join("")}
-        `}
-      </div>
-    `;
-  }
-
-  function renderSailings(){
-    const counts = groupCounts();
-    const g = SAILING_GROUPS.find(x=>x.id===state.sailingGroup)||SAILING_GROUPS[0];
-    const term=(state.searchSailings||"").toLowerCase().trim();
-    let list = state.sailings.slice().sort((a,b)=>(a.date||"").localeCompare(b.date||""));
-    if(g.types) list=list.filter(s=>g.types.includes(s.type));
-    if(term) list=list.filter(s=>(s.name||"").toLowerCase().includes(term)||(s.type||"").toLowerCase().includes(term)||(s.date||"").includes(term));
-
-    return `
-      <div class="card">
-        <div class="row between">
-          <div>
-            <div class="card-title">Purjehdukset</div>
-            <div class="card-sub">Max = vahvistetut paikat · +vara = varapaikat</div>
-          </div>
-          <button class="btn primary" data-action="new-sailing">+ Lisää purjehdus</button>
-        </div>
-
-        <div class="hr"></div>
-
-        <div class="groupbar">
-          ${SAILING_GROUPS.map(x=>`
-            <button class="btn ${state.sailingGroup===x.id?"primary":"secondary"}"
-              data-action="set-group" data-id="${x.id}">
-              ${esc(x.label)} (${counts[x.id]||0})
-            </button>
-          `).join("")}
-        </div>
-
-        <div class="hr"></div>
-
-        <div class="field">
-          <label class="lbl">Haku</label>
-          <input data-action="search-sailings" value="${esc(state.searchSailings||"")}" placeholder="Hae nimellä / tyypillä / päivällä">
-        </div>
-
-        ${list.length===0 ? `<div class="muted">Ei purjehduksia.</div>` : `
-          ${list.map(s=>{
-            const max    = Number(s.maxPersons||0)||0;
-            const rsv    = Number(s.reserveSlots||0)||0;
-            const conf   = confirmedCount(s.id);
-            const pend   = pendingCount(s.id);
-            const res    = reserveCount(s.id);
-            const resFee = Number(s.reservationFee||0);
-
-            const sessions = Array.isArray(s.sessions)?s.sessions:[];
-            const isCourse = s.type==="Kurssi";
-
-            const sessionsUI = isCourse ? `
-              <div class="sessionbox">
-                <div class="row between" style="margin-bottom:10px">
-                  <div style="font-weight:700;font-size:13px">Kurssipäivät</div>
-                  <button class="btn secondary sm" data-action="add-session" data-id="${s.id}">+ Lisää päivä</button>
-                </div>
-                ${sessions.length===0 ? `<div class="muted small">Ei päiviä.</div>` : `
-                  ${sessions.map((x,idx)=>`
-                    <div class="sessionitem">
-                      <div>
-                        <div style="font-weight:600;font-size:13px">${esc(x.date||"")}${x.start?" klo "+esc(x.start):""}${x.end?"–"+esc(x.end):""}</div>
-                        ${x.note?`<div class="small muted">${esc(x.note)}</div>`:""}
+              ${state.customers.filter(c=>c.sailingId===s.id).length===0
+                ?`<div class="muted small">Ei ilmoittautuneita</div>`
+                :state.customers.filter(c=>c.sailingId===s.id)
+                  .sort((a,b)=>{const o={pending:0,reserve:1,paid:2};return(o[a.reservationStatus]??1)-(o[b.reservationStatus]??1)||a.name.localeCompare(b.name);})
+                  .map(c=>{
+                    const st=c.reservationStatus||"pending";
+                    const dc=st==="paid"?"dot-green":st==="reserve"?"dot-amber":"dot-red";
+                    return `<div class="attendee-card ${st}">
+                      <div class="row"><span class="dot ${dc}"></span><span style="font-weight:600;font-size:14px;color:var(--white)">${esc(c.name||"")}</span>${statusBadge(st)}</div>
+                      <div class="row">
+                        ${st==="pending"?`<button class="btn btn-teal btn-sm" data-action="confirm-payment" data-id="${c.id}">✓ Maksettu</button>`:""}
+                        ${st==="reserve"?`<button class="btn btn-secondary btn-sm" data-action="promote-reserve" data-id="${c.id}">↑ Vahvista</button>`:""}
+                        <button class="btn btn-danger btn-sm" data-action="delete-customer" data-id="${c.id}">Poista</button>
                       </div>
-                      <button class="btn danger sm" data-action="delete-session" data-id="${s.id}" data-idx="${idx}">Poista</button>
-                    </div>
-                  `).join("")}
-                `}
-              </div>
-            ` : "";
+                    </div>`;
+                  }).join("")
+              }
+            </div>
+          `:"";
 
-            const attendeesUI = state.openSailingId===s.id ? `
-              <div style="margin:6px 0 14px 0;padding:14px;background:#f8fafc;border-radius:12px;border:1px solid var(--line)">
-                <div class="row between" style="margin-bottom:10px">
-                  <div style="font-weight:700;font-size:13px;color:var(--navy)">Ilmoittautuneet</div>
-                  <div class="legend" style="margin:0">
-                    <div class="legend-item small"><span class="dot green"></span>Vahvistettu (${conf})</div>
-                    <div class="legend-item small"><span class="dot red"></span>Odottaa (${pend})</div>
-                    <div class="legend-item small"><span class="dot yellow"></span>Varapaikka (${res})</div>
-                  </div>
-                </div>
-                ${state.customers.filter(c=>c.sailingId===s.id).length===0
-                  ? `<div class="muted small">Ei ilmoittautuneita</div>`
-                  : state.customers.filter(c=>c.sailingId===s.id)
-                      .sort((a,b)=>{const o={pending:0,reserve:1,paid:2};return (o[a.reservationStatus]??1)-(o[b.reservationStatus]??1)||a.name.localeCompare(b.name);})
-                      .map(c=>{
-                        const st=c.reservationStatus||"pending";
-                        const dc=st==="paid"?"green":st==="reserve"?"yellow":"red";
-                        return `<div class="attendee-card ${st}">
-                          <div style="display:flex;align-items:center;gap:8px">
-                            <span class="dot ${dc}"></span>
-                            <span style="font-weight:600;font-size:14px">${esc(c.name||"")}</span>
-                            ${statusBadge(st)}
-                          </div>
-                          <div class="row">
-                            ${st==="pending"?`<button class="btn teal sm" data-action="confirm-payment" data-id="${c.id}">✓ Maksettu</button>`:""}
-                            ${st==="reserve"?`<button class="btn secondary sm" data-action="promote-reserve" data-id="${c.id}">↑ Vahvista</button>`:""}
-                            <button class="btn danger sm" data-action="delete-customer" data-id="${c.id}">Poista</button>
-                          </div>
-                        </div>`;
-                      }).join("")
-                }
+          return `
+            <div class="item">
+              <div style="flex:1">
+                <h3>${esc(s.name||"")} <span class="pill">${esc(s.type||"")}</span></h3>
+                <div class="meta">${fmtDate(s.date)} · Max ${max}+${rsv} vara · ${Number(s.pricePerPerson||0).toFixed(0)} €/hlö${resFee>0?` · varausmaksu ${resFee} €`:""}</div>
+                ${fillUI(s.id,max,rsv)}
+                ${sessUI}
+                ${attendeesUI}
               </div>
-            ` : "";
-
-            return `
-              <div class="item">
-                <div style="flex:1">
-                  <h3>
-                    ${esc(s.name||"")}
-                    <span class="pill">${esc(s.type||"")}</span>
-                  </h3>
-                  <div class="meta">
-                    ${fmtDate(s.date)} · Max ${max} hlö · +${rsv} varapaikkaa · ${Number(s.pricePerPerson||0).toFixed(0)} €/hlö
-                    ${resFee>0 ? ` · varausmaksu ${resFee} €` : ""}
-                  </div>
-                  ${fillUI(s.id, max, rsv)}
-                  ${sessionsUI}
-                  ${attendeesUI}
-                </div>
-                <div class="row" style="align-items:flex-start;flex-shrink:0">
-                  <button class="btn secondary sm" data-action="toggle-sailing" data-id="${s.id}">
-                    ${state.openSailingId===s.id?"Piilota":"Näytä osallistujat"}
-                  </button>
-                  <button class="btn secondary sm" data-action="edit-sailing" data-id="${s.id}">Muokkaa</button>
-                  <button class="btn danger sm" data-action="delete-sailing" data-id="${s.id}">Poista</button>
-                </div>
+              <div class="row" style="align-items:flex-start;flex-shrink:0">
+                <button class="btn btn-secondary btn-sm" data-action="toggle-sailing" data-id="${s.id}">${state.openSailingId===s.id?"Piilota":"Osallistujat"}</button>
+                <button class="btn btn-secondary btn-sm" data-action="edit-sailing" data-id="${s.id}">Muokkaa</button>
+                <button class="btn btn-danger btn-sm" data-action="delete-sailing" data-id="${s.id}">Poista</button>
               </div>
-            `;
-          }).join("")}
-        `}
-      </div>
-    `;
-  }
+            </div>
+          `;
+        }).join("")}
+      `}
+    </div>
+  `;
+}
 
-  function renderCompanies(){
-    const list=state.companies.slice().sort((a,b)=>(a.name||"").localeCompare(b.name||""));
-    return `
-      <div class="card">
-        <div class="row between">
-          <div>
-            <div class="card-title">Tilaajayritykset</div>
-            <div class="card-sub">Provisio näkyy vain yrityslaskulla.</div>
-          </div>
-          <button class="btn primary" data-action="new-company">+ Lisää yritys</button>
+// ── CUSTOMERS ──
+function renderCustomers(){
+  const term=(state.searchCustomers||"").toLowerCase();
+  const list=state.customers
+    .slice()
+    .sort((a,b)=>{const o={pending:0,reserve:1,paid:2};return(o[a.reservationStatus]??1)-(o[b.reservationStatus]??1)||(a.name||"").localeCompare(b.name||"");})
+    .filter(c=>!term||(c.name||"").toLowerCase().includes(term)||(c.phone||"").toLowerCase().includes(term)||(c.email||"").toLowerCase().includes(term));
+
+  return `
+    <div class="card">
+      <div class="row-between">
+        <div>
+          <div class="card-title">Asiakkaat</div>
+          <div class="card-sub">🔴 Varausmaksu odottaa · 🟢 Vahvistettu · 🟡 Varapaikka</div>
         </div>
-        <div class="hr"></div>
-        ${list.length===0 ? `<div class="muted">Ei yrityksiä.</div>` : list.map(co=>`
+        <button class="btn btn-primary" data-action="new-customer">+ Uusi asiakas</button>
+      </div>
+      <div class="hr"></div>
+      <div class="field">
+        <label class="lbl">Haku</label>
+        <input data-action="search-customers" value="${esc(state.searchCustomers)}" placeholder="Hae nimellä, puhelimella tai sähköpostilla…">
+      </div>
+      ${list.length===0?`<div class="muted">Ei osumia.</div>`:`
+        ${list.map(c=>{
+          const s=state.sailings.find(x=>x.id===c.sailingId);
+          const co=state.companies.find(x=>x.id===c.companyId);
+          const st=c.reservationStatus||"pending";
+          const dc=st==="paid"?"dot-green":st==="reserve"?"dot-amber":"dot-red";
+          return `
+            <div class="item">
+              <div style="display:flex;gap:10px;flex:1;align-items:flex-start">
+                <span class="dot ${dc}" style="margin-top:6px;flex-shrink:0"></span>
+                <div>
+                  <h3>${esc(c.name||"")}${s?`<span class="pill">${esc(s.name)}</span>`:""}</h3>
+                  <div class="meta">${statusBadge(st)}</div>
+                  <div class="meta">
+                    ${c.email?`<a href="mailto:${esc(c.email)}" style="color:var(--blue-accent)">${esc(c.email)}</a>`:""}
+                    ${c.email&&c.phone?" · ":""}${esc(c.phone||"")}
+                    ${co&&c.billTo==="company"?` · <span class="badge badge-silver">${esc(co.name)}</span>`:""}
+                  </div>
+                </div>
+              </div>
+              <div class="row" style="flex-shrink:0;align-items:flex-start">
+                ${st==="pending"?`<button class="btn btn-teal btn-sm" data-action="confirm-payment" data-id="${c.id}">✓ Maksettu</button>`:""}
+                <button class="btn btn-secondary btn-sm" data-action="edit-customer" data-id="${c.id}">Muokkaa</button>
+                <button class="btn btn-danger btn-sm" data-action="delete-customer" data-id="${c.id}">Poista</button>
+              </div>
+            </div>
+          `;
+        }).join("")}
+      `}
+    </div>
+  `;
+}
+
+// ── COMPANIES ──
+function renderCompanies(){
+  const list=state.companies.slice().sort((a,b)=>(a.name||"").localeCompare(b.name||""));
+  return `
+    <div class="card">
+      <div class="row-between">
+        <div><div class="card-title">Tilaajayritykset</div><div class="card-sub">Provisio näkyy vain yrityslaskulla</div></div>
+        <button class="btn btn-primary" data-action="new-company">+ Uusi yritys</button>
+      </div>
+      <div class="hr"></div>
+      ${list.length===0?`<div class="muted">Ei yrityksiä.</div>`:`
+        ${list.map(co=>`
           <div class="item">
             <div>
               <h3>${esc(co.name||"")}</h3>
               <div class="meta">
                 ${co.businessId?`Y-tunnus ${esc(co.businessId)}`:""}
                 ${co.businessId&&co.email?" · ":""}
-                ${co.email?`<a href="mailto:${esc(co.email)}" style="color:var(--navy2)">${esc(co.email)}</a>`:""}
-                ${((co.businessId||co.email)&&co.commissionPct!=null)?" · ":""}
-                ${co.commissionPct!=null?`Provisio ${Number(co.commissionPct||0).toFixed(2)}%`:""}
+                ${co.email?`<a href="mailto:${esc(co.email)}" style="color:var(--blue-accent)">${esc(co.email)}</a>`:""}
+                ${co.commissionPct!=null?` · Provisio ${Number(co.commissionPct||0).toFixed(2)}%`:""}
               </div>
             </div>
             <div class="row">
-              <button class="btn secondary sm" data-action="edit-company" data-id="${co.id}">Muokkaa</button>
-              <button class="btn danger sm" data-action="delete-company" data-id="${co.id}">Poista</button>
+              <button class="btn btn-secondary btn-sm" data-action="edit-company" data-id="${co.id}">Muokkaa</button>
+              <button class="btn btn-danger btn-sm" data-action="delete-company" data-id="${co.id}">Poista</button>
             </div>
           </div>
         `).join("")}
+      `}
+    </div>
+  `;
+}
+
+// ── INVOICING ──
+function renderInvoicing(){
+  const inv=computeInvoice();
+  const evOpts=state.sailings.slice().sort((a,b)=>(a.date||"").localeCompare(b.date||""))
+    .map(x=>`<option value="${x.id}" ${x.id===state.invoice.sailingId?"selected":""}>${esc(x.name)} (${fmtDate(x.date)})</option>`).join("");
+  const custOpts=state.customers.slice().sort((a,b)=>(a.name||"").localeCompare(b.name||""))
+    .map(x=>`<option value="${x.id}" ${x.id===state.invoice.customerId?"selected":""}>${esc(x.name)}</option>`).join("");
+  const coOpts=state.companies.slice().sort((a,b)=>(a.name||"").localeCompare(b.name||""))
+    .map(x=>`<option value="${x.id}" ${x.id===state.invoice.companyId?"selected":""}>${esc(x.name)}</option>`).join("");
+  const selS=state.sailings.find(x=>x.id===state.invoice.sailingId);
+  const hasFee=selS&&Number(selS.reservationFee||0)>0;
+
+  return `
+    <div class="card noPrint">
+      <div class="card-title">Laskutus</div>
+      <div class="card-sub">Luo varausmaksulasku tai täysi lasku</div>
+      <div class="hr"></div>
+      <div class="grid3">
+        <div class="field"><label class="lbl">Tapahtuma</label><select data-action="inv-sailing">${evOpts}</select></div>
+        <div class="field"><label class="lbl">Malli</label>
+          <select data-action="inv-mode">
+            <option value="customer" ${state.invoice.mode==="customer"?"selected":""}>Asiakaskohtainen</option>
+            <option value="company"  ${state.invoice.mode==="company" ?"selected":""}>Yrityslasku</option>
+          </select>
+        </div>
+        <div class="field"><label class="lbl">Laskulaji</label>
+          <select data-action="inv-type">
+            <option value="full"        ${state.invoice.type==="full"       ?"selected":""}>Täysi lasku</option>
+            ${hasFee?`<option value="reservation" ${state.invoice.type==="reservation"?"selected":""}>Varausmaksulasku</option>`:""}
+          </select>
+        </div>
       </div>
-    `;
-  }
+      <div class="row" style="margin-bottom:16px;flex-wrap:wrap;gap:10px">
+        ${state.invoice.mode==="customer"?`
+          <div style="flex:1;min-width:200px" class="field"><label class="lbl">Asiakas</label>
+            <select data-action="inv-customer"><option value="">-- valitse --</option>${custOpts}</select>
+          </div>
+        `:`
+          <div style="flex:1;min-width:200px" class="field"><label class="lbl">Yritys</label>
+            <select data-action="inv-company"><option value="">-- valitse --</option>${coOpts}</select>
+          </div>
+        `}
+        <div style="min-width:160px" class="field"><label class="lbl">Laskunro (seuraava)</label>
+          <div style="padding:10px 13px;border:1.5px solid #d1d5db;border-radius:8px;background:#f0f4f8;font-weight:800;color:#0a4272;font-size:15px">${esc(inv.invNo)}</div>
+          <div class="small muted" style="margin-top:4px">Viite: ${esc(inv.reference)}</div>
+        </div>
+        <div style="min-width:150px" class="field"><label class="lbl">Päivä</label>
+          <input type="date" data-action="inv-date" value="${esc(state.invoice.invoiceDate)}">
+        </div>
+      </div>
+    </div>
 
-  function renderInvoicing(){
-    const inv = computeInvoice();
-    const eventOptions = state.sailings.slice().sort((a,b)=>(a.date||"").localeCompare(b.date||""))
-      .map(x=>`<option value="${x.id}" ${x.id===state.invoice.sailingId?"selected":""}>${esc(x.name)} (${fmtDate(x.date)})</option>`).join("");
-    const customerOptions = state.customers.slice().sort((a,b)=>(a.name||"").localeCompare(b.name||""))
-      .map(x=>`<option value="${x.id}" ${x.id===state.invoice.customerId?"selected":""}>${esc(x.name)}</option>`).join("");
-    const companyOptions = state.companies.slice().sort((a,b)=>(a.name||"").localeCompare(b.name||""))
-      .map(x=>`<option value="${x.id}" ${x.id===state.invoice.companyId?"selected":""}>${esc(x.name)}</option>`).join("");
-
-    const selSailing = state.sailings.find(x=>x.id===state.invoice.sailingId);
-    const hasFee = selSailing && Number(selSailing.reservationFee||0) > 0;
-
-    return `
-      <div class="card">
-        <div class="row between noPrint" style="margin-bottom:16px">
-          <div>
-            <div class="card-title">Laskutus</div>
-            <div class="card-sub">Luo varausmaksulasku tai täysi lasku</div>
+    <div class="card">
+      <div class="invoice-box" id="invoiceBox">
+        <div class="row-between">
+          <div style="line-height:1.7;font-size:14px">
+            <strong style="font-size:16px;color:#111827">LASKU${inv.isReservation?" — VARAUSMAKSU":""}</strong><br>
+            ${esc(ISSUER.name)}<br>
+            Y-tunnus ${esc(ISSUER.businessId)}<br>
+            <span class="small" style="color:var(--text-muted)">IBAN</span> ${esc(BANK.iban)}<br>
+            <span class="small" style="color:var(--text-muted)">BIC</span> ${esc(BANK.bic)}
+          </div>
+          <div style="text-align:right;line-height:1.7;font-size:14px">
+            <strong style="color:#0a4272;font-size:15px">Nro: ${esc(inv.invNo)}</strong><br>
+            Päivä: ${esc(state.invoice.invoiceDate)}<br>
+            Viite: <strong>${esc(inv.reference)}</strong>
           </div>
         </div>
-
-        <div class="grid3 noPrint">
-          <div class="field">
-            <label class="lbl">Tapahtuma</label>
-            <select data-action="inv-sailing">${eventOptions}</select>
-          </div>
-          <div class="field">
-            <label class="lbl">Malli</label>
-            <select data-action="inv-mode">
-              <option value="customer" ${state.invoice.mode==="customer"?"selected":""}>Asiakaskohtainen</option>
-              <option value="company"  ${state.invoice.mode==="company" ?"selected":""}>Yrityslasku</option>
-            </select>
-          </div>
-          <div class="field">
-            <label class="lbl">Laskulaji</label>
-            <select data-action="inv-type">
-              <option value="full"        ${state.invoice.type==="full"       ?"selected":""}>Täysi lasku</option>
-              ${hasFee?`<option value="reservation" ${state.invoice.type==="reservation"?"selected":""}>Varausmaksulasku</option>`:""}
-            </select>
-          </div>
-        </div>
-
-        ${inv.isReservation ? `
-          <div class="infobox blue noPrint">
-            💡 <strong>Varausmaksulasku</strong>: Asiakkaalle lähetetään varausmaksu (${Number(selSailing?.reservationFee||0)} €).
-            Kun merkitset maksun suoritetuksi asiakastiedoissa, asiakas muuttuu vihreäksi (vahvistettu).
-          </div>
-        ` : ""}
-
-        <div class="row noPrint" style="margin-bottom:16px">
-          ${state.invoice.mode==="customer" ? `
-            <div style="min-width:220px;flex:1" class="field">
-              <label class="lbl">Asiakas</label>
-              <select data-action="inv-customer">
-                <option value="">-- valitse --</option>
-                ${customerOptions}
-              </select>
-            </div>
-          ` : `
-            <div style="min-width:220px;flex:1" class="field">
-              <label class="lbl">Yritys</label>
-              <select data-action="inv-company">
-                <option value="">-- valitse --</option>
-                ${companyOptions}
-              </select>
-            </div>
-          `}
-          <div style="min-width:180px" class="field">
-            <label class="lbl">Laskunro (seuraava)</label>
-            <div style="padding:9px 12px;border:1.5px solid var(--line);border-radius:10px;background:#f8fafc;font-weight:700;color:var(--navy);font-size:15px;letter-spacing:.5px">
-              ${esc(nextInvoiceNumber())}
-            </div>
-            <div class="small muted" style="margin-top:4px">Viite: ${esc(finnishReference(nextInvoiceNumber().replace(/\D/g,"")))} · lukitaan tallennettaessa</div>
-          </div>
-          <div style="min-width:160px" class="field">
-            <label class="lbl">Päivä</label>
-            <input type="date" data-action="inv-date" value="${esc(state.invoice.invoiceDate)}">
-          </div>
-        </div>
-
         <div class="hr"></div>
-
-        <div class="invoiceBox" id="invoiceBox">
-          <div class="row between">
-            <div>
-              <b>LASKU${inv.isReservation?" — VARAUSMAKSU":""}</b><br>
-              ${esc(ISSUER.name)}<br>
-              Y-tunnus ${esc(ISSUER.businessId)}<br>
-              <span class="small muted">IBAN</span> ${esc(BANK.iban)}<br>
-              <span class="small muted">BIC</span> ${esc(BANK.bic)}
-            </div>
-            <div style="text-align:right">
-              Nro: ${esc(nextInvoiceNumber())}<br>
-              Päivä: ${esc(state.invoice.invoiceDate)}<br>
-              Viite: ${esc(finnishReference(nextInvoiceNumber().replace(/\D/g,"")))}
-            </div>
-          </div>
-
-          <div class="hr"></div>
-
-          <div>
-            <b>Maksaja:</b><br>
-            ${esc(inv.payerName||"")}
-            ${inv.payerBusinessId?`<div class="small muted">Y-tunnus ${esc(inv.payerBusinessId)}</div>`:""}
-            ${inv.payerEmail?`<div><a href="mailto:${esc(inv.payerEmail)}" style="color:var(--navy2)">${esc(inv.payerEmail)}</a></div>`:""}
-          </div>
-
-          <div class="hr"></div>
-
-          <table class="table">
-            <thead><tr><th>Kuvaus</th><th class="r">Määrä</th><th class="r">€/kpl</th><th class="r">Yht</th></tr></thead>
-            <tbody>
-              ${inv.lines.length===0
-                ? `<tr><td colspan="4" class="muted">Valitse tapahtuma ja maksaja.</td></tr>`
-                : inv.lines.map(l=>`<tr>
-                    <td>${esc(l.title)}</td>
-                    <td class="r">${l.qty}</td>
-                    <td class="r">${Number(l.unit).toFixed(2)}</td>
-                    <td class="r">${Number(l.total).toFixed(2)}</td>
-                  </tr>`).join("")
-              }
-            </tbody>
-          </table>
-
-          <div class="hr"></div>
-
-          <table class="table">
-            <tr><td>Netto</td><td class="r">${Number(inv.net||0).toFixed(2)} €</td></tr>
-            <tr><td>ALV ${inv.ratePct}%</td><td class="r">${Number(inv.vat||0).toFixed(2)} €</td></tr>
-            <tr><td><b>Yhteensä</b></td><td class="r"><b>${Number(inv.grossTotal||0).toFixed(2)} €</b></td></tr>
-          </table>
+        <div style="font-size:14px;line-height:1.7">
+          <strong>Maksaja:</strong><br>
+          ${esc(inv.payerName||"—")}
+          ${inv.payerBusinessId?`<div class="small muted">Y-tunnus ${esc(inv.payerBusinessId)}</div>`:""}
+          ${inv.payerEmail?`<div><a href="mailto:${esc(inv.payerEmail)}" style="color:var(--blue-accent)">${esc(inv.payerEmail)}</a></div>`:""}
         </div>
-
-        <div class="hr noPrint"></div>
-        <div class="row noPrint">
-          <button class="btn primary" data-action="print">Tulosta / PDF</button>
-          <button class="btn secondary" data-action="email">Lähetä sähköpostilla</button>
-          <button class="btn secondary" data-action="open-register">📒 Laskurekisteri</button>
-          <button class="btn teal" data-action="save-invoice-register">➕ Tallenna rekisteriin</button>
-        </div>
-      </div>
-    `;
-  }
-
-  function renderModal(){
-    if(!state.modal) return "";
-    if(state.modal==="register") return renderRegisterModal();
-    if(state.modal==="session") return renderSessionModal();
-    if(state.modal==="customer"||state.modal==="sailing"||state.modal==="company") return renderEditModal();
-    return "";
-  }
-
-  function renderRegisterModal(){
-    const month = state.registerMonth||today().slice(0,7);
-    const list = state.invoices
-      .filter(x=>String(x.invoiceDate||"").slice(0,7)===month)
-      .slice().sort((a,b)=>(a.invoiceDate||"").localeCompare(b.invoiceDate||""));
-    const sum = monthSummary(month);
-    const sumBox=(title,obj)=>`
-      <div class="note" style="min-width:200px;flex:1">
-        <div style="font-weight:700;font-size:12px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted)">${esc(title)} <span class="badge">${obj.count}</span></div>
-        <div class="small muted" style="margin-top:6px">
-          Netto ${obj.net.toFixed(2)} € · ALV ${obj.vat.toFixed(2)} € · Brutto ${obj.gross.toFixed(2)} €
-        </div>
-      </div>
-    `;
-    return `
-      <div class="overlay" data-action="close-modal">
-        <div class="modal" onclick="event.stopPropagation()">
-          <div class="modal-head">
-            <div class="row between">
-              <div class="modal-title">Laskurekisteri</div>
-              <button class="btn secondary sm" data-action="close-modal">Sulje</button>
-            </div>
-          </div>
-          <div class="modal-body">
-            <div class="grid2">
-              <div class="field">
-                <label class="lbl">Kuukausi (YYYY-MM)</label>
-                <input data-action="reg-month" value="${esc(month)}" placeholder="2026-05">
-              </div>
-              <div class="row" style="align-items:flex-end;justify-content:flex-end">
-                <button class="btn primary" data-action="export-register-csv">Vie CSV</button>
-              </div>
-            </div>
-            <div class="hr"></div>
-            <div class="row" style="gap:12px">
-              ${sumBox("Yhteensä",sum.all)}
-              ${sumBox("ALV 25,5%",sum.r255)}
-              ${sumBox("ALV 13,5%",sum.r135)}
-            </div>
-            <div class="hr"></div>
-            ${list.length===0 ? `<div class="muted">Ei laskuja tässä kuukaudessa.</div>` : `
-              <table class="table">
-                <thead>
-                  <tr>
-                    <th>Päivä</th><th>Nro</th><th>Maksaja</th><th>Tyyppi</th><th>Maksettu</th>
-                    <th class="r">Netto</th><th class="r">ALV</th><th class="r">Brutto</th><th></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  ${list.map(x=>`
-                    <tr>
-                      <td>${esc(x.invoiceDate||"")}</td>
-                      <td>${esc(x.invoiceNo||"")}</td>
-                      <td>${esc(x.payerName||"")}</td>
-                      <td>${x.isReservation?`<span class="badge" style="background:#eff6ff;color:#1e40af">Varausmaksu</span>`:`<span class="badge">Täysi</span>`}</td>
-                      <td>
-                        <label style="display:flex;gap:8px;align-items:center;font-weight:700;cursor:pointer">
-                          <input type="checkbox" data-action="reg-paid" data-id="${x.id}" ${x.paid?"checked":""}>
-                          ${x.paid?"Kyllä":"Ei"}
-                        </label>
-                        ${x.paid?`<div class="small muted">${esc(x.paidDate||"")}</div>`:""}
-                      </td>
-                      <td class="r">${Number(x.net||0).toFixed(2)}</td>
-                      <td class="r">${Number(x.vat||0).toFixed(2)}</td>
-                      <td class="r">${Number(x.grossTotal||0).toFixed(2)}</td>
-                      <td><button class="btn danger sm" data-action="delete-register" data-id="${x.id}">Poista</button></td>
-                    </tr>
-                  `).join("")}
-                </tbody>
-              </table>
-            `}
-          </div>
-        </div>
-      </div>
-    `;
-  }
-
-
-  function renderSessionModal(){
-    const {sailingId, idx} = state.editSession || {};
-    const s = state.sailings.find(x=>x.id===sailingId);
-    if(!s || !Array.isArray(s.sessions) || !s.sessions[idx]) return "";
-    const sess = s.sessions[idx];
-    const dayNum = idx + 1;
-
-    return `
-      <div class="overlay" data-action="close-modal">
-        <div class="modal" onclick="event.stopPropagation()" style="max-width:480px">
-          <div class="modal-head">
-            <div class="row between">
-              <div>
-                <div class="modal-title">Kurssipäivä ${dayNum}</div>
-                <div class="card-sub" style="margin-top:3px">${esc(s.name)} · ${esc(sess.date||"")}</div>
-              </div>
-              <button class="btn secondary sm" data-action="close-modal">Sulje</button>
-            </div>
-          </div>
-          <div class="modal-body">
-            <div class="field">
-              <label class="lbl">Päivämäärä</label>
-              <input type="date" data-field="sess-date" value="${esc(sess.date||"")}">
-            </div>
-            <div class="grid2">
-              <div class="field">
-                <label class="lbl">Aloitusaika</label>
-                <input type="time" data-field="sess-start" value="${esc(sess.start||"")}">
-              </div>
-              <div class="field">
-                <label class="lbl">Lopetusaika</label>
-                <input type="time" data-field="sess-end" value="${esc(sess.end||"")}">
-              </div>
-            </div>
-            <div class="field">
-              <label class="lbl">Lisähuomio</label>
-              <textarea data-field="sess-note" rows="3" style="resize:vertical">${esc(sess.note||"")}</textarea>
-            </div>
-            <div class="infobox blue">
-              💡 Voit muuttaa päivämäärää, kellonaikaa ja huomiota. Kurssin nimi muutetaan Purjehdukset-välilehdellä.
-            </div>
-            <div class="row" style="justify-content:flex-end;margin-top:16px">
-              <button class="btn primary" data-action="save-session-modal">Tallenna</button>
-            </div>
-          </div>
-        </div>
-      </div>
-    `;
-  }
-
-  function renderEditModal(){
-    if(state.modal==="customer"){
-      const editing=!!state.editId;
-      const c=editing?state.customers.find(x=>x.id===state.editId):null;
-      const name=c?.name||""; const phone=c?.phone||""; const email=c?.email||"";
-      const sailingId=c?.sailingId||""; const billTo=c?.billTo||"self"; const companyId=c?.companyId||"";
-      const status=c?.reservationStatus||"pending";
-
-      const selSailing=state.sailings.find(x=>x.id===sailingId);
-      const hasFee=selSailing&&Number(selSailing.reservationFee||0)>0;
-
-      return `
-        <div class="overlay" data-action="close-modal">
-          <div class="modal" onclick="event.stopPropagation()">
-            <div class="modal-head">
-              <div class="row between">
-                <div class="modal-title">${editing?"Muokkaa asiakasta":"Uusi asiakas"}</div>
-                <button class="btn secondary sm" data-action="close-modal">Sulje</button>
-              </div>
-            </div>
-            <div class="modal-body">
-              <div class="grid2">
-                <div class="field"><label class="lbl">Nimi *</label><input data-field="name" value="${esc(name)}"></div>
-                <div class="field"><label class="lbl">Puhelin</label><input data-field="phone" value="${esc(phone)}"></div>
-              </div>
-              <div class="grid2">
-                <div class="field"><label class="lbl">Sähköposti</label><input data-field="email" value="${esc(email)}"></div>
-                <div class="field">
-                  <label class="lbl">Purjehdus / kurssi</label>
-                  <select data-field="sailingId">
-                    <option value="">-- Ei valittu --</option>
-                    ${state.sailings.slice().sort((a,b)=>(a.date||"").localeCompare(b.date||""))
-                      .map(s=>`<option value="${s.id}" ${s.id===sailingId?"selected":""}>${esc(s.name)} (${fmtDate(s.date)})</option>`).join("")}
-                  </select>
-                </div>
-              </div>
-
-              <div class="grid2">
-                <div class="field">
-                  <label class="lbl">Varausmaksustatus</label>
-                  <select data-field="reservationStatus">
-                    <option value="pending"  ${status==="pending" ?"selected":""}>● Varausmaksu odottaa (punainen)</option>
-                    <option value="paid"     ${status==="paid"    ?"selected":""}>✓ Vahvistettu (vihreä)</option>
-                    <option value="reserve"  ${status==="reserve" ?"selected":""}>◎ Varapaikka (keltainen)</option>
-                  </select>
-                </div>
-                <div class="field">
-                  <label class="lbl">Laskutus</label>
-                  <select data-field="billTo">
-                    <option value="self"    ${billTo==="self"   ?"selected":""}>Asiakas maksaa itse</option>
-                    <option value="company" ${billTo==="company"?"selected":""}>Yritys maksaa</option>
-                  </select>
-                </div>
-              </div>
-
-              <div class="field">
-                <label class="lbl">Tilaajayritys (jos yritys maksaa)</label>
-                <select data-field="companyId">
-                  <option value="">-- Ei valittu --</option>
-                  ${state.companies.slice().sort((a,b)=>(a.name||"").localeCompare(b.name||""))
-                    .map(co=>`<option value="${co.id}" ${co.id===companyId?"selected":""}>${esc(co.name)}</option>`).join("")}
-                </select>
-              </div>
-
-              ${status==="pending"&&hasFee ? `
-                <div class="infobox yellow">
-                  ⏳ Varausmaksu ${Number(selSailing.reservationFee)} € odottaa. Lähetä lasku laskutus-välilehdeltä.
-                </div>
-              ` : ""}
-              ${status==="paid" ? `<div class="infobox green">✓ Varausmaksu suoritettu — paikka vahvistettu.</div>` : ""}
-              ${status==="reserve" ? `<div class="infobox yellow">◎ Varapaikalla — muuttuu aktiiviseksi kun paikka vapautuu.</div>` : ""}
-
-              <div class="row" style="justify-content:flex-end;margin-top:16px">
-                <button class="btn primary" data-action="save-customer">${editing?"Tallenna muutokset":"Tallenna"}</button>
-              </div>
-            </div>
-          </div>
-        </div>
-      `;
-    }
-
-    if(state.modal==="sailing"){
-      const editing=!!state.editId;
-      const s=editing?state.sailings.find(x=>x.id===state.editId):null;
-      const name=s?.name||"";
-      const date=s?.date||today();
-      const type=s?.type||SAILING_TYPES[0];
-      const maxPersons=Number(s?.maxPersons??6);
-      const reserveSlots=Number(s?.reserveSlots??2);
-      const pricePerPerson=Number(s?.pricePerPerson??0);
-      const reservationFee=Number(s?.reservationFee??0);
-
-      return `
-        <div class="overlay" data-action="close-modal">
-          <div class="modal" onclick="event.stopPropagation()">
-            <div class="modal-head">
-              <div class="row between">
-                <div class="modal-title">${editing?"Muokkaa purjehdusta":"Uusi purjehdus"}</div>
-                <button class="btn secondary sm" data-action="close-modal">Sulje</button>
-              </div>
-            </div>
-            <div class="modal-body">
-              <div class="field"><label class="lbl">Nimi *</label><input data-field="name" value="${esc(name)}"></div>
-              <div class="grid2">
-                <div class="field"><label class="lbl">Päivä *</label><input type="date" data-field="date" value="${esc(date)}"></div>
-                <div class="field">
-                  <label class="lbl">Tyyppi *</label>
-                  <select data-field="type">
-                    ${SAILING_TYPES.map(t=>`<option value="${esc(t)}" ${t===type?"selected":""}>${esc(t)}</option>`).join("")}
-                  </select>
-                </div>
-              </div>
-              <div class="grid2">
-                <div class="field"><label class="lbl">Max hlö (vahvistetut) *</label><input type="number" min="1" step="1" data-field="maxPersons" value="${esc(String(maxPersons))}"></div>
-                <div class="field">
-                  <label class="lbl">Varapaikkoja (lisäksi)</label>
-                  <input type="number" min="0" step="1" data-field="reserveSlots" value="${esc(String(reserveSlots))}">
-                  <div class="small muted" style="margin-top:4px">Vähintään 2 suositellaan</div>
-                </div>
-              </div>
-              <div class="grid2">
-                <div class="field"><label class="lbl">Hinta/hlö (€) *</label><input type="number" min="0" step="0.01" data-field="pricePerPerson" value="${esc(String(pricePerPerson))}"></div>
-                <div class="field">
-                  <label class="lbl">Varausmaksu (€)</label>
-                  <input type="number" min="0" step="0.01" data-field="reservationFee" value="${esc(String(reservationFee))}">
-                  <div class="small muted" style="margin-top:4px">0 = ei varausmaksua</div>
-                </div>
-              </div>
-              <div class="infobox blue" style="margin-top:4px">
-                💡 Kun asiakas lisätään kurssille, hän on aluksi <strong>punainen</strong> (varausmaksu odottaa).
-                Merkitsemällä varausmaksu maksetuksi asiakas muuttuu <strong>vihreäksi</strong>.
-                Varapaikat ovat <strong>keltaisia</strong>.
-              </div>
-              <div class="row" style="justify-content:flex-end;margin-top:16px">
-                <button class="btn primary" data-action="save-sailing">${editing?"Tallenna muutokset":"Tallenna"}</button>
-              </div>
-            </div>
-          </div>
-        </div>
-      `;
-    }
-
-    if(state.modal==="company"){
-      const editing=!!state.editId;
-      const co=editing?state.companies.find(x=>x.id===state.editId):null;
-      const name=co?.name||""; const businessId=co?.businessId||""; const email=co?.email||"";
-      const commissionPct=(co?.commissionPct!=null)?String(co.commissionPct):"0";
-      return `
-        <div class="overlay" data-action="close-modal">
-          <div class="modal" onclick="event.stopPropagation()">
-            <div class="modal-head">
-              <div class="row between">
-                <div class="modal-title">${editing?"Muokkaa yritystä":"Uusi yritys"}</div>
-                <button class="btn secondary sm" data-action="close-modal">Sulje</button>
-              </div>
-            </div>
-            <div class="modal-body">
-              <div class="field"><label class="lbl">Yrityksen nimi *</label><input data-field="name" value="${esc(name)}"></div>
-              <div class="grid2">
-                <div class="field"><label class="lbl">Y-tunnus</label><input data-field="businessId" value="${esc(businessId)}" placeholder="1234567-8"></div>
-                <div class="field"><label class="lbl">Sähköposti</label><input data-field="email" value="${esc(email)}" placeholder="laskutus@yritys.fi"></div>
-              </div>
-              <div class="field">
-                <label class="lbl">Provisio (%)</label>
-                <input type="number" min="0" step="0.01" data-field="commissionPct" value="${esc(commissionPct)}">
-              </div>
-              <div class="row" style="justify-content:flex-end;margin-top:16px">
-                <button class="btn primary" data-action="save-company">${editing?"Tallenna muutokset":"Tallenna"}</button>
-              </div>
-            </div>
-          </div>
-        </div>
-      `;
-    }
-    return "";
-  }
-
-  // ─────────────── BIND ───────────────
-  function bind(){
-    document.querySelectorAll("[data-tab]").forEach(b=>{
-      b.onclick=()=>{ state.tab=b.dataset.tab; render(); };
-    });
-
-    const sc=document.querySelector('[data-action="search-customers"]');
-    if(sc){ sc.oninput=e=>{state.searchCustomers=e.target.value;render();}; sc.onkeydown=e=>{if(e.key==="Enter")e.preventDefault();}; }
-    const ss=document.querySelector('[data-action="search-sailings"]');
-    if(ss){ ss.oninput=e=>{state.searchSailings=e.target.value;render();}; ss.onkeydown=e=>{if(e.key==="Enter")e.preventDefault();}; }
-
-    document.querySelector('[data-action="restore-json"]')?.addEventListener("change",async(e)=>{
-      const file=e.target.files&&e.target.files[0]; if(!file) return;
-      try{
-        const text=await file.text(); const data=JSON.parse(text);
-        if(!confirm("Palautus korvaa nykyiset tiedot. Jatketaanko?")) return;
-        state.customers=Array.isArray(data.customers)?data.customers:[];
-        state.sailings=Array.isArray(data.sailings)?data.sailings:[];
-        state.companies=Array.isArray(data.companies)?data.companies:[];
-        state.invoices=Array.isArray(data.invoices)?data.invoices:[];
-        state.customers.forEach(c=>{if(!c.reservationStatus)c.reservationStatus="paid";});
-        state.sailings.forEach(s=>{if(s.reserveSlots==null)s.reserveSlots=2;if(s.reservationFee==null)s.reservationFee=0;});
-        save(); render();
-      }catch(err){ alert("Palautus epäonnistui: virheellinen JSON."); }
-      finally{ e.target.value=""; }
-    });
-
-    document.querySelector('[data-action="inv-sailing"]')?.addEventListener("change",e=>{state.invoice.sailingId=e.target.value;state.invoice.type="full";render();});
-    document.querySelector('[data-action="inv-mode"]')?.addEventListener("change",e=>{state.invoice.mode=e.target.value;render();});
-    document.querySelector('[data-action="inv-type"]')?.addEventListener("change",e=>{state.invoice.type=e.target.value;render();});
-    document.querySelector('[data-action="inv-customer"]')?.addEventListener("change",e=>{state.invoice.customerId=e.target.value;render();});
-    document.querySelector('[data-action="inv-company"]')?.addEventListener("change",e=>{state.invoice.companyId=e.target.value;render();});
-    // inv-no on automaattinen, ei tarvita listeneriä
-    document.querySelector('[data-action="inv-date"]')?.addEventListener("change",e=>{state.invoice.invoiceDate=e.target.value;render();});
-    document.querySelector('[data-action="reg-month"]')?.addEventListener("input",e=>{state.registerMonth=(e.target.value||"").trim();});
-
-    document.querySelectorAll('[data-action="reg-paid"]').forEach(cb=>{
-      cb.onchange=()=>{
-        const x=state.invoices.find(z=>z.id===cb.dataset.id); if(!x) return;
-        x.paid=!!cb.checked;
-        if(x.paid){ const pd=prompt("Maksupäivä (YYYY-MM-DD):",x.paidDate||today()); if(!pd){x.paid=false;x.paidDate="";}else{x.paidDate=pd;} }
-        else{ x.paidDate=""; }
-        save(); render();
-      };
-    });
-
-    document.querySelectorAll("[data-action]").forEach(el=>{
-      el.onclick=()=>{
-        const a=el.dataset.action;
-        const itemId=el.dataset.id;
-        const idx=(typeof el.dataset.idx!=="undefined")?Number(el.dataset.idx):null;
-
-        if(a==="cal-prev"||a==="cal-next"){state.calendarMonth=el.dataset.month;render();return;}
-        if(a==="edit-session-cal"){
-          const sidx = el.dataset.idx!==""?Number(el.dataset.idx):null;
-          if(sidx===null||isNaN(sidx)) return;
-          state.editSession={sailingId:itemId, idx:sidx};
-          state.modal="session"; render(); return;
-        }
-        if(a==="save-session-modal"){
-          const {sailingId, idx} = state.editSession||{};
-          const s=state.sailings.find(x=>x.id===sailingId);
-          if(!s||!s.sessions[idx]) return;
-          const newDate = document.querySelector('[data-field="sess-date"]')?.value||"";
-          if(!newDate) return alert("Päivämäärä on pakollinen.");
-          s.sessions[idx].date  = newDate;
-          s.sessions[idx].start = document.querySelector('[data-field="sess-start"]')?.value||"";
-          s.sessions[idx].end   = document.querySelector('[data-field="sess-end"]')?.value||"";
-          s.sessions[idx].note  = document.querySelector('[data-field="sess-note"]')?.value||"";
-          save(); state.modal=null; state.editSession=null; render(); return;
-        }
-        if(a==="cal-today"){state.calendarMonth=today().slice(0,7);render();return;}
-        if(a==="set-group"){state.sailingGroup=itemId;render();return;}
-        if(a==="new-customer"){state.modal="customer";state.editId=null;render();return;}
-        if(a==="edit-customer"){state.modal="customer";state.editId=itemId;render();return;}
-        if(a==="new-sailing"){state.modal="sailing";state.editId=null;render();return;}
-        if(a==="edit-sailing"){state.modal="sailing";state.editId=itemId;render();return;}
-        if(a==="new-company"){state.modal="company";state.editId=null;render();return;}
-        if(a==="edit-company"){state.modal="company";state.editId=itemId;render();return;}
-        if(a==="open-register"){state.modal="register";state.editId=null;render();return;}
-        if(a==="close-modal"){state.modal=null;state.editId=null;render();return;}
-        if(a==="toggle-sailing"){state.openSailingId=(state.openSailingId===itemId)?null:itemId;render();return;}
-
-        // Merkitse varausmaksu maksetuksi
-        if(a==="confirm-payment"){
-          const c=state.customers.find(x=>x.id===itemId);
-          if(!c) return;
-          if(!confirm(`Merkitäänkö ${c.name} varausmaksu suoritetuksi? Asiakas muuttuu vihreäksi (vahvistettu).`)) return;
-          c.reservationStatus="paid";
-          save(); render(); return;
-        }
-
-        // Ylennä varapaikalta
-        if(a==="promote-reserve"){
-          const c=state.customers.find(x=>x.id===itemId);
-          if(!c) return;
-          const s=state.sailings.find(x=>x.id===c.sailingId);
-          if(!s) return;
-          const max=Number(s.maxPersons||0);
-          const confirmed=confirmedCount(s.id);
-          if(confirmed>=max){
-            alert(`Kurssi on jo täynnä (${confirmed}/${max} vahvistettua). Vapauta paikka ennen ylentämistä.`);
-            return;
-          }
-          if(!confirm(`Siirretäänkö ${c.name} varapaikalta odottamaan varausmaksua?`)) return;
-          c.reservationStatus="pending";
-          save(); render(); return;
-        }
-
-        if(a==="add-session"){
-          const s=state.sailings.find(x=>x.id===itemId); if(!s) return;
-          const date=prompt("Kurssipäivä (YYYY-MM-DD):",today()); if(!date) return;
-          const start=prompt("Aloitusaika (HH:MM):","17:00")||"";
-          const end=prompt("Lopetusaika (HH:MM):","20:00")||"";
-          const note=prompt("Lisähuomio:","",)||"";
-          if(!Array.isArray(s.sessions)) s.sessions=[];
-          s.sessions.push({date,start,end,note});
-          save(); render(); return;
-        }
-
-        if(a==="delete-session"){
-          const s=state.sailings.find(x=>x.id===itemId); if(!s||!Array.isArray(s.sessions)) return;
-          if(idx===null||Number.isNaN(idx)) return;
-          if(!confirm("Poistetaanko kurssipäivä?")) return;
-          s.sessions.splice(idx,1); save(); render(); return;
-        }
-
-        if(a==="save-customer"){
-          const name=(document.querySelector('[data-field="name"]')?.value||"").trim();
-          if(!name) return alert("Nimi pakollinen");
-          const phone=(document.querySelector('[data-field="phone"]')?.value||"").trim();
-          const email=(document.querySelector('[data-field="email"]')?.value||"").trim();
-          const sailingId=(document.querySelector('[data-field="sailingId"]')?.value||"");
-          const billTo=(document.querySelector('[data-field="billTo"]')?.value||"self");
-          const companyId=(document.querySelector('[data-field="companyId"]')?.value||"");
-          const reservationStatus=(document.querySelector('[data-field="reservationStatus"]')?.value||"pending");
-
-          if(billTo==="company"&&!companyId) return alert("Valitse tilaajayritys.");
-
-          if(sailingId&&reservationStatus!=="reserve"){
-            const s=state.sailings.find(x=>x.id===sailingId);
-            if(s){
-              const max=Number(s.maxPersons||0)||0;
-              const rsv=Number(s.reserveSlots||0)||0;
-              const total=max+rsv;
-              const booked=enrolledCount(sailingId);
-              const editing=!!state.editId;
-              const wasInSame=editing?(state.customers.find(x=>x.id===state.editId)?.sailingId===sailingId):false;
-              const eff=wasInSame?booked-1:booked;
-              if(total>0&&eff>=total){
-                return alert(`Purjehdus on täynnä (${booked}/${total} sis. varapaikat). Lisää varapaikkoja tai valitse toinen.`);
-              }
+        <div class="hr"></div>
+        <table class="table">
+          <thead><tr><th>Kuvaus</th><th class="r">Kpl</th><th class="r">€/kpl</th><th class="r">Yht</th></tr></thead>
+          <tbody>
+            ${inv.lines.length===0
+              ?`<tr><td colspan="4" class="muted">Valitse tapahtuma ja maksaja.</td></tr>`
+              :inv.lines.map(l=>`<tr><td>${esc(l.title)}</td><td class="r">${l.qty}</td><td class="r">${Number(l.unit).toFixed(2)}</td><td class="r">${Number(l.total).toFixed(2)}</td></tr>`).join("")
             }
+          </tbody>
+        </table>
+        <div class="hr"></div>
+        <table class="table" style="max-width:280px;margin-left:auto">
+          <tr><td>Netto</td><td class="r">${Number(inv.net||0).toFixed(2)} €</td></tr>
+          <tr><td>ALV ${inv.ratePct}%</td><td class="r">${Number(inv.vat||0).toFixed(2)} €</td></tr>
+          <tr><td><strong style="color:var(--white)">Yhteensä</strong></td><td class="r"><strong style="color:#0a4272;font-size:18px">${Number(inv.grossTotal||0).toFixed(2)} €</strong></td></tr>
+        </table>
+      </div>
+      <div class="hr noPrint"></div>
+      <div class="row noPrint">
+        <button class="btn btn-primary" data-action="print">Tulosta / PDF</button>
+        <button class="btn btn-secondary" data-action="email-invoice">Lähetä sähköpostilla</button>
+        <button class="btn btn-secondary" data-action="open-register">📒 Laskurekisteri</button>
+        <button class="btn btn-teal" data-action="save-invoice">➕ Tallenna rekisteriin</button>
+      </div>
+    </div>
+  `;
+}
+
+// ══════════════════════════════════════════════════════
+//  MODALS
+// ══════════════════════════════════════════════════════
+function renderModal(){
+  if(!state.modal) return "";
+  if(state.modal==="session")   return renderSessionModal();
+  if(state.modal==="customer")  return renderCustomerModal();
+  if(state.modal==="sailing")   return renderSailingModal();
+  if(state.modal==="company")   return renderCompanyModal();
+  if(state.modal==="register")  return renderRegisterModal();
+  return "";
+}
+
+function renderSessionModal(){
+  const {sailingId,idx}=state.editSession||{};
+  const s=state.sailings.find(x=>x.id===sailingId);
+  if(!s||!s.sessions?.[idx]) return "";
+  const sess=s.sessions[idx];
+  return `
+    <div class="overlay" data-action="close-modal">
+      <div class="modal" style="max-width:460px" onclick="event.stopPropagation()">
+        <div class="modal-head"><div class="row-between">
+          <div><div class="modal-title">Kurssipäivä ${idx+1}</div><div class="card-sub">${esc(s.name)}</div></div>
+          <button class="btn btn-secondary btn-sm" data-action="close-modal">✕</button>
+        </div></div>
+        <div class="modal-body">
+          <div class="field"><label class="lbl">Päivämäärä</label><input type="date" data-field="sess-date" value="${esc(sess.date||"")}"></div>
+          <div class="grid2">
+            <div class="field"><label class="lbl">Aloitusaika</label><input type="time" data-field="sess-start" value="${esc(sess.start||"")}"></div>
+            <div class="field"><label class="lbl">Lopetusaika</label><input type="time" data-field="sess-end" value="${esc(sess.end||"")}"></div>
+          </div>
+          <div class="field"><label class="lbl">Lisähuomio</label><textarea data-field="sess-note" rows="3">${esc(sess.note||"")}</textarea></div>
+          <div class="row" style="justify-content:flex-end;margin-top:16px">
+            <button class="btn btn-primary" data-action="save-session-modal">Tallenna</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderCustomerModal(){
+  const editing=!!state.editId;
+  const c=editing?state.customers.find(x=>x.id===state.editId):null;
+  const name=c?.name||"",phone=c?.phone||"",email=c?.email||"";
+  const sailingId=c?.sailingId||"",billTo=c?.billTo||"self",companyId=c?.companyId||"";
+  const status=c?.reservationStatus||"pending";
+  const selS=state.sailings.find(x=>x.id===sailingId);
+  const hasFee=selS&&Number(selS.reservationFee||0)>0;
+  return `
+    <div class="overlay" data-action="close-modal">
+      <div class="modal" onclick="event.stopPropagation()">
+        <div class="modal-head"><div class="row-between">
+          <div class="modal-title">${editing?"Muokkaa asiakasta":"Uusi asiakas"}</div>
+          <button class="btn btn-secondary btn-sm" data-action="close-modal">✕</button>
+        </div></div>
+        <div class="modal-body">
+          <div class="grid2">
+            <div class="field"><label class="lbl">Nimi *</label><input data-field="name" value="${esc(name)}"></div>
+            <div class="field"><label class="lbl">Puhelin</label><input data-field="phone" value="${esc(phone)}"></div>
+          </div>
+          <div class="grid2">
+            <div class="field"><label class="lbl">Sähköposti</label><input data-field="email" value="${esc(email)}"></div>
+            <div class="field"><label class="lbl">Purjehdus / kurssi</label>
+              <select data-field="sailingId">
+                <option value="">-- Ei valittu --</option>
+                ${state.sailings.slice().sort((a,b)=>(a.date||"").localeCompare(b.date||""))
+                  .map(s=>`<option value="${s.id}" ${s.id===sailingId?"selected":""}>${esc(s.name)} (${fmtDate(s.date)})</option>`).join("")}
+              </select>
+            </div>
+          </div>
+          <div class="grid2">
+            <div class="field"><label class="lbl">Varausmaksustatus</label>
+              <select data-field="reservationStatus">
+                <option value="pending" ${status==="pending"?"selected":""}>● Varausmaksu odottaa</option>
+                <option value="paid"    ${status==="paid"   ?"selected":""}>✓ Vahvistettu</option>
+                <option value="reserve" ${status==="reserve"?"selected":""}>◎ Varapaikka</option>
+              </select>
+            </div>
+            <div class="field"><label class="lbl">Laskutus</label>
+              <select data-field="billTo">
+                <option value="self"    ${billTo==="self"   ?"selected":""}>Asiakas maksaa itse</option>
+                <option value="company" ${billTo==="company"?"selected":""}>Yritys maksaa</option>
+              </select>
+            </div>
+          </div>
+          <div class="field"><label class="lbl">Tilaajayritys</label>
+            <select data-field="companyId">
+              <option value="">-- Ei valittu --</option>
+              ${state.companies.slice().sort((a,b)=>(a.name||"").localeCompare(b.name||""))
+                .map(co=>`<option value="${co.id}" ${co.id===companyId?"selected":""}>${esc(co.name)}</option>`).join("")}
+            </select>
+          </div>
+          ${status==="pending"&&hasFee?`<div class="infobox infobox-amber">⏳ Varausmaksu ${Number(selS.reservationFee)} € odottaa.</div>`:""}
+          ${status==="paid"?`<div class="infobox infobox-green">✓ Paikka vahvistettu.</div>`:""}
+          ${status==="reserve"?`<div class="infobox infobox-amber">◎ Varapaikalla.</div>`:""}
+          <div class="row" style="justify-content:flex-end;margin-top:16px">
+            <button class="btn btn-primary" data-action="save-customer">${editing?"Tallenna muutokset":"Tallenna"}</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderSailingModal(){
+  const editing=!!state.editId;
+  const s=editing?state.sailings.find(x=>x.id===state.editId):null;
+  return `
+    <div class="overlay" data-action="close-modal">
+      <div class="modal" onclick="event.stopPropagation()">
+        <div class="modal-head"><div class="row-between">
+          <div class="modal-title">${editing?"Muokkaa purjehdusta":"Uusi purjehdus"}</div>
+          <button class="btn btn-secondary btn-sm" data-action="close-modal">✕</button>
+        </div></div>
+        <div class="modal-body">
+          <div class="field"><label class="lbl">Nimi *</label><input data-field="name" value="${esc(s?.name||"")}"></div>
+          <div class="grid2">
+            <div class="field"><label class="lbl">Päivä *</label><input type="date" data-field="date" value="${esc(s?.date||today())}"></div>
+            <div class="field"><label class="lbl">Tyyppi *</label>
+              <select data-field="type">
+                ${SAILING_TYPES.map(t=>`<option value="${esc(t)}" ${t===(s?.type||SAILING_TYPES[0])?"selected":""}>${esc(t)}</option>`).join("")}
+              </select>
+            </div>
+          </div>
+          <div class="grid2">
+            <div class="field"><label class="lbl">Max hlö *</label><input type="number" min="1" step="1" data-field="maxPersons" value="${esc(String(Number(s?.maxPersons??6)))}"></div>
+            <div class="field"><label class="lbl">Varapaikkoja</label><input type="number" min="0" step="1" data-field="reserveSlots" value="${esc(String(Number(s?.reserveSlots??2)))}"><div class="small muted" style="margin-top:4px">Suositus: vähintään 2</div></div>
+          </div>
+          <div class="grid2">
+            <div class="field"><label class="lbl">Hinta/hlö (€)</label><input type="number" min="0" step="0.01" data-field="pricePerPerson" value="${esc(String(Number(s?.pricePerPerson??0)))}"></div>
+            <div class="field"><label class="lbl">Varausmaksu (€)</label><input type="number" min="0" step="0.01" data-field="reservationFee" value="${esc(String(Number(s?.reservationFee??0)))}"><div class="small muted" style="margin-top:4px">0 = ei varausmaksua</div></div>
+          </div>
+          <div class="row" style="justify-content:flex-end;margin-top:16px">
+            <button class="btn btn-primary" data-action="save-sailing">${editing?"Tallenna muutokset":"Tallenna"}</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderCompanyModal(){
+  const editing=!!state.editId;
+  const co=editing?state.companies.find(x=>x.id===state.editId):null;
+  return `
+    <div class="overlay" data-action="close-modal">
+      <div class="modal" style="max-width:520px" onclick="event.stopPropagation()">
+        <div class="modal-head"><div class="row-between">
+          <div class="modal-title">${editing?"Muokkaa yritystä":"Uusi yritys"}</div>
+          <button class="btn btn-secondary btn-sm" data-action="close-modal">✕</button>
+        </div></div>
+        <div class="modal-body">
+          <div class="field"><label class="lbl">Yrityksen nimi *</label><input data-field="name" value="${esc(co?.name||"")}"></div>
+          <div class="grid2">
+            <div class="field"><label class="lbl">Y-tunnus</label><input data-field="businessId" value="${esc(co?.businessId||"")}" placeholder="1234567-8"></div>
+            <div class="field"><label class="lbl">Sähköposti</label><input data-field="email" value="${esc(co?.email||"")}" placeholder="laskutus@yritys.fi"></div>
+          </div>
+          <div class="field"><label class="lbl">Provisio (%)</label><input type="number" min="0" step="0.01" data-field="commissionPct" value="${esc(String(co?.commissionPct??0))}"></div>
+          <div class="row" style="justify-content:flex-end;margin-top:16px">
+            <button class="btn btn-primary" data-action="save-company">${editing?"Tallenna muutokset":"Tallenna"}</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderRegisterModal(){
+  const month=state.registerMonth||today().slice(0,7);
+  const list=state.invoices.filter(x=>String(x.invoiceDate||"").slice(0,7)===month).slice().sort((a,b)=>(a.invoiceDate||"").localeCompare(b.invoiceDate||""));
+  const sum=monthSummary(month);
+  const sbox=(title,obj)=>`
+    <div class="stat-card" style="text-align:left;padding:12px 14px">
+      <div class="stat-label">${esc(title)} <span class="badge badge-silver">${obj.count}</span></div>
+      <div class="small muted" style="margin-top:6px">Netto ${obj.net.toFixed(2)} € · ALV ${obj.vat.toFixed(2)} € · Brutto ${obj.gross.toFixed(2)} €</div>
+    </div>
+  `;
+  return `
+    <div class="overlay" data-action="close-modal">
+      <div class="modal" onclick="event.stopPropagation()">
+        <div class="modal-head"><div class="row-between">
+          <div class="modal-title">Laskurekisteri</div>
+          <div class="row">
+            <button class="btn btn-secondary btn-sm" data-action="export-register-csv">Vie CSV</button>
+            <button class="btn btn-secondary btn-sm" data-action="close-modal">✕</button>
+          </div>
+        </div></div>
+        <div class="modal-body">
+          <div class="field" style="max-width:220px"><label class="lbl">Kuukausi</label><input data-action="reg-month" value="${esc(month)}" placeholder="2026-05"></div>
+          <div class="stats-grid">${sbox("Yhteensä",sum.all)}${sbox("ALV 25,5%",sum.r255)}${sbox("ALV 13,5%",sum.r135)}</div>
+          <div class="hr"></div>
+          ${list.length===0?`<div class="muted">Ei laskuja tässä kuukaudessa.</div>`:`
+            <table class="table">
+              <thead><tr><th>Päivä</th><th>Nro</th><th>Maksaja</th><th>Tyyppi</th><th>Maksettu</th><th class="r">Netto</th><th class="r">ALV</th><th class="r">Brutto</th><th></th></tr></thead>
+              <tbody>
+                ${list.map(x=>`
+                  <tr>
+                    <td>${esc(x.invoiceDate||"")}</td>
+                    <td style="font-weight:700;color:var(--gold)">${esc(x.invoiceNo||"")}</td>
+                    <td>${esc(x.payerName||"")}</td>
+                    <td>${x.isReservation?`<span class="badge badge-blue">Varausmaksu</span>`:`<span class="badge badge-silver">Täysi</span>`}</td>
+                    <td>
+                      <label style="display:flex;gap:6px;align-items:center;cursor:pointer;font-weight:600">
+                        <input type="checkbox" data-action="reg-paid" data-id="${x.id}" ${x.paid?"checked":""}> ${x.paid?"✓ Kyllä":"Ei"}
+                      </label>
+                      ${x.paid?`<div class="small muted">${esc(x.paidDate||"")}</div>`:""}
+                    </td>
+                    <td class="r">${Number(x.net||0).toFixed(2)}</td>
+                    <td class="r">${Number(x.vat||0).toFixed(2)}</td>
+                    <td class="r" style="font-weight:700;color:var(--gold)">${Number(x.grossTotal||0).toFixed(2)}</td>
+                    <td><button class="btn btn-danger btn-sm" data-action="delete-register" data-id="${x.id}">Poista</button></td>
+                  </tr>
+                `).join("")}
+              </tbody>
+            </table>
+          `}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+// ══════════════════════════════════════════════════════
+//  AUTH SCREEN
+// ══════════════════════════════════════════════════════
+function renderAuthScreen(errorMsg){
+  document.getElementById("app").innerHTML = `
+    <div class="auth-screen">
+      <div class="auth-card">
+        <div class="auth-emblem">⚓</div>
+        <div class="auth-title">J <em>Sailing</em></div>
+        <div class="auth-sub">Absolut 37 · Hallintapaneeli<br>Kirjaudu sisään Google-tilillä jatkaaksesi.</div>
+        ${errorMsg?`<div class="infobox infobox-red" style="margin-bottom:16px">${esc(errorMsg)}</div>`:""}
+        <button class="btn-google" id="btnGoogle">
+          <svg viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+          Kirjaudu Google-tilillä
+        </button>
+        <div class="auth-note">Vain ${esc(ALLOWED_EMAIL)} voi kirjautua sisään.</div>
+      </div>
+    </div>
+  `;
+  document.getElementById("btnGoogle")?.addEventListener("click", async()=>{
+    try{
+      const provider = new GoogleAuthProvider();
+      await signInWithPopup(auth, provider);
+    }catch(e){
+      renderAuthScreen("Kirjautuminen epäonnistui: "+e.message);
+    }
+  });
+}
+
+// ══════════════════════════════════════════════════════
+//  BIND
+// ══════════════════════════════════════════════════════
+function bind(){
+  document.querySelectorAll("[data-tab]").forEach(b=>{
+    b.onclick=()=>{ state.tab=b.dataset.tab; render(); };
+  });
+
+  document.querySelector('[data-action="restore-json"]')?.addEventListener("change", async(e)=>{
+    const file = e.target.files?.[0]; if(!file) return;
+    try{
+      const text = await file.text();
+      const data = JSON.parse(text);
+      if(!confirm("Palautus korvaa nykyiset tiedot. Jatketaanko?")) return;
+      if(CONFIG_READY && db){
+        // Firebase mode: write all collections
+        const cols = ["customers","sailings","companies","invoices"];
+        for(const col of cols){
+          const items = Array.isArray(data[col]) ? data[col] : [];
+          for(const item of items){
+            const {id, ...rest} = item;
+            await fsSet(col, id||genId("X"), rest);
           }
-
-          if(state.editId){
-            const c=state.customers.find(x=>x.id===state.editId); if(!c) return;
-            c.name=name;c.phone=phone;c.email=email;c.sailingId=sailingId;
-            c.billTo=billTo;c.companyId=(billTo==="company")?companyId:"";
-            c.reservationStatus=reservationStatus;
-          }else{
-            state.customers.push({id:genId("C"),name,phone,email,sailingId,billTo,companyId:(billTo==="company")?companyId:"",reservationStatus});
-          }
-          save(); state.modal=null; state.editId=null; render(); return;
         }
+        alert("Palautettu Firebaseen ✓");
+      } else {
+        // Demo mode: set state directly
+        state.customers = Array.isArray(data.customers)?data.customers:[];
+        state.sailings  = Array.isArray(data.sailings)?data.sailings:[];
+        state.companies = Array.isArray(data.companies)?data.companies:[];
+        state.invoices  = Array.isArray(data.invoices)?data.invoices:[];
+        // Migrate old format
+        state.customers.forEach(c=>{ if(!c.reservationStatus) c.reservationStatus="paid"; });
+        state.sailings.forEach(s=>{ if(s.reserveSlots==null) s.reserveSlots=2; if(s.reservationFee==null) s.reservationFee=0; });
+        alert("Palautettu demo-tilaan ✓");
+        render();
+      }
+    }catch(err){
+      alert("Palautus epäonnistui: tiedosto ei ole kelvollinen JSON.");
+    }finally{
+      e.target.value="";
+    }
+  });
 
-        if(a==="save-sailing"){
-          const name=(document.querySelector('[data-field="name"]')?.value||"").trim();
-          const date=(document.querySelector('[data-field="date"]')?.value||"").trim();
-          const type=(document.querySelector('[data-field="type"]')?.value||"").trim();
-          const maxPersons=parseInt(document.querySelector('[data-field="maxPersons"]')?.value,10)||1;
-          const reserveSlots=Math.max(0,parseInt(document.querySelector('[data-field="reserveSlots"]')?.value,10)||0);
-          const pricePerPerson=parseFloat(document.querySelector('[data-field="pricePerPerson"]')?.value)||0;
-          const reservationFee=parseFloat(document.querySelector('[data-field="reservationFee"]')?.value)||0;
-          if(!name||!date||!type) return alert("Täytä pakolliset kentät.");
-          if(state.editId){
-            const s=state.sailings.find(x=>x.id===state.editId); if(!s) return;
-            s.name=name;s.date=date;s.type=type;s.maxPersons=maxPersons;s.reserveSlots=reserveSlots;
-            s.pricePerPerson=pricePerPerson;s.reservationFee=reservationFee;
-            if(!Array.isArray(s.sessions)) s.sessions=[];
-          }else{
-            state.sailings.push({id:genId("S"),name,date,type,maxPersons,reserveSlots,pricePerPerson,reservationFee,sessions:[]});
-          }
-          if(!state.invoice.sailingId) state.invoice.sailingId=state.sailings[0]?.id||"";
-          save(); state.modal=null; state.editId=null; render(); return;
-        }
+  document.querySelector('[data-action="search-customers"]')?.addEventListener("input",e=>{state.searchCustomers=e.target.value;render();});
+  document.querySelector('[data-action="search-sailings"]')?.addEventListener("input",e=>{state.searchSailings=e.target.value;render();});
+  document.querySelector('[data-action="inv-sailing"]')?.addEventListener("change",e=>{state.invoice.sailingId=e.target.value;state.invoice.type="full";render();});
+  document.querySelector('[data-action="inv-mode"]')?.addEventListener("change",e=>{state.invoice.mode=e.target.value;render();});
+  document.querySelector('[data-action="inv-type"]')?.addEventListener("change",e=>{state.invoice.type=e.target.value;render();});
+  document.querySelector('[data-action="inv-customer"]')?.addEventListener("change",e=>{state.invoice.customerId=e.target.value;render();});
+  document.querySelector('[data-action="inv-company"]')?.addEventListener("change",e=>{state.invoice.companyId=e.target.value;render();});
+  document.querySelector('[data-action="inv-date"]')?.addEventListener("change",e=>{state.invoice.invoiceDate=e.target.value;render();});
+  document.querySelector('[data-action="reg-month"]')?.addEventListener("input",e=>{state.registerMonth=(e.target.value||"").trim();});
 
-        if(a==="save-company"){
-          const name=(document.querySelector('[data-field="name"]')?.value||"").trim();
-          if(!name) return alert("Yrityksen nimi pakollinen.");
-          const businessId=(document.querySelector('[data-field="businessId"]')?.value||"").trim();
-          const email=(document.querySelector('[data-field="email"]')?.value||"").trim();
-          const commissionPct=parseFloat(document.querySelector('[data-field="commissionPct"]')?.value)||0;
-          if(state.editId){
-            const co=state.companies.find(x=>x.id===state.editId); if(!co) return;
-            co.name=name;co.businessId=businessId;co.email=email;co.commissionPct=commissionPct;
-          }else{
-            state.companies.push({id:genId("B"),name,businessId,email,commissionPct});
-          }
-          save(); state.modal=null; state.editId=null; render(); return;
-        }
+  document.querySelectorAll('[data-action="reg-paid"]').forEach(cb=>{
+    cb.onchange=async()=>{
+      const x=state.invoices.find(z=>z.id===cb.dataset.id); if(!x) return;
+      x.paid=!!cb.checked;
+      if(x.paid){ const pd=prompt("Maksupäivä (YYYY-MM-DD):",x.paidDate||today()); if(!pd){x.paid=false;x.paidDate="";}else{x.paidDate=pd;} }
+      else x.paidDate="";
+      await fsSet("invoices",x.id,x);
+      render();
+    };
+  });
 
-        if(a==="delete-customer"){
-          if(!confirm("Poistetaanko asiakas?")) return;
-          state.customers=state.customers.filter(c=>c.id!==itemId);
-          save(); render(); return;
-        }
-        if(a==="delete-sailing"){
-          if(!confirm("Poistetaanko purjehdus?")) return;
-          state.sailings=state.sailings.filter(s=>s.id!==itemId);
-          if(state.openSailingId===itemId) state.openSailingId=null;
-          save(); render(); return;
-        }
-        if(a==="delete-company"){
-          if(!confirm("Poistetaanko yritys?")) return;
-          state.companies=state.companies.filter(co=>co.id!==itemId);
-          state.customers.forEach(c=>{if(c.companyId===itemId){c.companyId="";if(c.billTo==="company")c.billTo="self";}});
-          save(); render(); return;
-        }
+  document.querySelectorAll("[data-action]").forEach(el=>{
+    if(el.tagName==="INPUT"&&el.type==="checkbox") return;
+    el.onclick=async(e)=>{
+      e.stopPropagation();
+      const a=el.dataset.action, itemId=el.dataset.id;
+      const idx=(el.dataset.idx!==""&&el.dataset.idx!=null)?Number(el.dataset.idx):null;
 
-        if(a==="save-invoice-register"){
-          const inv=computeInvoice();
-          if(!inv.sailing) return alert("Valitse tapahtuma.");
-          if(!inv.payerName) return alert("Valitse maksaja.");
-          if(inv.lines.length===0) return alert("Laskulla ei ole rivejä.");
-          const autoNo = nextInvoiceNumber();
-          const autoRef = finnishReference(autoNo.replace(/\D/g,""));
-          const rec={
-            id:genId("I"), mode:state.invoice.mode,
-            isReservation:!!inv.isReservation,
-            invoiceNo:autoNo,
-            invoiceDate:(state.invoice.invoiceDate||"").trim(),
-            reference:autoRef,
-            payerName:inv.payerName, payerBusinessId:inv.payerBusinessId||"", payerEmail:inv.payerEmail||"",
-            eventId:inv.sailing.id, eventName:inv.eventName,
-            vatRatePct:Number(inv.ratePct), net:Number(inv.net||0),
-            vat:Number(inv.vat||0), grossTotal:Number(inv.grossTotal||0),
-            paid:false, paidDate:""
-          };
-          state.invoices.push(rec);
-          save();
-          alert(`Tallennettu laskurekisteriin.\nLaskunro: ${autoNo}\nViite: ${autoRef}`);
-          render(); return;
-        }
+      if(a==="sign-out"){ await signOut(auth); return; }
+      if(a==="set-group"){state.sailingGroup=itemId;render();return;}
+      if(a==="cal-nav"){state.calendarMonth=el.dataset.month;render();return;}
+      if(a==="cal-today"){state.calendarMonth=today().slice(0,7);render();return;}
+      if(a==="toggle-sailing"){state.openSailingId=(state.openSailingId===itemId)?null:itemId;render();return;}
+      if(a==="close-modal"){state.modal=null;state.editId=null;state.editSession=null;render();return;}
 
-        if(a==="delete-register"){
-          if(!confirm("Poistetaanko lasku rekisteristä?")) return;
-          state.invoices=state.invoices.filter(x=>x.id!==itemId);
-          save(); render(); return;
-        }
+      if(a==="new-customer"){state.modal="customer";state.editId=null;render();return;}
+      if(a==="edit-customer"){state.modal="customer";state.editId=itemId;render();return;}
+      if(a==="new-sailing"){state.modal="sailing";state.editId=null;render();return;}
+      if(a==="edit-sailing"){state.modal="sailing";state.editId=itemId;render();return;}
+      if(a==="new-company"){state.modal="company";state.editId=null;render();return;}
+      if(a==="edit-company"){state.modal="company";state.editId=itemId;render();return;}
+      if(a==="open-register"){state.modal="register";render();return;}
 
-        if(a==="export-register-csv"){ exportCSV(); return; }
-        if(a==="backup-json"){ backupJSON(); return; }
-        if(a==="print"){ window.print(); return; }
-        if(a==="email"){ sendEmail(); return; }
-      };
-    });
-  }
+      if(a==="edit-session-cal"||a==="edit-session-direct"){
+        if(idx===null||isNaN(idx)) return;
+        state.editSession={sailingId:itemId,idx};
+        state.modal="session"; render(); return;
+      }
 
-  function exportCSV(){
-    const month=(state.registerMonth||"").trim()||today().slice(0,7);
-    const rows=state.invoices.filter(x=>String(x.invoiceDate||"").slice(0,7)===month).slice().sort((a,b)=>(a.invoiceDate||"").localeCompare(b.invoiceDate||""));
-    if(rows.length===0){alert("Ei laskuja valitussa kuukaudessa.");return;}
-    const sep=";";
-    const header=["Päivä","Laskunro","Viite","Maksaja","Maksaja Y-tunnus","Maksaja email","Tapahtuma","Malli","Laskulaji","ALV %","Netto","ALV","Brutto","Maksettu","Maksupäivä"].join(sep);
-    const lines=rows.map(x=>[
-      x.invoiceDate||"",x.invoiceNo||"",x.reference||"",
-      x.payerName||"",x.payerBusinessId||"",x.payerEmail||"",
-      x.eventName||"",
-      (x.mode==="company"?"Yrityslasku":"Asiakaskohtainen"),
-      (x.isReservation?"Varausmaksu":"Täysi lasku"),
-      (x.vatRatePct!=null?String(x.vatRatePct).replace(".",","):""),
-      Number(x.net||0).toFixed(2).replace(".",","),
-      Number(x.vat||0).toFixed(2).replace(".",","),
-      Number(x.grossTotal||0).toFixed(2).replace(".",","),
-      x.paid?"Kyllä":"Ei",x.paidDate||""
-    ].map(v=>`"${String(v).replace(/"/g,'""')}"`).join(sep));
-    const csv=[header,...lines].join("\n");
-    const blob=new Blob([csv],{type:"text/csv;charset=utf-8"});
-    const url=URL.createObjectURL(blob);
-    const a=document.createElement("a"); a.href=url; a.download=`laskurekisteri_${month}.csv`; a.click();
-    URL.revokeObjectURL(url);
-  }
+      if(a==="confirm-payment"){
+        const c=state.customers.find(x=>x.id===itemId); if(!c) return;
+        if(!confirm(`Merkitäänkö ${c.name} varausmaksu suoritetuksi?`)) return;
+        c.reservationStatus="paid";
+        await fsSet("customers",c.id,c);
+        render(); return;
+      }
 
-  function backupJSON(){
-    const blob=new Blob([JSON.stringify({customers:state.customers,sailings:state.sailings,companies:state.companies,invoices:state.invoices},null,2)],{type:"application/json"});
-    const url=URL.createObjectURL(blob);
-    const a=document.createElement("a"); a.href=url; a.download=`absolut37_backup_${today()}.json`; a.click();
-    URL.revokeObjectURL(url);
-  }
+      if(a==="promote-reserve"){
+        const c=state.customers.find(x=>x.id===itemId); if(!c) return;
+        const s=state.sailings.find(x=>x.id===c.sailingId); if(!s) return;
+        if(confirmedCount(s.id)>=Number(s.maxPersons||0)){ alert("Kurssi on täynnä."); return; }
+        if(!confirm(`Siirretäänkö ${c.name} odottamaan varausmaksua?`)) return;
+        c.reservationStatus="pending";
+        await fsSet("customers",c.id,c);
+        render(); return;
+      }
 
-  function sendEmail(){
-    const box=document.getElementById("invoiceBox"); if(!box){alert("Laskua ei löytynyt.");return;}
-    const text=box.innerText;
-    let to="";
-    if(state.invoice.mode==="customer"){ const c=state.customers.find(x=>x.id===state.invoice.customerId); to=c?.email||""; }
-    else{ const co=state.companies.find(x=>x.id===state.invoice.companyId); to=co?.email||""; }
-    window.location.href=`mailto:${encodeURIComponent(to)}?subject=${encodeURIComponent("Lasku "+(state.invoice.invoiceNo||""))}&body=${encodeURIComponent(text)}`;
-  }
+      if(a==="add-session"){
+        const s=state.sailings.find(x=>x.id===itemId); if(!s) return;
+        const date=prompt("Kurssipäivä (YYYY-MM-DD):",today()); if(!date) return;
+        const start=prompt("Aloitusaika (HH:MM):","17:00")||"";
+        const end=prompt("Lopetusaika (HH:MM):","20:00")||"";
+        const note=prompt("Lisähuomio:","",)||"";
+        if(!Array.isArray(s.sessions)) s.sessions=[];
+        s.sessions.push({date,start,end,note});
+        await fsSet("sailings",s.id,s);
+        render(); return;
+      }
 
-  initPin();
-})();
+      if(a==="delete-session"){
+        const s=state.sailings.find(x=>x.id===itemId); if(!s||!Array.isArray(s.sessions)) return;
+        if(idx===null||isNaN(idx)) return;
+        if(!confirm("Poistetaanko kurssipäivä?")) return;
+        s.sessions.splice(idx,1);
+        await fsSet("sailings",s.id,s);
+        render(); return;
+      }
+
+      if(a==="save-session-modal"){
+        const {sailingId,idx}=state.editSession||{};
+        const s=state.sailings.find(x=>x.id===sailingId);
+        if(!s||!s.sessions?.[idx]) return;
+        const newDate=document.querySelector('[data-field="sess-date"]')?.value||"";
+        if(!newDate) return alert("Päivämäärä on pakollinen.");
+        s.sessions[idx].date  = newDate;
+        s.sessions[idx].start = document.querySelector('[data-field="sess-start"]')?.value||"";
+        s.sessions[idx].end   = document.querySelector('[data-field="sess-end"]')?.value||"";
+        s.sessions[idx].note  = document.querySelector('[data-field="sess-note"]')?.value||"";
+        await fsSet("sailings",s.id,s);
+        state.modal=null; state.editSession=null; render(); return;
+      }
+
+      if(a==="save-customer"){
+        const name=(document.querySelector('[data-field="name"]')?.value||"").trim();
+        if(!name) return alert("Nimi pakollinen");
+        const phone=(document.querySelector('[data-field="phone"]')?.value||"").trim();
+        const email=(document.querySelector('[data-field="email"]')?.value||"").trim();
+        const sailingId=document.querySelector('[data-field="sailingId"]')?.value||"";
+        const billTo=document.querySelector('[data-field="billTo"]')?.value||"self";
+        const companyId=document.querySelector('[data-field="companyId"]')?.value||"";
+        const reservationStatus=document.querySelector('[data-field="reservationStatus"]')?.value||"pending";
+        if(billTo==="company"&&!companyId) return alert("Valitse tilaajayritys.");
+        const data={name,phone,email,sailingId,billTo,companyId:(billTo==="company")?companyId:"",reservationStatus};
+        if(state.editId){ await fsSet("customers",state.editId,data); }
+        else{ await fsAdd("customers",data); }
+        state.modal=null; state.editId=null; render(); return;
+      }
+
+      if(a==="save-sailing"){
+        const name=(document.querySelector('[data-field="name"]')?.value||"").trim();
+        const date=document.querySelector('[data-field="date"]')?.value||"";
+        const type=document.querySelector('[data-field="type"]')?.value||"";
+        if(!name||!date||!type) return alert("Täytä pakolliset kentät.");
+        const existing=state.editId?state.sailings.find(x=>x.id===state.editId):null;
+        const data={
+          name,date,type,
+          maxPersons:parseInt(document.querySelector('[data-field="maxPersons"]')?.value,10)||1,
+          reserveSlots:Math.max(0,parseInt(document.querySelector('[data-field="reserveSlots"]')?.value,10)||0),
+          pricePerPerson:parseFloat(document.querySelector('[data-field="pricePerPerson"]')?.value)||0,
+          reservationFee:parseFloat(document.querySelector('[data-field="reservationFee"]')?.value)||0,
+          sessions:existing?.sessions||[]
+        };
+        if(state.editId){ await fsSet("sailings",state.editId,data); }
+        else{ const newId=await fsAdd("sailings",data); if(!state.invoice.sailingId) state.invoice.sailingId=newId; }
+        state.modal=null; state.editId=null; render(); return;
+      }
+
+      if(a==="save-company"){
+        const name=(document.querySelector('[data-field="name"]')?.value||"").trim();
+        if(!name) return alert("Yrityksen nimi pakollinen.");
+        const data={
+          name,
+          businessId:document.querySelector('[data-field="businessId"]')?.value||"",
+          email:document.querySelector('[data-field="email"]')?.value||"",
+          commissionPct:parseFloat(document.querySelector('[data-field="commissionPct"]')?.value)||0
+        };
+        if(state.editId){ await fsSet("companies",state.editId,data); }
+        else{ await fsAdd("companies",data); }
+        state.modal=null; state.editId=null; render(); return;
+      }
+
+      if(a==="delete-customer"){
+        if(!confirm("Poistetaanko asiakas?")) return;
+        await fsDel("customers",itemId); render(); return;
+      }
+      if(a==="delete-sailing"){
+        if(!confirm("Poistetaanko purjehdus?")) return;
+        await fsDel("sailings",itemId);
+        if(state.openSailingId===itemId) state.openSailingId=null;
+        render(); return;
+      }
+      if(a==="delete-company"){
+        if(!confirm("Poistetaanko yritys?")) return;
+        await fsDel("companies",itemId);
+        render(); return;
+      }
+      if(a==="delete-register"){
+        if(!confirm("Poistetaanko lasku rekisteristä?")) return;
+        await fsDel("invoices",itemId); render(); return;
+      }
+
+      if(a==="save-invoice"){
+        const inv=computeInvoice();
+        if(!inv.sailing) return alert("Valitse tapahtuma.");
+        if(!inv.payerName) return alert("Valitse maksaja.");
+        if(inv.lines.length===0) return alert("Laskulla ei ole rivejä.");
+        const rec={
+          mode:state.invoice.mode, isReservation:!!inv.isReservation,
+          invoiceNo:inv.invNo, invoiceDate:state.invoice.invoiceDate,
+          reference:inv.reference, payerName:inv.payerName,
+          payerBusinessId:inv.payerBusinessId||"", payerEmail:inv.payerEmail||"",
+          eventId:inv.sailing.id, eventName:inv.eventName,
+          vatRatePct:Number(inv.ratePct),
+          net:Number(inv.net||0), vat:Number(inv.vat||0), grossTotal:Number(inv.grossTotal||0),
+          paid:false, paidDate:""
+        };
+        await fsAdd("invoices",rec);
+        alert(`Tallennettu!\nLaskunro: ${inv.invNo}\nViite: ${inv.reference}`);
+        render(); return;
+      }
+
+      if(a==="export-json"){
+        const blob=new Blob([JSON.stringify({customers:state.customers,sailings:state.sailings,companies:state.companies,invoices:state.invoices},null,2)],{type:"application/json"});
+        const url=URL.createObjectURL(blob);
+        const x=document.createElement("a");x.href=url;x.download=`jsailing_backup_${today()}.json`;x.click();URL.revokeObjectURL(url);
+        return;
+      }
+
+      if(a==="export-register-csv"){
+        const month=state.registerMonth||today().slice(0,7);
+        const rows=state.invoices.filter(x=>String(x.invoiceDate||"").slice(0,7)===month).sort((a,b)=>(a.invoiceDate||"").localeCompare(b.invoiceDate||""));
+        if(!rows.length){alert("Ei laskuja.");return;}
+        const sep=";";
+        const hdr=["Päivä","Laskunro","Viite","Maksaja","Y-tunnus","Sähköposti","Tapahtuma","Malli","Laskulaji","ALV%","Netto","ALV","Brutto","Maksettu","Maksupäivä"].join(sep);
+        const lines=rows.map(x=>[
+          x.invoiceDate,x.invoiceNo,x.reference,x.payerName,x.payerBusinessId||"",x.payerEmail||"",
+          x.eventName||"",x.mode==="company"?"Yrityslasku":"Asiakaskohtainen",
+          x.isReservation?"Varausmaksu":"Täysi lasku",
+          String(x.vatRatePct||"").replace(".",","),
+          Number(x.net||0).toFixed(2).replace(".",","),Number(x.vat||0).toFixed(2).replace(".",","),Number(x.grossTotal||0).toFixed(2).replace(".",","),
+          x.paid?"Kyllä":"Ei",x.paidDate||""
+        ].map(v=>`"${String(v).replace(/"/g,'""')}"`).join(sep));
+        const csv=[hdr,...lines].join("\n");
+        const blob=new Blob([csv],{type:"text/csv;charset=utf-8"});
+        const url=URL.createObjectURL(blob);
+        const a2=document.createElement("a");a2.href=url;a2.download=`laskurekisteri_${month}.csv`;a2.click();URL.revokeObjectURL(url);
+        return;
+      }
+
+      if(a==="print"){window.print();return;}
+      if(a==="email-invoice"){
+        const box=document.getElementById("invoiceBox"); if(!box) return;
+        let to="";
+        if(state.invoice.mode==="customer"){const c=state.customers.find(x=>x.id===state.invoice.customerId);to=c?.email||"";}
+        else{const co=state.companies.find(x=>x.id===state.invoice.companyId);to=co?.email||"";}
+        const inv=computeInvoice();
+        window.location.href=`mailto:${encodeURIComponent(to)}?subject=${encodeURIComponent("Lasku "+inv.invNo)}&body=${encodeURIComponent(box.innerText)}`;
+        return;
+      }
+    };
+  });
+}
+
+// ══════════════════════════════════════════════════════
+//  INIT
+// ══════════════════════════════════════════════════════
+if(!CONFIG_READY){
+  // Demo mode — no Firebase
+  state.user = {displayName:"Demo", email:"demo@jsailing.fi"};
+  // Seed demo data
+  const sid=genId("S");
+  state.sailings=[{id:sid,name:"Merenkulkukurssi 1",date:today(),type:"Kurssi",maxPersons:4,reserveSlots:2,pricePerPerson:350,reservationFee:80,sessions:[]}];
+  state.customers=[
+    {id:genId("C"),name:"Matti Merimies",phone:"0401111111",email:"matti@demo.fi",sailingId:sid,billTo:"self",companyId:"",reservationStatus:"paid"},
+    {id:genId("C"),name:"Siiri Seteli",  phone:"0402222222",email:"siiri@demo.fi",sailingId:sid,billTo:"self",companyId:"",reservationStatus:"pending"},
+  ];
+  state.invoice.sailingId=sid;
+  render();
+} else {
+  onAuthStateChanged(auth, user=>{
+    if(user){
+      if(user.email !== ALLOWED_EMAIL){
+        signOut(auth);
+        renderAuthScreen(`Pääsy estetty. Vain ${ALLOWED_EMAIL} voi kirjautua.`);
+        return;
+      }
+      state.user = user;
+      startListeners(user.uid);
+    } else {
+      stopListeners();
+      state.user = null;
+      state.customers=[]; state.sailings=[]; state.companies=[]; state.invoices=[];
+      renderAuthScreen();
+    }
+  });
+}
 </script>
 </body>
 </html>
