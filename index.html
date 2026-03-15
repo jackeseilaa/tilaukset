@@ -1465,6 +1465,10 @@ input:focus,select:focus,textarea:focus{
             </div>
           </div>
           <div class="modal-body">
+            <div class="field">
+              <label class="lbl">Päivämäärä</label>
+              <input type="date" data-field="sess-date" value="${esc(sess.date||"")}">
+            </div>
             <div class="grid2">
               <div class="field">
                 <label class="lbl">Aloitusaika</label>
@@ -1480,7 +1484,7 @@ input:focus,select:focus,textarea:focus{
               <textarea data-field="sess-note" rows="3" style="resize:vertical">${esc(sess.note||"")}</textarea>
             </div>
             <div class="infobox blue">
-              💡 Voit muuttaa vain tämän päivän kellonaikaa ja huomiota. Kurssin nimi ja muut tiedot muutetaan Purjehdukset-välilehdellä.
+              💡 Voit muuttaa päivämäärää, kellonaikaa ja huomiota. Kurssin nimi muutetaan Purjehdukset-välilehdellä.
             </div>
             <div class="row" style="justify-content:flex-end;margin-top:16px">
               <button class="btn primary" data-action="save-session-modal">Tallenna</button>
@@ -1731,6 +1735,9 @@ input:focus,select:focus,textarea:focus{
           const {sailingId, idx} = state.editSession||{};
           const s=state.sailings.find(x=>x.id===sailingId);
           if(!s||!s.sessions[idx]) return;
+          const newDate = document.querySelector('[data-field="sess-date"]')?.value||"";
+          if(!newDate) return alert("Päivämäärä on pakollinen.");
+          s.sessions[idx].date  = newDate;
           s.sessions[idx].start = document.querySelector('[data-field="sess-start"]')?.value||"";
           s.sessions[idx].end   = document.querySelector('[data-field="sess-end"]')?.value||"";
           s.sessions[idx].note  = document.querySelector('[data-field="sess-note"]')?.value||"";
