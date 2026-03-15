@@ -504,6 +504,22 @@ input:focus,select:focus,textarea:focus{
     for(let i=digits.length-1;i>=0;i--){ sum += Number(digits[i]) * weights[wi%3]; wi++; }
     return digits + String((10-(sum%10))%10);
   }
+
+  function nextInvoiceNumber(){
+    const year = new Date().getFullYear();
+    // Etsi korkein järjestysnumero tänä vuonna
+    let max = 0;
+    for(const inv of state.invoices){
+      // Formaatti JS-YYYY-NNN
+      const m = String(inv.invoiceNo||"").match(/^JS-(\d{4})-(\d+)$/);
+      if(m && Number(m[1])===year){
+        max = Math.max(max, Number(m[2]));
+      }
+    }
+    const seq = String(max+1).padStart(3,"0");
+    return `JS-${year}-${seq}`;
+  }
+
   function invoiceReference(){
     const base = (state.invoice.invoiceNo||"").replace(/\D/g,"") || today().replaceAll("-","");
     return finnishReference(base);
@@ -1051,8 +1067,11 @@ input:focus,select:focus,textarea:focus{
             </div>
           `}
           <div style="min-width:180px" class="field">
-            <label class="lbl">Laskunro</label>
-            <input data-action="inv-no" value="${esc(state.invoice.invoiceNo)}">
+            <label class="lbl">Laskunro (seuraava)</label>
+            <div style="padding:9px 12px;border:1.5px solid var(--line);border-radius:10px;background:#f8fafc;font-weight:700;color:var(--navy);font-size:15px;letter-spacing:.5px">
+              ${esc(nextInvoiceNumber())}
+            </div>
+            <div class="small muted" style="margin-top:4px">Viite: ${esc(finnishReference(nextInvoiceNumber().replace(/\D/g,"")))} · lukitaan tallennettaessa</div>
           </div>
           <div style="min-width:160px" class="field">
             <label class="lbl">Päivä</label>
@@ -1072,9 +1091,9 @@ input:focus,select:focus,textarea:focus{
               <span class="small muted">BIC</span> ${esc(BANK.bic)}
             </div>
             <div style="text-align:right">
-              Nro: ${esc(state.invoice.invoiceNo)}<br>
+              Nro: ${esc(nextInvoiceNumber())}<br>
               Päivä: ${esc(state.invoice.invoiceDate)}<br>
-              Viite: ${esc(inv.reference)}
+              Viite: ${esc(finnishReference(nextInvoiceNumber().replace(/\D/g,"")))}
             </div>
           </div>
 
@@ -1417,7 +1436,7 @@ input:focus,select:focus,textarea:focus{
     document.querySelector('[data-action="inv-type"]')?.addEventListener("change",e=>{state.invoice.type=e.target.value;render();});
     document.querySelector('[data-action="inv-customer"]')?.addEventListener("change",e=>{state.invoice.customerId=e.target.value;render();});
     document.querySelector('[data-action="inv-company"]')?.addEventListener("change",e=>{state.invoice.companyId=e.target.value;render();});
-    document.querySelector('[data-action="inv-no"]')?.addEventListener("input",e=>{state.invoice.invoiceNo=e.target.value;});
+    // inv-no on automaattinen, ei tarvita listeneriä
     document.querySelector('[data-action="inv-date"]')?.addEventListener("change",e=>{state.invoice.invoiceDate=e.target.value;render();});
     document.querySelector('[data-action="reg-month"]')?.addEventListener("input",e=>{state.registerMonth=(e.target.value||"").trim();});
 
@@ -1590,23 +1609,24 @@ input:focus,select:focus,textarea:focus{
           if(!inv.sailing) return alert("Valitse tapahtuma.");
           if(!inv.payerName) return alert("Valitse maksaja.");
           if(inv.lines.length===0) return alert("Laskulla ei ole rivejä.");
+          const autoNo = nextInvoiceNumber();
+          const autoRef = finnishReference(autoNo.replace(/\D/g,""));
           const rec={
             id:genId("I"), mode:state.invoice.mode,
             isReservation:!!inv.isReservation,
-            invoiceNo:(state.invoice.invoiceNo||"").trim(),
+            invoiceNo:autoNo,
             invoiceDate:(state.invoice.invoiceDate||"").trim(),
-            reference:inv.reference,
+            reference:autoRef,
             payerName:inv.payerName, payerBusinessId:inv.payerBusinessId||"", payerEmail:inv.payerEmail||"",
             eventId:inv.sailing.id, eventName:inv.eventName,
             vatRatePct:Number(inv.ratePct), net:Number(inv.net||0),
             vat:Number(inv.vat||0), grossTotal:Number(inv.grossTotal||0),
             paid:false, paidDate:""
           };
-          const key=(rec.invoiceNo+"|"+rec.invoiceDate+"|"+rec.payerName).toLowerCase();
-          const exists=state.invoices.some(x=>(x.invoiceNo+"|"+x.invoiceDate+"|"+x.payerName).toLowerCase()===key);
-          if(exists&&!confirm("Sama laskunumero löytyy jo. Tallennetaanko silti?")) return;
           state.invoices.push(rec);
-          save(); alert("Tallennettu laskurekisteriin."); return;
+          save();
+          alert(`Tallennettu laskurekisteriin.\nLaskunro: ${autoNo}\nViite: ${autoRef}`);
+          render(); return;
         }
 
         if(a==="delete-register"){
