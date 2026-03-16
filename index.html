@@ -9,7 +9,7 @@
 <meta name="theme-color" content="#0a1628"/>
 <link rel="manifest" href="manifest.json"/>
 <link rel="apple-touch-icon" href="icon-512.png"/>
-<title>J Sailing V8.3 — Hallintapaneeli</title>
+<title>J Sailing V8.1 — Hallintapaneeli</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400;1,600&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -173,6 +173,8 @@ select option{background:#ffffff;color:#111827}
 .attendee-card.reserve{background:#fef3c7;border-color:#fcd34d}
 /* ══ SESSION BOX ══ */
 .session-box{margin:10px 0 14px;padding:14px;background:#f8fafc;border-radius:10px;border:1px solid #e5e7eb;}
+.teoria-box{margin:8px 0 10px;padding:10px 14px;background:#fff8e1;border-radius:10px;border:1.5px solid #f59e0b;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;}
+.teoria-badge{background:#fff3cd;color:#78350f;border:1px solid #f59e0b;border-radius:6px;padding:3px 10px;font-size:11px;font-weight:800;letter-spacing:.3px;}
 .session-item{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 0;border-top:1px dashed rgba(200,216,232,.1);}
 .session-item:first-child{border-top:none;padding-top:0}
 /* ══ GROUPBAR ══ */
@@ -211,6 +213,7 @@ select option{background:#ffffff;color:#111827}
 .type-Purjehdusretki{background:#fcc8c8;color:#620808;border:1px solid #e88080;font-weight:700}
 .type-Yritystilaisuus{background:#dce8f4;color:#0a2a4a;border:1px solid #90b4d4;font-weight:700}
 .type-Muu{background:#e4e4ec;color:#1a1a34;border:1px solid #a8a8c4;font-weight:700}
+.type-Teoria{background:#fff3cd;color:#78350f;border:1px solid #f59e0b;font-weight:700}
 .cal-legend{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
 .cal-legend-item{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text-muted);font-weight:500}
 .cal-legend-dot{width:10px;height:10px;border-radius:3px}
@@ -715,16 +718,20 @@ function renderDashboard(){
   const totalPend = state.customers.filter(c=>c.reservationStatus==="pending").length;
   const totalRes = state.customers.filter(c=>c.reservationStatus==="reserve").length;
 
-  // Vain tulevat purjehdukset joissa tilaa (vahvistetut < max)
+  // Vain tulevat purjehdukset joissa tilaa
+  // Kursseilla tarkistetaan myös sessions — jos jokin päivä on tulossa
   const upcoming = state.sailings
     .filter(s=>{
-      if((s.date||"")<today()) return false;
+      const hasFutureSessions = Array.isArray(s.sessions) && s.sessions.some(sess=>(sess.date||"")>=today());
+      const isFuture = (s.date||"")>=today();
+      if(!isFuture && !hasFutureSessions) return false;
       const max=Number(s.maxPersons||0);
-      const conf=confirmedCount(s.id);
-      return conf<max;
+      if(max===0) return false;
+      const enrolled=enrolledCount(s.id); // kaikki ilmoittautuneet (paid+pending+reserve)
+      return enrolled<max;
     })
     .sort((a,b)=>(a.date||"").localeCompare(b.date||""))
-    .slice(0,5);
+    .slice(0,8);
 
   // Tulevat Saaristo/Rannikkopäällikkö-tutkinnot joissa tilaa
   const TUTKINTO_PAIKKA = ["Rannikkopäällikkö","Saaristopäällikkö"];
@@ -771,11 +778,17 @@ function renderDashboard(){
         ${upcoming.map(s=>{
           const max=Number(s.maxPersons||0);
           const conf=confirmedCount(s.id);
-          const vapaata=max-conf;
+          const pend=pendingCount(s.id);
+          const enrolled=enrolledCount(s.id);
+          const vapaata=max-enrolled;
+          const isCourse=s.type==="Kurssi";
+          const hasSess=isCourse&&Array.isArray(s.sessions)&&s.sessions.length>0;
+          const nextSess=hasSess?s.sessions.filter(x=>(x.date||"")>=today()).sort((a,b)=>(a.date||"").localeCompare(b.date||""))[0]:null;
+          const dateLabel=nextSess?`Seuraava päivä: ${fmtDate(nextSess.date)}`:fmtDate(s.date);
           return `<div class="item">
             <div>
               <h3>${esc(s.name||"")} <span class="pill">${esc(s.type||"")}</span></h3>
-              <div class="meta">${fmtDate(s.date)} · ${conf}/${max} · <span style="color:var(--green);font-weight:700">${vapaata} vapaata</span></div>
+              <div class="meta">${dateLabel} · ✓${conf}${pend>0?" ●"+pend:""} / ${max} · <span style="color:var(--green);font-weight:700">${vapaata} vapaata</span></div>
             </div>
             <button class="btn btn-secondary btn-sm" data-action="edit-sailing" data-id="${s.id}">Avaa</button>
           </div>`;
@@ -818,6 +831,14 @@ function renderCalendar(){
     if(!s.date) continue;
     const isCourse=s.type==="Kurssi";
     const hasSessions=isCourse&&Array.isArray(s.sessions)&&s.sessions.length>0;
+    // Teoriapäivä kalenteriin
+    if(isCourse&&s.teoria&&s.teoria.date){
+      if(!eventMap[s.teoria.date]) eventMap[s.teoria.date]=[];
+      let tl2="";
+      if(s.teoria.start&&s.teoria.end) tl2=s.teoria.start+"–"+s.teoria.end;
+      else if(s.teoria.start) tl2="klo "+s.teoria.start;
+      eventMap[s.teoria.date].push({id:s.id,name:s.name+" (teoria)",type:"Teoria",maxPersons:s.maxPersons,timeLabel:tl2,_isSession:false,_isTeo:true});
+    }
     if(!hasSessions){
       if(!eventMap[s.date]) eventMap[s.date]=[];
       eventMap[s.date].push({id:s.id,name:s.name,type:s.type,maxPersons:s.maxPersons,timeLabel:"",_isSession:false});
@@ -862,7 +883,7 @@ function renderCalendar(){
       ${evHTML}${more}
     </div>`;
   }
-  const TYPES=["Kurssi","Charter","Iltapurjehdus","Päiväpurjehdus","Purjehdusretki","Yritystilaisuus","Muu"];
+  const TYPES=["Kurssi","Charter","Iltapurjehdus","Päiväpurjehdus","Purjehdusretki","Yritystilaisuus","Muu","Teoria"];
   const prev=month===1?`${year-1}-12`:`${year}-${String(month-1).padStart(2,"0")}`;
   const next=month===12?`${year+1}-01`:`${year}-${String(month+1).padStart(2,"0")}`;
   return `
@@ -922,6 +943,23 @@ function renderSailings(){
           const max=Number(s.maxPersons||0),rsv=Number(s.reserveSlots||0),resFee=Number(s.reservationFee||0);
           const sessions=Array.isArray(s.sessions)?s.sessions:[];
           const isCourse=s.type==="Kurssi";
+          const teoria=s.teoria||null;
+          const teoriaUI=isCourse?`
+            <div class="teoria-box">
+              <div>
+                <span class="teoria-badge">📚 Teoriapäivä</span>
+                ${teoria&&teoria.date
+                  ?`<span style="font-weight:600;font-size:13px;margin-left:8px">${fmtDate(teoria.date)}${teoria.start?" klo "+esc(teoria.start):""}${teoria.end?"–"+esc(teoria.end):""}</span>
+                    ${teoria.place?`<span class="small muted" style="margin-left:6px">📍 ${esc(teoria.place)}</span>`:""}
+                    ${teoria.note?`<div class="small muted" style="margin-top:2px">${esc(teoria.note)}</div>`:""}`
+                  :`<span class="small muted" style="margin-left:8px">Ei teoriapäivää lisättynä</span>`
+                }
+              </div>
+              <button class="btn btn-secondary btn-sm" data-action="edit-teoria" data-id="${s.id}">
+                ${teoria&&teoria.date?"Muokkaa":"+ Lisää teoriapäivä"}
+              </button>
+            </div>
+          `:"";
           const sessUI=isCourse?`
             <div class="session-box">
               <div class="row-between" style="margin-bottom:10px">
@@ -982,6 +1020,7 @@ function renderSailings(){
                 <div class="meta">${fmtDate(s.date)} · Max ${max}+${rsv} vara · ${Number(s.pricePerPerson||0).toFixed(0)} €/hlö${resFee>0?` · varausmaksu ${resFee} €`:""}</div>
                 ${fillUI(s.id,max,rsv)}
                 ${gcalUI}
+                ${teoriaUI}
                 ${sessUI}
                 ${attendeesUI}
               </div>
@@ -1418,6 +1457,7 @@ function renderReskontra(){
 // ══════════════════════════════════════════════════════
 function renderModal(){
   if(!state.modal) return "";
+  if(state.modal==="teoria") return renderTeoriaModal();
   if(state.modal==="session") return renderSessionModal();
   if(state.modal==="customer") return renderCustomerModal();
   if(state.modal==="sailing") return renderSailingModal();
@@ -1509,8 +1549,6 @@ function renderInvoicePreviewModal(){
 function renderTutkintoModal(){
   const editing=!!state.editId;
   const t=editing?state.tutkinnot.find(x=>x.id===state.editId):null;
-  const sailingOpts=state.sailings.slice().sort((a,b)=>(a.date||"").localeCompare(b.date||""))
-    .map(s=>`<option value="${s.id}" ${s.id===(t?.sailingId||"")?"selected":""}>${esc(s.name)} (${fmtDate(s.date)})</option>`).join("");
   const custOpts=state.customers.slice().sort((a,b)=>(a.name||"").localeCompare(b.name||""))
     .map(c=>`<option value="${esc(c.name)}" ${c.name===(t?.customerName||"")?"selected":""}>${esc(c.name)}</option>`).join("");
   return `
@@ -1556,19 +1594,10 @@ function renderTutkintoModal(){
               <input type="number" min="0" step="1" data-field="tutkinto-reserveslots" value="${esc(String(Number(t?.reserveSlots||2)))}">
             </div>`;
           })()}
-          <div class="grid2">
-            <div class="field">
-              <label class="lbl">Suorittaja *</label>
-              <input list="cust-list" data-field="tutkinto-customer" value="${esc(t?.customerName||"")}" placeholder="Nimi tai valitse listalta">
-              <datalist id="cust-list">${custOpts}</datalist>
-            </div>
-            <div class="field">
-              <label class="lbl">Purjehdus / kurssi</label>
-              <select data-field="tutkinto-sailing">
-                <option value="">-- Ei valittu --</option>
-                ${sailingOpts}
-              </select>
-            </div>
+          <div class="field">
+            <label class="lbl">Suorittaja *</label>
+            <input list="cust-list" data-field="tutkinto-customer" value="${esc(t?.customerName||"")}" placeholder="Nimi tai valitse listalta">
+            <datalist id="cust-list">${custOpts}</datalist>
           </div>
           <div class="field">
             <label class="lbl">Lisätiedot</label>
@@ -1576,6 +1605,44 @@ function renderTutkintoModal(){
           </div>
           <div class="row" style="justify-content:flex-end;margin-top:16px">
             <button class="btn btn-primary" data-action="save-tutkinto">${editing?"Tallenna muutokset":"Tallenna"}</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderTeoriaModal(){
+  const s=state.sailings.find(x=>x.id===state.editId);
+  if(!s) return "";
+  const t=s.teoria||{};
+  return `
+    <div class="overlay" data-action="close-modal">
+      <div class="modal" style="max-width:500px" onclick="event.stopPropagation()">
+        <div class="modal-head"><div class="row-between">
+          <div>
+            <div class="modal-title">📚 Teoriapäivä</div>
+            <div class="card-sub">${esc(s.name)}</div>
+          </div>
+          <button class="btn btn-secondary btn-sm" data-action="close-modal">✕</button>
+        </div></div>
+        <div class="modal-body">
+          <div class="grid2">
+            <div class="field"><label class="lbl">Päivämäärä *</label><input type="date" data-field="teo-date" value="${esc(t.date||"")}"></div>
+            <div class="field"><label class="lbl">Paikka</label><input data-field="teo-place" value="${esc(t.place||"")}" placeholder="esim. Laivakoulu, Loviisa"></div>
+          </div>
+          <div class="grid2">
+            <div class="field"><label class="lbl">Alkaa</label><input type="time" data-field="teo-start" value="${esc(t.start||"")}"></div>
+            <div class="field"><label class="lbl">Päättyy</label><input type="time" data-field="teo-end" value="${esc(t.end||"")}"></div>
+          </div>
+          <div class="field"><label class="lbl">Lisätiedot</label>
+            <textarea data-field="teo-note" rows="2" placeholder="esim. Teams-linkki, materiaalit…">${esc(t.note||"")}</textarea>
+          </div>
+          <div class="row" style="justify-content:space-between;margin-top:16px">
+            <div>
+              ${t.date?`<button class="btn btn-danger btn-sm" data-action="delete-teoria" data-id="${s.id}">Poista teoriapäivä</button>`:""}
+            </div>
+            <button class="btn btn-primary" data-action="save-teoria">Tallenna</button>
           </div>
         </div>
       </div>
@@ -1939,7 +2006,7 @@ function bind(){
         const type=document.querySelector('[data-field="tutkinto-type"]')?.value||"";
         const date=document.querySelector('[data-field="tutkinto-date"]')?.value||"";
         const customerName=(document.querySelector('[data-field="tutkinto-customer"]')?.value||"").trim();
-        const sailingId=document.querySelector('[data-field="tutkinto-sailing"]')?.value||"";
+        const sailingId="";
         const notes=(document.querySelector('[data-field="tutkinto-notes"]')?.value||"").trim();
         const isPaikkaTutkinto=["Rannikkopäällikkö","Saaristopäällikkö"].includes(type);
         const boatType=isPaikkaTutkinto?(document.querySelector('[data-field="tutkinto-boattype"]')?.value||"Purjevene"):"";
@@ -2006,6 +2073,30 @@ function bind(){
         await fsSet("sailings",s.id,s);
         render(); return;
       }
+      if(a==="edit-teoria"){
+        state.modal="teoria"; state.editId=itemId; render(); return;
+      }
+      if(a==="save-teoria"){
+        const s=state.sailings.find(x=>x.id===state.editId); if(!s) return;
+        const date=document.querySelector('[data-field="teo-date"]')?.value||"";
+        if(!date) return alert("Teoriapäivän päivämäärä on pakollinen.");
+        s.teoria={
+          date,
+          place:(document.querySelector('[data-field="teo-place"]')?.value||"").trim(),
+          start:document.querySelector('[data-field="teo-start"]')?.value||"",
+          end:document.querySelector('[data-field="teo-end"]')?.value||"",
+          note:(document.querySelector('[data-field="teo-note"]')?.value||"").trim()
+        };
+        await fsSet("sailings",s.id,s);
+        state.modal=null; state.editId=null; render(); return;
+      }
+      if(a==="delete-teoria"){
+        const s=state.sailings.find(x=>x.id===itemId); if(!s) return;
+        if(!confirm("Poistetaanko teoriapäivä?")) return;
+        s.teoria=null;
+        await fsSet("sailings",s.id,s);
+        state.modal=null; render(); return;
+      }
       if(a==="save-session-modal"){
         const {sailingId,idx}=state.editSession||{};
         const s=state.sailings.find(x=>x.id===sailingId);
@@ -2046,7 +2137,8 @@ function bind(){
           reserveSlots:Math.max(0,parseInt(document.querySelector('[data-field="reserveSlots"]')?.value,10)||0),
           pricePerPerson:parseFloat(document.querySelector('[data-field="pricePerPerson"]')?.value)||0,
           reservationFee:parseFloat(document.querySelector('[data-field="reservationFee"]')?.value)||0,
-          sessions:existing?.sessions||[]
+          sessions:existing?.sessions||[],
+          teoria:existing?.teoria||null
         };
         if(state.editId){ await fsSet("sailings",state.editId,data); }
         else{ const newId=await fsAdd("sailings",data); if(!state.invoice.sailingId) state.invoice.sailingId=newId; }
