@@ -2056,10 +2056,10 @@ function bind(){
   document.querySelector('[data-action="inv-partial-amount"]')?.addEventListener("input",e=>{state.invoice.partialAmount=e.target.value;render();});
   document.querySelector('[data-action="inv-credit-ref"]')?.addEventListener("change",e=>{state.invoice.creditRefId=e.target.value;render();});
   document.querySelector('[data-action="reg-month"]')?.addEventListener("input",e=>{state.registerMonth=(e.target.value||"").trim();});
-  document.querySelector(\'[data-field="qnc-name"]\')?.addEventListener("input",e=>{if(!state.dashNewCustomer)state.dashNewCustomer={};state.dashNewCustomer.name=e.target.value;});
-  document.querySelector(\'[data-field="qnc-phone"]\')?.addEventListener("input",e=>{if(!state.dashNewCustomer)state.dashNewCustomer={};state.dashNewCustomer.phone=e.target.value;});
-  document.querySelector(\'[data-field="qnc-email"]\')?.addEventListener("input",e=>{if(!state.dashNewCustomer)state.dashNewCustomer={};state.dashNewCustomer.email=e.target.value;});
-  document.querySelector(\'[data-field="qnc-status"]\')?.addEventListener("change",e=>{if(!state.dashNewCustomer)state.dashNewCustomer={};state.dashNewCustomer.status=e.target.value;});
+  document.querySelector('[data-field="qnc-name"]')?.addEventListener("input",e=>{if(!state.dashNewCustomer)state.dashNewCustomer={};state.dashNewCustomer.name=e.target.value;});
+  document.querySelector('[data-field="qnc-phone"]')?.addEventListener("input",e=>{if(!state.dashNewCustomer)state.dashNewCustomer={};state.dashNewCustomer.phone=e.target.value;});
+  document.querySelector('[data-field="qnc-email"]')?.addEventListener("input",e=>{if(!state.dashNewCustomer)state.dashNewCustomer={};state.dashNewCustomer.email=e.target.value;});
+  document.querySelector('[data-field="qnc-status"]')?.addEventListener("change",e=>{if(!state.dashNewCustomer)state.dashNewCustomer={};state.dashNewCustomer.status=e.target.value;});
 
   document.querySelectorAll('[data-action="reg-paid"]').forEach(cb=>{
     cb.onchange=async()=>{
