@@ -211,6 +211,7 @@ const state={
   calendarMonth:today().slice(0,7),
   registerMonth:today().slice(0,7),
   syncing:false,
+  sailingDraft:{},
   invoice:{mode:"customer",source:"sailing",sailingId:"",tutkintoId:"",customerId:"",companyId:"",invoiceDate:today(),type:"full",partialAmount:"",creditRefId:""}
 };
 function today(){return new Date().toISOString().slice(0,10);}
@@ -693,12 +694,14 @@ function renderInvoicePreviewModal(){
 function renderSailingModal(){
   const editing=!!state.editId;
   const s=editing?state.sailings.find(x=>x.id===state.editId):null;
-  const selType=document.querySelector('[data-field="sailing-type-live"]')?.value||s?.type||SAILING_TYPES[0];
+  const draft=state.sailingDraft||{};
+  // Draft values take priority — set when user changes type or dates (prevents field reset on re-render)
+  const selType=draft.type||s?.type||SAILING_TYPES[0];
   const isMultiDay=MULTIDAY_TYPES.includes(selType);
   let durationInfo="";
   if(isMultiDay){
-    const d1=document.querySelector('[data-field="date"]')?.value||s?.date||"";
-    const d2=document.querySelector('[data-field="endDate"]')?.value||s?.endDate||"";
+    const d1=draft.date||document.querySelector('[data-field="date"]')?.value||s?.date||"";
+    const d2=draft.endDate!==undefined?draft.endDate:(document.querySelector('[data-field="endDate"]')?.value||s?.endDate||"");
     if(d1&&d2&&d2>=d1){const days=Math.round((new Date(d2+"T12:00:00")-new Date(d1+"T12:00:00"))/86400000)+1;durationInfo=`<div class="infobox infobox-blue" style="margin-top:4px">\ud83d\udcc5 Kesto: ${days} vrk (${fmtDate(d1)} \u2013 ${fmtDate(d2)})</div>`;}
   }
   return`<div class="overlay" data-action="close-modal"><div class="modal" onclick="event.stopPropagation()">
@@ -711,11 +714,11 @@ function renderSailingModal(){
             ${SAILING_TYPES.map(t=>`<option value="${esc(t)}" ${t===selType?"selected":""}>${esc(t)}</option>`).join("")}
           </select>
         </div>
-        <div class="field"><label class="lbl">${isMultiDay?"L\xe4ht\xf6p\xe4iv\xe4 *":"P\xe4iv\xe4 *"}</label><input type="date" data-field="date" data-action="multiday-date-changed" value="${esc(s?.date||today())}"></div>
+        <div class="field"><label class="lbl">${isMultiDay?"L\xe4ht\xf6p\xe4iv\xe4 *":"P\xe4iv\xe4 *"}</label><input type="date" data-field="date" data-action="multiday-date-changed" value="${esc(draft.date||s?.date||today())}"></div>
       </div>
       ${isMultiDay?`
         <div class="grid2">
-          <div class="field"><label class="lbl">Paluup\xe4iv\xe4 *</label><input type="date" data-field="endDate" data-action="multiday-date-changed" value="${esc(s?.endDate||"")}"></div>
+          <div class="field"><label class="lbl">Paluup\xe4iv\xe4 *</label><input type="date" data-field="endDate" data-action="multiday-date-changed" value="${esc(draft.endDate!==undefined?draft.endDate:s?.endDate||"")}"></div>
           <div class="field"></div>
         </div>
         ${durationInfo}
@@ -891,8 +894,41 @@ function bind(){
     }catch(err){alert("Palautus ep\xe4onnistui: tiedosto ei ole kelvollinen JSON.");}finally{e.target.value="";}
   });
   // V8.2: tyyppi-valinta re-renderöi modalin kestolaskennalle
-  document.querySelector('[data-action="sailing-type-changed"]')?.addEventListener("change",()=>render());
-  document.querySelector('[data-action="multiday-date-changed"]')?.addEventListener("change",()=>render());
+  document.querySelector('[data-action="sailing-type-changed"]')?.addEventListener("change",()=>{
+    const d=state.sailingDraft||{};
+    const nameEl=document.querySelector('[data-field="name"]');
+    const dateEl=document.querySelector('[data-field="date"]');
+    const endDateEl=document.querySelector('[data-field="endDate"]');
+    const startEl=document.querySelector('[data-field="startTime"]');
+    const endEl=document.querySelector('[data-field="endTime"]');
+    const typeEl=document.querySelector('[data-field="sailing-type-live"]');
+    if(nameEl) d.name=nameEl.value;
+    if(dateEl) d.date=dateEl.value;
+    if(endDateEl) d.endDate=endDateEl.value;
+    if(startEl) d.startTime=startEl.value;
+    if(endEl) d.endTime=endEl.value;
+    if(typeEl) d.type=typeEl.value;
+    state.sailingDraft=d;
+    render();
+  });
+  document.querySelector('[data-action="multiday-date-changed"]')?.addEventListener("change",()=>{
+    // Save current field values to draft so render() doesn't reset them
+    const d=state.sailingDraft||{};
+    const nameEl=document.querySelector('[data-field="name"]');
+    const dateEl=document.querySelector('[data-field="date"]');
+    const endDateEl=document.querySelector('[data-field="endDate"]');
+    const startEl=document.querySelector('[data-field="startTime"]');
+    const endEl=document.querySelector('[data-field="endTime"]');
+    const typeEl=document.querySelector('[data-field="sailing-type-live"]');
+    if(nameEl) d.name=nameEl.value;
+    if(dateEl) d.date=dateEl.value;
+    if(endDateEl) d.endDate=endDateEl.value;
+    if(startEl) d.startTime=startEl.value;
+    if(endEl) d.endTime=endEl.value;
+    if(typeEl) d.type=typeEl.value;
+    state.sailingDraft=d;
+    render();
+  });
   document.querySelector('[data-action="search-customers"]')?.addEventListener("input",e=>{state.searchCustomers=e.target.value;render();});
   document.querySelector('[data-action="search-sailings"]')?.addEventListener("input",e=>{state.searchSailings=e.target.value;render();});
   document.querySelector('[data-action="search-tutkinnot"]')?.addEventListener("input",e=>{state.searchTutkinnot=e.target.value;render();});
@@ -937,8 +973,8 @@ function bind(){
       }
       if(a==="new-customer"){state.modal="customer";state.editId=null;render();return;}
       if(a==="edit-customer"){state.modal="customer";state.editId=itemId;render();return;}
-      if(a==="new-sailing"){state.modal="sailing";state.editId=null;render();return;}
-      if(a==="edit-sailing"){state.modal="sailing";state.editId=itemId;render();return;}
+      if(a==="new-sailing"){state.modal="sailing";state.editId=null;state.sailingDraft={};render();return;}
+      if(a==="edit-sailing"){state.modal="sailing";state.editId=itemId;state.sailingDraft={};render();return;}
       if(a==="new-company"){state.modal="company";state.editId=null;render();return;}
       if(a==="edit-company"){state.modal="company";state.editId=itemId;render();return;}
       if(a==="open-register"){state.modal="register";render();return;}
