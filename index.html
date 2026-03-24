@@ -9,7 +9,7 @@
 <meta name="theme-color" content="#0a1628"/>
 <link rel="manifest" href="manifest.json"/>
 <link rel="apple-touch-icon" href="icon-512.png"/>
-<title>J Sailing V8.6 — Hallintapaneeli</title>
+<title>J Sailing V8.7 — Hallintapaneeli</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400;1,600&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -188,7 +188,7 @@ import{getAuth,GoogleAuthProvider,signInWithPopup,signOut,onAuthStateChanged}fro
 import{getFirestore,collection,doc,addDoc,setDoc,deleteDoc,onSnapshot,serverTimestamp}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 const FIREBASE_CONFIG={apiKey:"AIzaSyB7Dp5_5fN0Iko-4Jn1D2Dp6NNNih63UO0",authDomain:"jsailing-f716c.firebaseapp.com",projectId:"jsailing-f716c",storageBucket:"jsailing-f716c.firebasestorage.app",messagingSenderId:"543523103696",appId:"1:543523103696:web:439a312efa6aec398a8fd5"};
 const ALLOWED_EMAIL="jacke.seilaa@gmail.com";
-const APP_VERSION="V8.6";const UPDATE_DATE=(()=>{const n=new Date();return n.toLocaleDateString("fi-FI")+' klo '+String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0');})();
+const APP_VERSION="V8.7";const UPDATE_DATE=(()=>{const n=new Date();return n.toLocaleDateString("fi-FI")+' klo '+String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0');})();
 const ISSUER={name:"J Sailing",businessId:"1728993-9"};
 const BANK={iban:"FI62 1132 3000 4277 43",bic:"NDEAFIHH"};
 const SAILING_TYPES=["Iltapurjehdus","Päiväpurjehdus","Charter","Kurssi","Yritystilaisuus","Purjehdusretki","Muu"];
@@ -316,9 +316,25 @@ function computeInvoice(overrideState){
     eventName=s.name||"";
     let price=isRes?Number(s.reservationFee||0):Number(s.pricePerPerson||0);
     if(isPartial)price=parseFloat(inv.partialAmount||0)||0;
+    // Loppulaskussa vähennetään jo laskutettu varausmaksu
+    const alreadyInvoicedResFee=(itype==="full"&&!isCredit)?
+      state.invoices
+        .filter(x=>x.eventId===s.id&&(x.itype==="reservation"||x.isReservation)&&
+          (inv.mode==="customer"?x.payerName===(state.customers.find(c=>c.id===inv.customerId)?.name||"__"):
+           x.payerName===(state.companies.find(c=>c.id===inv.companyId)?.name||"__")))
+        .reduce((sum,x)=>sum+Number(x.grossTotal||0),0)
+      :0;
     if(inv.mode==="customer"){
       const c=state.customers.find(x=>x.id===inv.customerId);
-      if(c){payerName=c.name||"";payerEmail=c.email||"";let amt=isCredit?-Math.abs(price):price;lines.push({title:`${s.name} — ${invTypeLabel(itype)} — ${c.name}`,qty:1,unit:amt,total:amt});grossTotal=amt;}
+      if(c){
+        payerName=c.name||"";payerEmail=c.email||"";
+        let amt=isCredit?-Math.abs(price):price;
+        lines.push({title:`${s.name} — ${invTypeLabel(itype)} — ${c.name}`,qty:1,unit:amt,total:amt});
+        if(alreadyInvoicedResFee>0){
+          lines.push({title:`Aiemmin laskutettu varausmaksu`,qty:1,unit:-alreadyInvoicedResFee,total:-alreadyInvoicedResFee});
+        }
+        grossTotal=amt-alreadyInvoicedResFee;
+      }
     }else{
       const co=state.companies.find(x=>x.id===inv.companyId);
       if(co){
@@ -418,7 +434,7 @@ function renderDashboard(){
       <div class="stat-card"><div class="stat-label">Laskut</div><div class="stat-val">${state.invoices.length}</div></div>
       <div class="stat-card"><div class="stat-label">Tutkinnot</div><div class="stat-val" style="color:#1e40af">${state.tutkinnot.length}</div></div>
     </div>
-    ${totalPend>0?`<div class="infobox infobox-amber">⚠️ ${totalPend} asiakkaalla varausmaksu maksamatta</div>`:""}
+    ${totalPend>0?`<div class="infobox infobox-amber" style="cursor:pointer" data-action="show-pending">⚠️ ${totalPend} asiakkaalla varausmaksu maksamatta — <strong>näytä</strong></div>`:""}
     ${upcoming.length>0?`<div class="hr"></div>
       <div style="font-weight:700;font-size:12px;text-transform:uppercase;letter-spacing:.6px;color:#6b7280;margin-bottom:10px">⛵ Tulevat purjehdukset — tilaa</div>
       ${upcoming.map(s=>{
@@ -674,6 +690,7 @@ function renderReskontra(){
 
 function renderModal(){
   if(!state.modal)return"";
+  if(state.modal==="pending-list")return renderPendingListModal();
   if(state.modal==="dash-quick")return renderDashQuickModal();
   if(state.modal==="teoria")return renderTeoriaModal();
   if(state.modal==="session")return renderSessionModal();
@@ -778,6 +795,36 @@ function renderTutkintoModal(){
     </div>
   </div></div>`;
 }
+function renderPendingListModal(){
+  const pending=state.customers.filter(c=>c.reservationStatus==="pending")
+    .sort((a,b)=>(a.name||"").localeCompare(b.name||""));
+  return`<div class="overlay" data-action="close-modal"><div class="modal" style="max-width:620px" onclick="event.stopPropagation()">
+    <div class="modal-head"><div class="row-between">
+      <div><div class="modal-title">● Varausmaksu maksamatta</div><div class="card-sub">${pending.length} asiakasta odottaa</div></div>
+      <button class="btn btn-secondary btn-sm" data-action="close-modal">✕</button>
+    </div></div>
+    <div class="modal-body">
+      ${pending.length===0?`<div class="infobox infobox-green">✓ Kaikki varausmaksut maksettu!</div>`:`
+        ${pending.map(c=>{
+          const s=state.sailings.find(x=>x.id===c.sailingId);
+          const resFee=s?Number(s.reservationFee||0):0;
+          return`<div class="attendee-card pending" style="margin-bottom:8px">
+            <div>
+              <div style="font-weight:600;font-size:14px">${esc(c.name||"")}</div>
+              <div class="small muted">${s?esc(s.name):""} ${resFee>0?`· varausmaksu ${resFee} €`:""}</div>
+              ${c.email?`<div class="small"><a href="mailto:${esc(c.email)}" style="color:#1e40af">${esc(c.email)}</a></div>`:""}
+              ${c.phone?`<div class="small muted">${esc(c.phone)}</div>`:""}
+            </div>
+            <div class="row">
+              <button class="btn btn-teal btn-sm" data-action="confirm-payment" data-id="${c.id}">✓ Maksettu</button>
+              <button class="btn btn-secondary btn-sm" data-action="edit-customer" data-id="${c.id}">Muokkaa</button>
+            </div>
+          </div>`;
+        }).join("")}
+      `}
+    </div>
+  </div></div>`;
+}
 function renderDashQuickModal(){
   const isSailing=state.dashQuickType==="sailing";
   const s=isSailing?state.sailings.find(x=>x.id===state.dashQuickId):null;
@@ -795,7 +842,7 @@ function renderDashQuickModal(){
     <div class="modal-body">
       ${isSailing&&attendees.length>0?`<div style="font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:#6b7280;margin-bottom:8px">Osallistujat <span class="badge badge-green">✓${conf}</span> <span class="badge badge-red">●${pend}</span></div>${attendees.map(c=>{const st=c.reservationStatus||"pending",dc=st==="paid"?"dot-green":st==="reserve"?"dot-amber":"dot-red";return`<div class="attendee-card ${st}" style="margin-bottom:6px"><div class="row"><span class="dot ${dc}"></span><span style="font-weight:600;font-size:14px">${esc(c.name||"")}</span>${statusBadge(st)}</div><div class="row">${st==="pending"?`<button class="btn btn-teal btn-sm" data-action="confirm-payment" data-id="${c.id}">✓ Maksettu</button>`:""}${st==="reserve"?`<button class="btn btn-secondary btn-sm" data-action="promote-reserve" data-id="${c.id}">↑ Vahvista</button>`:""}<button class="btn btn-danger btn-sm" data-action="delete-customer" data-id="${c.id}">Poista</button></div></div>`;}).join("")}<div class="hr"></div>`:""}
       <div style="font-weight:700;font-size:12px;text-transform:uppercase;letter-spacing:.5px;color:#0a4272;margin-bottom:12px">+ Lisää osallistuja</div>
-      <div class="grid2"><div class="field"><label class="lbl">Nimi *</label><input data-field="qnc-name" value="${esc(nc.name||"")}" placeholder="Etunimi Sukunimi" list="qnc-list"><datalist id="qnc-list">${state.customers.slice().sort((a,b)=>(a.name||"").localeCompare(b.name||"")).map(c=>`<option value="${esc(c.name)}">`).join("")}</datalist></div><div class="field"><label class="lbl">Puhelin</label><input data-field="qnc-phone" value="${esc(nc.phone||"")}" placeholder="040 1234567"></div></div>
+      <div class="grid2"><div class="field"><label class="lbl">Nimi *</label><input data-field="qnc-name" value="${esc(nc.name||"")}" placeholder="Etunimi Sukunimi" autocomplete="off"></div><div class="field"><label class="lbl">Puhelin</label><input data-field="qnc-phone" value="${esc(nc.phone||"")}" placeholder="040 1234567"></div></div>
       <div class="grid2"><div class="field"><label class="lbl">Sähköposti</label><input data-field="qnc-email" value="${esc(nc.email||"")}" placeholder="nimi@example.fi"></div><div class="field"><label class="lbl">Status</label><select data-field="qnc-status"><option value="pending" ${(nc.status||"pending")==="pending"?"selected":""}>● Varausmaksu odottaa</option><option value="paid" ${nc.status==="paid"?"selected":""}>✓ Vahvistettu</option><option value="reserve" ${nc.status==="reserve"?"selected":""}>◎ Varapaikka</option></select></div></div>
       <div class="row" style="justify-content:flex-end;margin-top:12px;gap:10px"><button class="btn btn-secondary btn-sm" data-action="qnc-clear">Tyhjennä</button><button class="btn btn-primary" data-action="qnc-save">+ Tallenna osallistuja</button></div>
     </div>
@@ -1135,6 +1182,7 @@ function bind(){
       if(a==="cal-today"){state.calendarMonth=today().slice(0,7);render();return;}
       if(a==="toggle-sailing"){state.openSailingId=(state.openSailingId===itemId)?null:itemId;render();return;}
       if(a==="close-modal"){state.modal=null;state.editId=null;state.editSession=null;state.previewInvoiceId=null;state.dashQuickId=null;state.dashQuickType=null;render();return;}
+      if(a==="show-pending"){state.modal="pending-list";render();return;}
       if(a==="dash-open"){state.dashQuickId=itemId;state.dashQuickType=el.dataset.type||"sailing";state.dashNewCustomer={name:"",phone:"",email:"",status:"pending"};state.modal="dash-quick";render();return;}
       if(a==="qnc-clear"){state.dashNewCustomer={name:"",phone:"",email:"",status:"pending"};render();return;}
       if(a==="qnc-save"){
