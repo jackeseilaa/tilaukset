@@ -1,5 +1,4 @@
 <!DOCTYPE html>
-
 <html lang="fi">
 <head>
 <meta charset="UTF-8"/>
@@ -201,343 +200,368 @@ let app,auth,db;
 if(CONFIG_READY){app=initializeApp(FIREBASE_CONFIG);auth=getAuth(app);db=getFirestore(app);}
 
 const state={
-tab:“dashboard”,user:null,
-customers:[],sailings:[],companies:[],invoices:[],tutkinnot:[],
-modal:null,editId:null,editSession:null,previewInvoiceId:null,
-searchCustomers:””,searchSailings:””,searchTutkinnot:””,
-openSailingId:null,dashQuickId:null,dashQuickType:null,
-dashNewCustomer:{name:””,phone:””,email:””,status:“pending”},
-sailingGroup:“all”,
-calendarMonth:today().slice(0,7),
-registerMonth:today().slice(0,7),
-syncing:false,
-sailingDraft:{},
-invoice:{mode:“customer”,source:“sailing”,sailingId:””,tutkintoId:””,customerId:””,companyId:””,invoiceDate:today(),type:“full”,partialAmount:””,creditRefId:””}
+  tab:"dashboard",user:null,
+  customers:[],sailings:[],companies:[],invoices:[],tutkinnot:[],
+  modal:null,editId:null,editSession:null,previewInvoiceId:null,
+  searchCustomers:"",searchSailings:"",searchTutkinnot:"",
+  openSailingId:null,dashQuickId:null,dashQuickType:null,
+  dashNewCustomer:{name:"",phone:"",email:"",status:"pending"},
+  sailingGroup:"all",
+  calendarMonth:today().slice(0,7),
+  registerMonth:today().slice(0,7),
+  syncing:false,
+  sailingDraft:{},
+  invoice:{mode:"customer",source:"sailing",sailingId:"",tutkintoId:"",customerId:"",companyId:"",invoiceDate:today(),type:"full",partialAmount:"",creditRefId:""}
 };
 function today(){return new Date().toISOString().slice(0,10);}
-function esc(s){return String(s||””).replace(/[&<>”’]/g,m=>({”&”:”&”,”<”:”<”,”>”:”>”,’”’:”"”,”’”:”'”}[m]));}
-function fmtDate(d){return d?new Date(d+“T00:00:00”).toLocaleDateString(“fi-FI”):””;}
+function esc(s){return String(s||"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));}
+function fmtDate(d){return d?new Date(d+"T00:00:00").toLocaleDateString("fi-FI"):"";}
 function genId(p){return p+Math.random().toString(16).slice(2,8).toUpperCase();}
 function enrolledCount(sid){return state.customers.filter(c=>c.sailingId===sid).length;}
-function confirmedCount(sid){return state.customers.filter(c=>c.sailingId===sid&&c.reservationStatus===“paid”).length;}
-function pendingCount(sid){return state.customers.filter(c=>c.sailingId===sid&&c.reservationStatus===“pending”).length;}
-function reserveCount(sid){return state.customers.filter(c=>c.sailingId===sid&&c.reservationStatus===“reserve”).length;}
+function confirmedCount(sid){return state.customers.filter(c=>c.sailingId===sid&&c.reservationStatus==="paid").length;}
+function pendingCount(sid){return state.customers.filter(c=>c.sailingId===sid&&c.reservationStatus==="pending").length;}
+function reserveCount(sid){return state.customers.filter(c=>c.sailingId===sid&&c.reservationStatus==="reserve").length;}
 function finnishReference(digits){
-digits=String(digits||””).replace(/\D/g,””);if(!digits)return””;
-const w=[7,3,1];let sum=0,wi=0;
-for(let i=digits.length-1;i>=0;i–){sum+=Number(digits[i])*w[wi%3];wi++;}
-return digits+String((10-(sum%10))%10);
+  digits=String(digits||"").replace(/\D/g,"");if(!digits)return"";
+  const w=[7,3,1];let sum=0,wi=0;
+  for(let i=digits.length-1;i>=0;i--){sum+=Number(digits[i])*w[wi%3];wi++;}
+  return digits+String((10-(sum%10))%10);
 }
 function nextInvoiceNumber(){
-const year=new Date().getFullYear();let max=0;
-for(const inv of state.invoices){const m=String(inv.invoiceNo||””).match(/^JS-(\d{4})-(\d+)$/);if(m&&Number(m[1])===year)max=Math.max(max,Number(m[2]));}
-return `JS-${year}-${String(max+1).padStart(3,"0")}`;
+  const year=new Date().getFullYear();let max=0;
+  for(const inv of state.invoices){const m=String(inv.invoiceNo||"").match(/^JS-(\d{4})-(\d+)$/);if(m&&Number(m[1])===year)max=Math.max(max,Number(m[2]));}
+  return `JS-${year}-${String(max+1).padStart(3,"0")}`;
 }
 function statusBadge(s){
-if(s===“paid”)return`<span class="badge badge-green">✓ Vahvistettu</span>`;
-if(s===“pending”)return`<span class="badge badge-red">● Varausmaksu odottaa</span>`;
-if(s===“reserve”)return`<span class="badge badge-amber">◎ Varapaikka</span>`;
-return””;
+  if(s==="paid")return`<span class="badge badge-green">✓ Vahvistettu</span>`;
+  if(s==="pending")return`<span class="badge badge-red">● Varausmaksu odottaa</span>`;
+  if(s==="reserve")return`<span class="badge badge-amber">◎ Varapaikka</span>`;
+  return"";
 }
 function fillUI(sid,maxPersons,reserveSlots){
-const max=Math.max(1,Number(maxPersons||0)||1),rsv=Math.max(0,Number(reserveSlots||0)||0);
-const conf=confirmedCount(sid),pend=pendingCount(sid);
-const confPct=Math.min(100,Math.round((conf/(max+rsv))*100));
-const pendPct=Math.min(100-confPct,Math.round((pend/(max+rsv))*100));
-return `<div class="fillrow"><div class="fillbar-wrap"><div class="fillbar-green" style="width:${confPct}%"></div><div class="fillbar-amber" style="width:${pendPct}%"></div></div><div class="filltext"><span style="color:#166534">✓${conf}</span>${pend>0?`<span style="color:#991b1b"> ●${pend}</span>`:""}${reserveCount(sid)>0?`<span style="color:#92400e"> ◎${reserveCount(sid)}</span>`:""}<span style="color:#6b7280"> / ${max}+${rsv}</span></div></div>`;
+  const max=Math.max(1,Number(maxPersons||0)||1),rsv=Math.max(0,Number(reserveSlots||0)||0);
+  const conf=confirmedCount(sid),pend=pendingCount(sid);
+  const confPct=Math.min(100,Math.round((conf/(max+rsv))*100));
+  const pendPct=Math.min(100-confPct,Math.round((pend/(max+rsv))*100));
+  return `<div class="fillrow"><div class="fillbar-wrap"><div class="fillbar-green" style="width:${confPct}%"></div><div class="fillbar-amber" style="width:${pendPct}%"></div></div><div class="filltext"><span style="color:#166534">✓${conf}</span>${pend>0?`<span style="color:#991b1b"> ●${pend}</span>`:""}${reserveCount(sid)>0?`<span style="color:#92400e"> ◎${reserveCount(sid)}</span>`:""}<span style="color:#6b7280"> / ${max}+${rsv}</span></div></div>`;
 }
 function groupCounts(){const c={};for(const g of SAILING_GROUPS){c[g.id]=g.types?state.sailings.filter(s=>g.types.includes(s.type)).length:state.sailings.length;}return c;}
 
 // Google Calendar — V8.2 tukee endDate:tä
 function gcalUrl(title,date,startTime,endTime,description,endDate){
-const fmt=(d,t)=>{if(!t)return d.replace(/-/g,””);const[h,m]=t.split(”:”).map(s=>s.padStart(2,“0”));return d.replace(/-/g,””)+“T”+h+(m||“00”)+“00”;};
-let start,end;
-if(startTime){
-start=fmt(date,startTime);
-const eDate=endDate||date;
-end=endTime?fmt(eDate,endTime):fmt(date,(String(parseInt(startTime)+2)).padStart(2,“0”)+”:00”);
-}else{
-start=date.replace(/-/g,””);
-if(endDate){const d=new Date(endDate+“T12:00:00”);d.setDate(d.getDate()+1);end=d.toISOString().slice(0,10).replace(/-/g,””);}
-else end=start;
-}
-const params=new URLSearchParams({action:“TEMPLATE”,text:title,dates:start+”/”+end,details:description||“J Sailing — Absolut 37”,location:“Loviisa, Finland”});
-return”https://calendar.google.com/calendar/render?”+params.toString();
+  const fmt=(d,t)=>{if(!t)return d.replace(/-/g,"");const[h,m]=t.split(":").map(s=>s.padStart(2,"0"));return d.replace(/-/g,"")+"T"+h+(m||"00")+"00";};
+  let start,end;
+  if(startTime){
+    start=fmt(date,startTime);
+    const eDate=endDate||date;
+    end=endTime?fmt(eDate,endTime):fmt(date,(String(parseInt(startTime)+2)).padStart(2,"0")+":00");
+  }else{
+    start=date.replace(/-/g,"");
+    if(endDate){const d=new Date(endDate+"T12:00:00");d.setDate(d.getDate()+1);end=d.toISOString().slice(0,10).replace(/-/g,"");}
+    else end=start;
+  }
+  const params=new URLSearchParams({action:"TEMPLATE",text:title,dates:start+"/"+end,details:description||"J Sailing — Absolut 37",location:"Loviisa, Finland"});
+  return"https://calendar.google.com/calendar/render?"+params.toString();
 }
 function gcalButton(sailing,sessionIdx){
-const isCourse=sailing.type===“Kurssi”;
-const hasSessions=isCourse&&Array.isArray(sailing.sessions)&&sailing.sessions.length>0;
-if(sessionIdx!=null&&hasSessions){
-const sess=sailing.sessions[sessionIdx];if(!sess||!sess.date)return””;
-const gcKey=`gcal_${sailing.id}_${sessionIdx}`;
-const added=sailing[gcKey],addedDate=sailing[gcKey+”_date”]||””;
-const url=gcalUrl(`${sailing.name} — päivä ${sessionIdx+1}${sess.note?" ("+sess.note+")":""}`,sess.date,sess.start,sess.end,`${sailing.name} · J Sailing · Absolut 37`);
-if(added)return`<span class="badge badge-gcal" style="font-size:11px">✅ Kalenterissa ${addedDate?fmtDate(addedDate):""}</span><a href="${esc(url)}" target="_blank" class="btn btn-secondary btn-sm" data-action="gcal-mark" data-id="${sailing.id}" data-idx="${sessionIdx}" style="font-size:11px">🔄 Päivitä</a>`;
-return`<a href="${esc(url)}" target="_blank" class="btn btn-gcal btn-sm" data-action="gcal-mark" data-id="${sailing.id}" data-idx="${sessionIdx}"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" style="flex-shrink:0"><rect x="3" y="4" width="18" height="18" rx="2" stroke="#4285F4" stroke-width="2"/><line x1="16" y1="2" x2="16" y2="6" stroke="#4285F4" stroke-width="2"/><line x1="8" y1="2" x2="8" y2="6" stroke="#4285F4" stroke-width="2"/><line x1="3" y1="10" x2="21" y2="10" stroke="#4285F4" stroke-width="2"/></svg>Lisää kalenteriin</a>`;
-}else{
-const gcKey=`gcal_${sailing.id}`;
-const added=sailing[gcKey],addedDate=sailing[gcKey+”_date”]||””;
-// REITTI: lisätään Google Calendar descriptioniin
-const desc=`${sailing.name}${sailing.reitti?" · Reitti: "+sailing.reitti:""} · ${sailing.type} · J Sailing · Absolut 37`;
-const url=gcalUrl(sailing.name,sailing.date,sailing.startTime||null,sailing.endTime||null,desc,sailing.endDate||null);
-if(added)return`<span class="badge badge-gcal" style="font-size:11px">✅ Kalenterissa ${addedDate?fmtDate(addedDate):""}</span><a href="${esc(url)}" target="_blank" class="btn btn-secondary btn-sm" data-action="gcal-mark" data-id="${sailing.id}" data-idx="" style="font-size:11px">🔄 Päivitä</a>`;
-return`<a href="${esc(url)}" target="_blank" class="btn btn-gcal btn-sm" data-action="gcal-mark" data-id="${sailing.id}" data-idx=""><svg width="12" height="12" viewBox="0 0 24 24" fill="none" style="flex-shrink:0"><rect x="3" y="4" width="18" height="18" rx="2" stroke="#4285F4" stroke-width="2"/><line x1="16" y1="2" x2="16" y2="6" stroke="#4285F4" stroke-width="2"/><line x1="8" y1="2" x2="8" y2="6" stroke="#4285F4" stroke-width="2"/><line x1="3" y1="10" x2="21" y2="10" stroke="#4285F4" stroke-width="2"/></svg>Lisää kalenteriin</a>`;
-}
+  const isCourse=sailing.type==="Kurssi";
+  const hasSessions=isCourse&&Array.isArray(sailing.sessions)&&sailing.sessions.length>0;
+  if(sessionIdx!=null&&hasSessions){
+    const sess=sailing.sessions[sessionIdx];if(!sess||!sess.date)return"";
+    const gcKey=`gcal_${sailing.id}_${sessionIdx}`;
+    const added=sailing[gcKey],addedDate=sailing[gcKey+"_date"]||"";
+    const url=gcalUrl(`${sailing.name} — päivä ${sessionIdx+1}${sess.note?" ("+sess.note+")":""}`,sess.date,sess.start,sess.end,`${sailing.name} · J Sailing · Absolut 37`);
+    if(added)return`<span class="badge badge-gcal" style="font-size:11px">✅ Kalenterissa ${addedDate?fmtDate(addedDate):""}</span><a href="${esc(url)}" target="_blank" class="btn btn-secondary btn-sm" data-action="gcal-mark" data-id="${sailing.id}" data-idx="${sessionIdx}" style="font-size:11px">🔄 Päivitä</a>`;
+    return`<a href="${esc(url)}" target="_blank" class="btn btn-gcal btn-sm" data-action="gcal-mark" data-id="${sailing.id}" data-idx="${sessionIdx}"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" style="flex-shrink:0"><rect x="3" y="4" width="18" height="18" rx="2" stroke="#4285F4" stroke-width="2"/><line x1="16" y1="2" x2="16" y2="6" stroke="#4285F4" stroke-width="2"/><line x1="8" y1="2" x2="8" y2="6" stroke="#4285F4" stroke-width="2"/><line x1="3" y1="10" x2="21" y2="10" stroke="#4285F4" stroke-width="2"/></svg>Lisää kalenteriin</a>`;
+  }else{
+    const gcKey=`gcal_${sailing.id}`;
+    const added=sailing[gcKey],addedDate=sailing[gcKey+"_date"]||"";
+    // REITTI: lisätään Google Calendar descriptioniin
+    const desc=`${sailing.name}${sailing.reitti?" · Reitti: "+sailing.reitti:""} · ${sailing.type} · J Sailing · Absolut 37`;
+    const url=gcalUrl(sailing.name,sailing.date,sailing.startTime||null,sailing.endTime||null,desc,sailing.endDate||null);
+    if(added)return`<span class="badge badge-gcal" style="font-size:11px">✅ Kalenterissa ${addedDate?fmtDate(addedDate):""}</span><a href="${esc(url)}" target="_blank" class="btn btn-secondary btn-sm" data-action="gcal-mark" data-id="${sailing.id}" data-idx="" style="font-size:11px">🔄 Päivitä</a>`;
+    return`<a href="${esc(url)}" target="_blank" class="btn btn-gcal btn-sm" data-action="gcal-mark" data-id="${sailing.id}" data-idx=""><svg width="12" height="12" viewBox="0 0 24 24" fill="none" style="flex-shrink:0"><rect x="3" y="4" width="18" height="18" rx="2" stroke="#4285F4" stroke-width="2"/><line x1="16" y1="2" x2="16" y2="6" stroke="#4285F4" stroke-width="2"/><line x1="8" y1="2" x2="8" y2="6" stroke="#4285F4" stroke-width="2"/><line x1="3" y1="10" x2="21" y2="10" stroke="#4285F4" stroke-width="2"/></svg>Lisää kalenteriin</a>`;
+  }
 }
 async function markGcalAdded(sailingId,sessionIdx){
-const s=state.sailings.find(x=>x.id===sailingId);if(!s)return;
-const gcKey=sessionIdx!=null&&sessionIdx!==””?`gcal_${sailingId}_${sessionIdx}`:`gcal_${sailingId}`;
-s[gcKey]=true;s[gcKey+”_date”]=today();
-await fsSet(“sailings”,sailingId,s);render();
+  const s=state.sailings.find(x=>x.id===sailingId);if(!s)return;
+  const gcKey=sessionIdx!=null&&sessionIdx!==""?`gcal_${sailingId}_${sessionIdx}`:`gcal_${sailingId}`;
+  s[gcKey]=true;s[gcKey+"_date"]=today();
+  await fsSet("sailings",sailingId,s);render();
 }
 
-const INV_TYPE_LABELS={full:“Loppulasku”,reservation:“Varausmaksu”,partial:“Osasuoritus”,credit:“Hyvityslasku”};
+const INV_TYPE_LABELS={full:"Loppulasku",reservation:"Varausmaksu",partial:"Osasuoritus",credit:"Hyvityslasku"};
 function invTypeLabel(t){return INV_TYPE_LABELS[t]||t;}
 function invTypeBadge(t){
-if(t===“reservation”)return`<span class="badge badge-blue" style="font-size:10px">Varausmaksu</span>`;
-if(t===“partial”)return`<span class="badge badge-amber" style="font-size:10px">Osasuoritus</span>`;
-if(t===“credit”)return`<span class="badge badge-red" style="font-size:10px">Hyvitys</span>`;
-return`<span class="badge badge-silver" style="font-size:10px">Loppulasku</span>`;
+  if(t==="reservation")return`<span class="badge badge-blue" style="font-size:10px">Varausmaksu</span>`;
+  if(t==="partial")return`<span class="badge badge-amber" style="font-size:10px">Osasuoritus</span>`;
+  if(t==="credit")return`<span class="badge badge-red" style="font-size:10px">Hyvitys</span>`;
+  return`<span class="badge badge-silver" style="font-size:10px">Loppulasku</span>`;
 }
 function computeInvoice(overrideState){
-const inv=overrideState||state.invoice;
-const source=inv.source||“sailing”,isTutkinto=source===“tutkinto”;
-const s=isTutkinto?null:(state.sailings.find(x=>x.id===inv.sailingId)||null);
-const t=isTutkinto?(state.tutkinnot.find(x=>x.id===inv.tutkintoId)||null):null;
-const rate=(!isTutkinto&&s?.type===“Charter”)?0.135:0.255;
-const ratePct=(rate*100).toFixed(1);
-const itype=inv.type||“full”,isRes=itype===“reservation”,isPartial=itype===“partial”,isCredit=itype===“credit”;
-let payerName=””,payerEmail=””,payerBusinessId=””,lines=[],grossTotal=0,eventName=””;
-if(isTutkinto&&t){
-eventName=t.type+(t.boatType?” (”+t.boatType+”)”:””);
-let price=parseFloat(inv.partialAmount||0)||0;
-const c=state.customers.find(x=>x.id===inv.customerId);
-if(c){payerName=c.name||””;payerEmail=c.email||””;let amt=isCredit?-Math.abs(price):price;lines.push({title:`${eventName} — ${invTypeLabel(itype)} — ${c.name}`,qty:1,unit:amt,total:amt});grossTotal=amt;}
-}else if(s){
-eventName=s.name||””;
-let price=isRes?Number(s.reservationFee||0):Number(s.pricePerPerson||0);
-if(isPartial)price=parseFloat(inv.partialAmount||0)||0;
-if(inv.mode===“customer”){
-const c=state.customers.find(x=>x.id===inv.customerId);
-if(c){payerName=c.name||””;payerEmail=c.email||””;let amt=isCredit?-Math.abs(price):price;lines.push({title:`${s.name} — ${invTypeLabel(itype)} — ${c.name}`,qty:1,unit:amt,total:amt});grossTotal=amt;}
-}else{
-const co=state.companies.find(x=>x.id===inv.companyId);
-if(co){
-payerName=co.name||””;payerEmail=co.email||””;payerBusinessId=co.businessId||””;
-const cust=state.customers.filter(c=>c.sailingId===s.id&&c.billTo===“company”&&c.companyId===co.id).sort((a,b)=>(a.name||””).localeCompare(b.name||””));
-let gross=isPartial?price:cust.length*price;
-if(isPartial){lines.push({title:`${s.name} — Osasuoritus`,qty:1,unit:price,total:price});}
-else{for(const c of cust){let amt=isCredit?-Math.abs(price):price;lines.push({title:`${s.name} — ${invTypeLabel(itype)} — ${c.name}`,qty:1,unit:amt,total:amt});}}
-const comm=Math.abs(gross)*(Number(co.commissionPct||0)/100);
-if(comm>0&&!isCredit)lines.push({title:“Välitysprovisio”,qty:1,unit:-comm,total:-comm});
-grossTotal=isCredit?-Math.abs(gross):gross-comm;
-}
-}
-}
-const creditRef=isCredit?state.invoices.find(x=>x.id===inv.creditRefId):null;
-const net=(grossTotal||0)/(1+rate),vat=(grossTotal||0)-net;
-const invNo=nextInvoiceNumber();
-return{sailing:s,tutkinto:t,isTutkinto,rate,ratePct,payerName,payerEmail,payerBusinessId,lines,grossTotal,net,vat,reference:finnishReference(invNo.replace(/\D/g,””)),invNo,eventName,isReservation:isRes,itype,isCredit,isPartial,creditRef};
+  const inv=overrideState||state.invoice;
+  const source=inv.source||"sailing",isTutkinto=source==="tutkinto";
+  const s=isTutkinto?null:(state.sailings.find(x=>x.id===inv.sailingId)||null);
+  const t=isTutkinto?(state.tutkinnot.find(x=>x.id===inv.tutkintoId)||null):null;
+  const rate=(!isTutkinto&&s?.type==="Charter")?0.135:0.255;
+  const ratePct=(rate*100).toFixed(1);
+  const itype=inv.type||"full",isRes=itype==="reservation",isPartial=itype==="partial",isCredit=itype==="credit";
+  let payerName="",payerEmail="",payerBusinessId="",lines=[],grossTotal=0,eventName="";
+  if(isTutkinto&&t){
+    eventName=t.type+(t.boatType?" ("+t.boatType+")":"");
+    let price=parseFloat(inv.partialAmount||0)||0;
+    const c=state.customers.find(x=>x.id===inv.customerId);
+    if(c){payerName=c.name||"";payerEmail=c.email||"";let amt=isCredit?-Math.abs(price):price;lines.push({title:`${eventName} — ${invTypeLabel(itype)} — ${c.name}`,qty:1,unit:amt,total:amt});grossTotal=amt;}
+  }else if(s){
+    eventName=s.name||"";
+    let price=isRes?Number(s.reservationFee||0):Number(s.pricePerPerson||0);
+    if(isPartial)price=parseFloat(inv.partialAmount||0)||0;
+    if(inv.mode==="customer"){
+      const c=state.customers.find(x=>x.id===inv.customerId);
+      if(c){payerName=c.name||"";payerEmail=c.email||"";let amt=isCredit?-Math.abs(price):price;lines.push({title:`${s.name} — ${invTypeLabel(itype)} — ${c.name}`,qty:1,unit:amt,total:amt});grossTotal=amt;}
+    }else{
+      const co=state.companies.find(x=>x.id===inv.companyId);
+      if(co){
+        payerName=co.name||"";payerEmail=co.email||"";payerBusinessId=co.businessId||"";
+        const cust=state.customers.filter(c=>c.sailingId===s.id&&c.billTo==="company"&&c.companyId===co.id).sort((a,b)=>(a.name||"").localeCompare(b.name||""));
+        let gross=isPartial?price:cust.length*price;
+        if(isPartial){lines.push({title:`${s.name} — Osasuoritus`,qty:1,unit:price,total:price});}
+        else{for(const c of cust){let amt=isCredit?-Math.abs(price):price;lines.push({title:`${s.name} — ${invTypeLabel(itype)} — ${c.name}`,qty:1,unit:amt,total:amt});}}
+        const comm=Math.abs(gross)*(Number(co.commissionPct||0)/100);
+        if(comm>0&&!isCredit)lines.push({title:"Välitysprovisio",qty:1,unit:-comm,total:-comm});
+        grossTotal=isCredit?-Math.abs(gross):gross-comm;
+      }
+    }
+  }
+  const creditRef=isCredit?state.invoices.find(x=>x.id===inv.creditRefId):null;
+  const net=(grossTotal||0)/(1+rate),vat=(grossTotal||0)-net;
+  const invNo=nextInvoiceNumber();
+  return{sailing:s,tutkinto:t,isTutkinto,rate,ratePct,payerName,payerEmail,payerBusinessId,lines,grossTotal,net,vat,reference:finnishReference(invNo.replace(/\D/g,"")),invNo,eventName,isReservation:isRes,itype,isCredit,isPartial,creditRef};
 }
 function monthSummary(month){
-const rows=state.invoices.filter(x=>String(x.invoiceDate||””).slice(0,7)===month);
-const s={all:{net:0,vat:0,gross:0,count:0},r255:{net:0,vat:0,gross:0,count:0},r135:{net:0,vat:0,gross:0,count:0}};
-for(const x of rows){const r=Number(x.vatRatePct||0);const b=(Math.abs(r-25.5)<.2)?“r255”:(Math.abs(r-13.5)<.2)?“r135”:null;if(b){s[b].net+=Number(x.net||0);s[b].vat+=Number(x.vat||0);s[b].gross+=Number(x.grossTotal||0);s[b].count+=1;}s.all.net+=Number(x.net||0);s.all.vat+=Number(x.vat||0);s.all.gross+=Number(x.grossTotal||0);s.all.count+=1;}
-return s;
+  const rows=state.invoices.filter(x=>String(x.invoiceDate||"").slice(0,7)===month);
+  const s={all:{net:0,vat:0,gross:0,count:0},r255:{net:0,vat:0,gross:0,count:0},r135:{net:0,vat:0,gross:0,count:0}};
+  for(const x of rows){const r=Number(x.vatRatePct||0);const b=(Math.abs(r-25.5)<.2)?"r255":(Math.abs(r-13.5)<.2)?"r135":null;if(b){s[b].net+=Number(x.net||0);s[b].vat+=Number(x.vat||0);s[b].gross+=Number(x.grossTotal||0);s[b].count+=1;}s.all.net+=Number(x.net||0);s.all.vat+=Number(x.vat||0);s.all.gross+=Number(x.grossTotal||0);s.all.count+=1;}
+  return s;
 }
-async function fsAdd(col,data){if(!db)return genId(“X”);state.syncing=true;renderSyncIndicator();try{const ref=await addDoc(collection(db,col),{…data,updatedAt:serverTimestamp()});return ref.id;}finally{state.syncing=false;renderSyncIndicator();}}
-async function fsSet(col,id,data){if(!db)return;state.syncing=true;renderSyncIndicator();try{await setDoc(doc(db,col,id),{…data,updatedAt:serverTimestamp()},{merge:true});}finally{state.syncing=false;renderSyncIndicator();}}
+async function fsAdd(col,data){if(!db)return genId("X");state.syncing=true;renderSyncIndicator();try{const ref=await addDoc(collection(db,col),{...data,updatedAt:serverTimestamp()});return ref.id;}finally{state.syncing=false;renderSyncIndicator();}}
+async function fsSet(col,id,data){if(!db)return;state.syncing=true;renderSyncIndicator();try{await setDoc(doc(db,col,id),{...data,updatedAt:serverTimestamp()},{merge:true});}finally{state.syncing=false;renderSyncIndicator();}}
 async function fsDel(col,id){if(!db)return;state.syncing=true;renderSyncIndicator();try{await deleteDoc(doc(db,col,id));}finally{state.syncing=false;renderSyncIndicator();}}
-function renderSyncIndicator(){const el=document.getElementById(“syncDot”);if(!el)return;el.className=“sync-dot”+(state.syncing?” syncing”:””);}
+function renderSyncIndicator(){const el=document.getElementById("syncDot");if(!el)return;el.className="sync-dot"+(state.syncing?" syncing":"");}
 const unsubscribers=[];
 function startListeners(uid){
-const cols=[“sailings”,“customers”,“companies”,“invoices”,“tutkinnot”];
-for(const col of cols){const unsub=onSnapshot(collection(db,col),snap=>{state[col]=snap.docs.map(d=>({id:d.id,…d.data()}));if(!state.invoice.sailingId&&state.sailings.length>0)state.invoice.sailingId=state.sailings[0].id;render();});unsubscribers.push(unsub);}
+  const cols=["sailings","customers","companies","invoices","tutkinnot"];
+  for(const col of cols){const unsub=onSnapshot(collection(db,col),snap=>{state[col]=snap.docs.map(d=>({id:d.id,...d.data()}));if(!state.invoice.sailingId&&state.sailings.length>0)state.invoice.sailingId=state.sailings[0].id;render();});unsubscribers.push(unsub);}
 }
 function stopListeners(){unsubscribers.forEach(u=>u());unsubscribers.length=0;}
 
 function render(){
-const ae=document.activeElement;
-const keepAction=ae?.dataset?.action||null,keepField=ae?.dataset?.field||null;
-const keepPos=(ae&&typeof ae.selectionStart===“number”)?ae.selectionStart:null;
-document.getElementById(“app”).innerHTML=renderTopBar()+renderNavTabs()+`<div class="main-content">${CONFIG_READY?"":renderSetupBanner()}${renderTab()}</div>`+renderModal();
-bind();
-const sel=keepAction?`[data-action="${keepAction}"]`:keepField?`[data-field="${keepField}"]`:null;
-if(sel){const el=document.querySelector(sel);if(el){el.focus();if(keepPos!==null&&typeof el.setSelectionRange===“function”){try{el.setSelectionRange(keepPos,keepPos);}catch(e){}}}}
+  const ae=document.activeElement;
+  const keepAction=ae?.dataset?.action||null,keepField=ae?.dataset?.field||null;
+  const keepPos=(ae&&typeof ae.selectionStart==="number")?ae.selectionStart:null;
+  document.getElementById("app").innerHTML=renderTopBar()+renderNavTabs()+`<div class="main-content">${CONFIG_READY?"":renderSetupBanner()}${renderTab()}</div>`+renderModal();
+  bind();
+  const sel=keepAction?`[data-action="${keepAction}"]`:keepField?`[data-field="${keepField}"]`:null;
+  if(sel){const el=document.querySelector(sel);if(el){el.focus();if(keepPos!==null&&typeof el.setSelectionRange==="function"){try{el.setSelectionRange(keepPos,keepPos);}catch(e){}}}}
 }
 function renderSetupBanner(){return`<div class="firebase-setup">⚠️ <strong>Firebase ei ole vielä konfiguroitu.</strong></div>`;}
 function renderTopBar(){
-const u=state.user;const syncEl=CONFIG_READY?`<span id="syncDot" class="sync-dot"></span>`:””;
-return`<div class="topbar"><div class="topbar-logo">J <em>Sailing</em></div><div style="font-size:11px;color:#374151;display:flex;align-items:center;gap:6px">${syncEl}Absolut 37<span style="background:#0a4272;color:#fff;border-radius:4px;padding:1px 7px;font-weight:700;font-size:10px">${APP_VERSION} · ${UPDATE_DATE}</span></div><div class="topbar-spacer"></div><div class="topbar-user">${u?.photoURL?`<img src="${esc(u.photoURL)}" class="topbar-avatar" alt="">`:`<div class="topbar-avatar-placeholder">${(u?.displayName||u?.email||”?”)[0].toUpperCase()}</div>`}<span class="name" style="font-size:12px;color:#374151">${esc(u?.displayName||u?.email||"")}</span><button class="btn-signout" data-action="sign-out">Kirjaudu ulos</button></div></div>`;
+  const u=state.user;const syncEl=CONFIG_READY?`<span id="syncDot" class="sync-dot"></span>`:"";
+  return`<div class="topbar"><div class="topbar-logo">J <em>Sailing</em></div><div style="font-size:11px;color:#374151;display:flex;align-items:center;gap:6px">${syncEl}Absolut 37<span style="background:#0a4272;color:#fff;border-radius:4px;padding:1px 7px;font-weight:700;font-size:10px">${APP_VERSION} · ${UPDATE_DATE}</span></div><div class="topbar-spacer"></div><div class="topbar-user">${u?.photoURL?`<img src="${esc(u.photoURL)}" class="topbar-avatar" alt="">`:`<div class="topbar-avatar-placeholder">${(u?.displayName||u?.email||"?")[0].toUpperCase()}</div>`}<span class="name" style="font-size:12px;color:#374151">${esc(u?.displayName||u?.email||"")}</span><button class="btn-signout" data-action="sign-out">Kirjaudu ulos</button></div></div>`;
 }
 function renderNavTabs(){
-const tabs=[[“dashboard”,“🧭 Dashboard”],[“calendar”,“📅 Kalenteri”],[“sailings”,“⛵ Purjehdukset”],[“tutkinnot”,“🎓 Tutkinnot”],[“customers”,“👤 Asiakkaat”],[“companies”,“🏢 Yritykset”],[“invoicing”,“🧾 Laskutus”],[“reskontra”,“📊 Reskontra”]];
-return`<nav class="nav-tabs">${tabs.map(([id,label])=>`<button class=“nav-tab ${state.tab===id?“active”:””}” data-tab=”${id}”>${label}</button>`).join("")}</nav>`;
+  const tabs=[["dashboard","🧭 Dashboard"],["calendar","📅 Kalenteri"],["sailings","⛵ Purjehdukset"],["tutkinnot","🎓 Tutkinnot"],["customers","👤 Asiakkaat"],["companies","🏢 Yritykset"],["invoicing","🧾 Laskutus"],["reskontra","📊 Reskontra"]];
+  return`<nav class="nav-tabs">${tabs.map(([id,label])=>`<button class="nav-tab ${state.tab===id?"active":""}" data-tab="${id}">${label}</button>`).join("")}</nav>`;
 }
 function renderTab(){
-if(state.tab===“dashboard”)return renderDashboard();
-if(state.tab===“calendar”)return renderCalendar();
-if(state.tab===“sailings”)return renderSailings();
-if(state.tab===“customers”)return renderCustomers();
-if(state.tab===“companies”)return renderCompanies();
-if(state.tab===“invoicing”)return renderInvoicing();
-if(state.tab===“reskontra”)return renderReskontra();
-if(state.tab===“tutkinnot”)return renderTutkinnot();
-return””;
+  if(state.tab==="dashboard")return renderDashboard();
+  if(state.tab==="calendar")return renderCalendar();
+  if(state.tab==="sailings")return renderSailings();
+  if(state.tab==="customers")return renderCustomers();
+  if(state.tab==="companies")return renderCompanies();
+  if(state.tab==="invoicing")return renderInvoicing();
+  if(state.tab==="reskontra")return renderReskontra();
+  if(state.tab==="tutkinnot")return renderTutkinnot();
+  return"";
 }
 
 function renderDashboard(){
-const totalConf=state.customers.filter(c=>c.reservationStatus===“paid”).length;
-const totalPend=state.customers.filter(c=>c.reservationStatus===“pending”).length;
-const totalRes=state.customers.filter(c=>c.reservationStatus===“reserve”).length;
-const upcoming=state.sailings.filter(s=>{
-const hasFutureSessions=Array.isArray(s.sessions)&&s.sessions.some(sess=>(sess.date||””)>=today());
-const isFuture=(s.date||””)>=today()||(s.endDate&&s.endDate>=today());
-if(!isFuture&&!hasFutureSessions)return false;
-return enrolledCount(s.id)<Number(s.maxPersons||0)&&Number(s.maxPersons||0)>0;
-}).sort((a,b)=>(a.date||””).localeCompare(b.date||””)).slice(0,8);
-const upcomingTutkinnot=state.tutkinnot.filter(t=>[“Rannikkopäällikkö”,“Saaristopäällikkö”].includes(t.type)&&(t.date||””)>=today()&&Number(t.enrolled||0)<Number(t.maxPersons||4)).sort((a,b)=>(a.date||””).localeCompare(b.date||””)).slice(0,5);
-return`<div class="card"> <div class="row-between"><div><div class="card-title">Dashboard</div><div class="card-sub">${CONFIG_READY?"Synkronoitu Firebaseen · data turvassa":"Demo-tila · ei tallennusta"}</div></div> <div class="row"><button class="btn btn-secondary noPrint" data-action="export-json">💾 Varmuuskopio</button><label class="btn btn-secondary noPrint" style="cursor:pointer">🔄 Palauta<input type="file" accept="application/json" data-action="restore-json" style="display:none"></label></div> </div> <div class="stats-grid"> <div class="stat-card"><div class="stat-label">Purjehdukset</div><div class="stat-val">${state.sailings.length}</div></div> <div class="stat-card"><div class="stat-label">Asiakkaat</div><div class="stat-val">${state.customers.length}</div></div> <div class="stat-card"><div class="stat-label">Vahvistettu</div><div class="stat-val" style="color:#166534">${totalConf}</div></div> <div class="stat-card"><div class="stat-label">Odottaa</div><div class="stat-val" style="color:#991b1b">${totalPend}</div></div> <div class="stat-card"><div class="stat-label">Varapaikalla</div><div class="stat-val" style="color:#92400e">${totalRes}</div></div> <div class="stat-card"><div class="stat-label">Laskut</div><div class="stat-val">${state.invoices.length}</div></div> <div class="stat-card"><div class="stat-label">Tutkinnot</div><div class="stat-val" style="color:#1e40af">${state.tutkinnot.length}</div></div> </div> ${totalPend>0?`<div class="infobox infobox-amber">⚠️ ${totalPend} asiakkaalla varausmaksu maksamatta</div>`:""} ${upcoming.length>0?`<div class="hr"></div>
-<div style="font-weight:700;font-size:12px;text-transform:uppercase;letter-spacing:.6px;color:#6b7280;margin-bottom:10px">⛵ Tulevat purjehdukset — tilaa</div>
-${upcoming.map(s=>{
-const max=Number(s.maxPersons||0),enrolled=enrolledCount(s.id),conf=confirmedCount(s.id),pend=pendingCount(s.id);
-const isCourse=s.type===“Kurssi”,hasSess=isCourse&&Array.isArray(s.sessions)&&s.sessions.length>0;
-const nextSess=hasSess?s.sessions.filter(x=>(x.date||””)>=today()).sort((a,b)=>(a.date||””).localeCompare(b.date||””))[0]:null;
-const isMultiDay=s.endDate&&s.endDate>s.date;
-const dateLabel=nextSess?`Seuraava: ${fmtDate(nextSess.date)}`:isMultiDay?`${fmtDate(s.date)}–${fmtDate(s.endDate)}`:fmtDate(s.date);
-const reittiLabel=s.reitti?` · 📍 ${esc(s.reitti)}`:””;
-return`<div class="item"><div><h3>${esc(s.name||"")} <span class="pill">${esc(s.type||"")}</span></h3><div class="meta">${dateLabel}${reittiLabel} · ✓${conf}${pend>0?" ●"+pend:""} / ${max} · <span style="color:#166534;font-weight:700">${max-enrolled} vapaata</span></div></div><button class="btn btn-primary btn-sm" data-action="dash-open" data-id="${s.id}" data-type="sailing">Avaa</button></div>`;
-}).join(””)}`:`<div class="infobox infobox-blue" style="margin-top:12px">✓ Ei tulevia purjehduksia joissa on tilaa.</div>`} ${upcomingTutkinnot.length>0?`<div class="hr"></div>
-<div style="font-weight:700;font-size:12px;text-transform:uppercase;letter-spacing:.6px;color:#6b7280;margin-bottom:10px">🎓 Tulevat tutkinnot — tilaa</div>
-${upcomingTutkinnot.map(t=>{const max=Number(t.maxPersons||4),enrolled=Number(t.enrolled||0),typeKey=(t.type||””).split(” “)[0];
-return`<div class="item"><div><h3><span class="tutkinto-type-badge tutkinto-${esc(typeKey)}">${esc(t.type||"")}</span></h3><div class="meta">${fmtDate(t.date)} · ${enrolled}/${max} · <span style="color:#166534;font-weight:700">${max-enrolled} vapaata</span></div></div><button class="btn btn-primary btn-sm" data-action="dash-open" data-id="${t.id}" data-type="tutkinto">Avaa</button></div>`;
-}).join(””)}`:””}
-
+  const totalConf=state.customers.filter(c=>c.reservationStatus==="paid").length;
+  const totalPend=state.customers.filter(c=>c.reservationStatus==="pending").length;
+  const totalRes=state.customers.filter(c=>c.reservationStatus==="reserve").length;
+  const upcoming=state.sailings.filter(s=>{
+    const hasFutureSessions=Array.isArray(s.sessions)&&s.sessions.some(sess=>(sess.date||"")>=today());
+    const isFuture=(s.date||"")>=today()||(s.endDate&&s.endDate>=today());
+    if(!isFuture&&!hasFutureSessions)return false;
+    return enrolledCount(s.id)<Number(s.maxPersons||0)&&Number(s.maxPersons||0)>0;
+  }).sort((a,b)=>(a.date||"").localeCompare(b.date||"")).slice(0,8);
+  const upcomingTutkinnot=state.tutkinnot.filter(t=>["Rannikkopäällikkö","Saaristopäällikkö"].includes(t.type)&&(t.date||"")>=today()&&Number(t.enrolled||0)<Number(t.maxPersons||4)).sort((a,b)=>(a.date||"").localeCompare(b.date||"")).slice(0,5);
+  return`<div class="card">
+    <div class="row-between"><div><div class="card-title">Dashboard</div><div class="card-sub">${CONFIG_READY?"Synkronoitu Firebaseen · data turvassa":"Demo-tila · ei tallennusta"}</div></div>
+      <div class="row"><button class="btn btn-secondary noPrint" data-action="export-json">💾 Varmuuskopio</button><label class="btn btn-secondary noPrint" style="cursor:pointer">🔄 Palauta<input type="file" accept="application/json" data-action="restore-json" style="display:none"></label></div>
+    </div>
+    <div class="stats-grid">
+      <div class="stat-card"><div class="stat-label">Purjehdukset</div><div class="stat-val">${state.sailings.length}</div></div>
+      <div class="stat-card"><div class="stat-label">Asiakkaat</div><div class="stat-val">${state.customers.length}</div></div>
+      <div class="stat-card"><div class="stat-label">Vahvistettu</div><div class="stat-val" style="color:#166534">${totalConf}</div></div>
+      <div class="stat-card"><div class="stat-label">Odottaa</div><div class="stat-val" style="color:#991b1b">${totalPend}</div></div>
+      <div class="stat-card"><div class="stat-label">Varapaikalla</div><div class="stat-val" style="color:#92400e">${totalRes}</div></div>
+      <div class="stat-card"><div class="stat-label">Laskut</div><div class="stat-val">${state.invoices.length}</div></div>
+      <div class="stat-card"><div class="stat-label">Tutkinnot</div><div class="stat-val" style="color:#1e40af">${state.tutkinnot.length}</div></div>
+    </div>
+    ${totalPend>0?`<div class="infobox infobox-amber">⚠️ ${totalPend} asiakkaalla varausmaksu maksamatta</div>`:""}
+    ${upcoming.length>0?`<div class="hr"></div>
+      <div style="font-weight:700;font-size:12px;text-transform:uppercase;letter-spacing:.6px;color:#6b7280;margin-bottom:10px">⛵ Tulevat purjehdukset — tilaa</div>
+      ${upcoming.map(s=>{
+        const max=Number(s.maxPersons||0),enrolled=enrolledCount(s.id),conf=confirmedCount(s.id),pend=pendingCount(s.id);
+        const isCourse=s.type==="Kurssi",hasSess=isCourse&&Array.isArray(s.sessions)&&s.sessions.length>0;
+        const nextSess=hasSess?s.sessions.filter(x=>(x.date||"")>=today()).sort((a,b)=>(a.date||"").localeCompare(b.date||""))[0]:null;
+        const isMultiDay=s.endDate&&s.endDate>s.date;
+        const dateLabel=nextSess?`Seuraava: ${fmtDate(nextSess.date)}`:isMultiDay?`${fmtDate(s.date)}–${fmtDate(s.endDate)}`:fmtDate(s.date);
+        const reittiLabel=s.reitti?` · 📍 ${esc(s.reitti)}`:"";
+        return`<div class="item"><div><h3>${esc(s.name||"")} <span class="pill">${esc(s.type||"")}</span></h3><div class="meta">${dateLabel}${reittiLabel} · ✓${conf}${pend>0?" ●"+pend:""} / ${max} · <span style="color:#166534;font-weight:700">${max-enrolled} vapaata</span></div></div><button class="btn btn-primary btn-sm" data-action="dash-open" data-id="${s.id}" data-type="sailing">Avaa</button></div>`;
+      }).join("")}`:`<div class="infobox infobox-blue" style="margin-top:12px">✓ Ei tulevia purjehduksia joissa on tilaa.</div>`}
+    ${upcomingTutkinnot.length>0?`<div class="hr"></div>
+      <div style="font-weight:700;font-size:12px;text-transform:uppercase;letter-spacing:.6px;color:#6b7280;margin-bottom:10px">🎓 Tulevat tutkinnot — tilaa</div>
+      ${upcomingTutkinnot.map(t=>{const max=Number(t.maxPersons||4),enrolled=Number(t.enrolled||0),typeKey=(t.type||"").split(" ")[0];
+        return`<div class="item"><div><h3><span class="tutkinto-type-badge tutkinto-${esc(typeKey)}">${esc(t.type||"")}</span></h3><div class="meta">${fmtDate(t.date)} · ${enrolled}/${max} · <span style="color:#166534;font-weight:700">${max-enrolled} vapaata</span></div></div><button class="btn btn-primary btn-sm" data-action="dash-open" data-id="${t.id}" data-type="tutkinto">Avaa</button></div>`;
+      }).join("")}`:""}
   </div>`;
 }
 
 function renderCalendar(){
-const[year,month]=state.calendarMonth.split(”-”).map(Number);
-const monthNames=[“Tammikuu”,“Helmikuu”,“Maaliskuu”,“Huhtikuu”,“Toukokuu”,“Kesäkuu”,“Heinäkuu”,“Elokuu”,“Syyskuu”,“Lokakuu”,“Marraskuu”,“Joulukuu”];
-const dayNames=[“Ma”,“Ti”,“Ke”,“To”,“Pe”,“La”,“Su”];
-const firstDay=new Date(year,month-1,1).getDay();
-const startOffset=firstDay===0?6:firstDay-1;
-const daysInMonth=new Date(year,month,0).getDate();
-const daysInPrev=new Date(year,month-1,0).getDate();
-const todayStr=today();
-const eventMap={};
-function addEv(ds,ev){if(!eventMap[ds])eventMap[ds]=[];eventMap[ds].push(ev);}
-for(const s of state.sailings){
-if(!s.date)continue;
-const isCourse=s.type===“Kurssi”;
-const hasSessions=isCourse&&Array.isArray(s.sessions)&&s.sessions.length>0;
-const isMultiDay=s.endDate&&s.endDate>s.date;
-if(isCourse&&s.teoria&&s.teoria.date){
-let tl=””;if(s.teoria.start&&s.teoria.end)tl=s.teoria.start+”–”+s.teoria.end;else if(s.teoria.start)tl=“klo “+s.teoria.start;
-addEv(s.teoria.date,{id:s.id,name:s.name+” (teoria)”,type:“Teoria”,maxPersons:s.maxPersons,reitti:””,timeLabel:tl,_isSession:false});
-}
-if(!hasSessions){
-if(isMultiDay){
-let cur=new Date(s.date+“T12:00:00”);
-const endD=new Date(s.endDate+“T12:00:00”);
-let dayIdx=0;
-const totalDays=Math.round((endD-cur)/86400000)+1;
-while(cur<=endD){
-const ds=cur.toISOString().slice(0,10);
-const isFirst=dayIdx===0,isLast=dayIdx===totalDays-1;
-// REITTI: näytetään lähtöpäivällä
-const tlBase=isFirst?(s.startTime?“lähtö “+s.startTime:“lähtö”):isLast?(s.endTime?“paluu “+s.endTime:“paluu”):`vrk ${dayIdx+1}/${totalDays}`;
-const mdClass=isFirst?“multiday-start”:isLast?“multiday-end”:“multiday-mid”;
-addEv(ds,{id:s.id,name:s.name,type:s.type,maxPersons:s.maxPersons,reitti:isFirst?(s.reitti||””):””,timeLabel:tlBase,_isSession:false,_isMultiDay:true,_mdClass:mdClass});
-cur.setDate(cur.getDate()+1);dayIdx++;
-}
-}else{
-let tl=””;if(s.startTime&&s.endTime)tl=s.startTime+”–”+s.endTime;else if(s.startTime)tl=“klo “+s.startTime;
-// REITTI: lisätään eventMap-objektiin
-addEv(s.date,{id:s.id,name:s.name,type:s.type,maxPersons:s.maxPersons,reitti:s.reitti||””,timeLabel:tl,_isSession:false});
-}
-}else{
-for(let i=0;i<s.sessions.length;i++){
-const sess=s.sessions[i];if(!sess.date)continue;
-let tl=””;if(sess.start&&sess.end)tl=sess.start+”–”+sess.end;else if(sess.start)tl=“klo “+sess.start;
-addEv(sess.date,{id:s.id,name:s.name,type:s.type,maxPersons:s.maxPersons,reitti:””,timeLabel:tl,_isSession:true,_sessIdx:i});
-}
-}
-}
-const totalCells=Math.ceil((startOffset+daysInMonth)/7)*7;
-let cells=””;
-for(let i=0;i<totalCells;i++){
-let d,m,y,other=false;
-if(i<startOffset){d=daysInPrev-startOffset+i+1;m=month===1?12:month-1;y=month===1?year-1:year;other=true;}
-else if(i>=startOffset+daysInMonth){d=i-startOffset-daysInMonth+1;m=month===12?1:month+1;y=month===12?year+1:year;other=true;}
-else{d=i-startOffset+1;m=month;y=year;}
-const ds=y+”-”+String(m).padStart(2,“0”)+”-”+String(d).padStart(2,“0”);
-const isToday=ds===todayStr;
-const evs=eventMap[ds]||[];
-const evHTML=evs.slice(0,3).map(ev=>{
-const tc=“type-”+ev.type+(ev._mdClass?” “+ev._mdClass:””);
-const booked=ev._isSession||ev._isMultiDay?””:` (${enrolledCount(ev.id)}/${ev.maxPersons||0})`;
-const action=ev._isSession?“edit-session-cal”:“edit-sailing”;
-const sidx=ev._isSession?String(ev._sessIdx):””;
-const tl=ev.timeLabel?`<span style="display:block;opacity:.75;font-size:9px">${esc(ev.timeLabel)}</span>`:””;
-// REITTI: näytetään kalenterimerkinnässä pienen rivin
-const rl=ev.reitti?`<span style="display:block;opacity:.7;font-size:9px;overflow:hidden;text-overflow:ellipsis">📍${esc(ev.reitti)}</span>`:””;
-const sv=state.sailings.find(x=>x.id===ev.id);
-const gcKey=ev._isSession?`gcal_${ev.id}_${ev._sessIdx}`:`gcal_${ev.id}`;
-const gcDot=sv&&sv[gcKey]?`<span title="Lisätty Google Kalenteriin" style="position:absolute;top:2px;right:2px;width:6px;height:6px;border-radius:50%;background:#4285F4;display:block"></span>`:””;
-return`<button class="cal-event ${tc}" data-action="${action}" data-id="${ev.id}" data-idx="${sidx}" style="padding:3px 5px;position:relative">${gcDot}<span style="display:block">${esc(ev.name)}${booked}</span>${tl}${rl}</button>`;
-}).join(””);
-const more=evs.length>3?`<div style="font-size:9px;color:#6b7280;padding:1px 4px">+${evs.length-3}</div>`:””;
-cells+=`<div class="cal-cell${other?" other-month":""}${isToday?" today":""}"><div class="cal-date">${d}</div>${evHTML}${more}</div>`;
-}
-const TYPES=[“Kurssi”,“Charter”,“Iltapurjehdus”,“Päiväpurjehdus”,“Purjehdusretki”,“Yritystilaisuus”,“Muu”,“Teoria”];
-const prev=month===1?`${year-1}-12`:`${year}-${String(month-1).padStart(2,"0")}`;
-const next=month===12?`${year+1}-01`:`${year}-${String(month+1).padStart(2,"0")}`;
-return`<div class="card"> <div class="row-between"> <div class="cal-nav-bar"><button class="btn btn-secondary btn-sm" data-action="cal-nav" data-month="${prev}">‹</button><div class="cal-month-label">${monthNames[month-1]} ${year}</div><button class="btn btn-secondary btn-sm" data-action="cal-nav" data-month="${next}">›</button></div> <button class="btn btn-secondary btn-sm" data-action="cal-today">Tänään</button> </div> <div class="cal-legend">${TYPES.map(t=>`<div class="cal-legend-item"><div class="cal-legend-dot cal-event type-${t}"></div>${esc(t)}</div>`).join("")}<div class="cal-legend-item"><div style="width:10px;height:10px;border-radius:50%;background:#4285F4;flex-shrink:0"></div>Google Kalenterissa</div></div> <div class="cal-grid">${dayNames.map(d=>`<div class="cal-dayname">${d}</div>`).join(””)}${cells}</div>
-
+  const[year,month]=state.calendarMonth.split("-").map(Number);
+  const monthNames=["Tammikuu","Helmikuu","Maaliskuu","Huhtikuu","Toukokuu","Kesäkuu","Heinäkuu","Elokuu","Syyskuu","Lokakuu","Marraskuu","Joulukuu"];
+  const dayNames=["Ma","Ti","Ke","To","Pe","La","Su"];
+  const firstDay=new Date(year,month-1,1).getDay();
+  const startOffset=firstDay===0?6:firstDay-1;
+  const daysInMonth=new Date(year,month,0).getDate();
+  const daysInPrev=new Date(year,month-1,0).getDate();
+  const todayStr=today();
+  const eventMap={};
+  function addEv(ds,ev){if(!eventMap[ds])eventMap[ds]=[];eventMap[ds].push(ev);}
+  for(const s of state.sailings){
+    if(!s.date)continue;
+    const isCourse=s.type==="Kurssi";
+    const hasSessions=isCourse&&Array.isArray(s.sessions)&&s.sessions.length>0;
+    const isMultiDay=s.endDate&&s.endDate>s.date;
+    if(isCourse&&s.teoria&&s.teoria.date){
+      let tl="";if(s.teoria.start&&s.teoria.end)tl=s.teoria.start+"–"+s.teoria.end;else if(s.teoria.start)tl="klo "+s.teoria.start;
+      addEv(s.teoria.date,{id:s.id,name:s.name+" (teoria)",type:"Teoria",maxPersons:s.maxPersons,reitti:"",timeLabel:tl,_isSession:false});
+    }
+    if(!hasSessions){
+      if(isMultiDay){
+        let cur=new Date(s.date+"T12:00:00");
+        const endD=new Date(s.endDate+"T12:00:00");
+        let dayIdx=0;
+        const totalDays=Math.round((endD-cur)/86400000)+1;
+        while(cur<=endD){
+          const ds=cur.toISOString().slice(0,10);
+          const isFirst=dayIdx===0,isLast=dayIdx===totalDays-1;
+          // REITTI: näytetään lähtöpäivällä
+          const tlBase=isFirst?(s.startTime?"lähtö "+s.startTime:"lähtö"):isLast?(s.endTime?"paluu "+s.endTime:"paluu"):`vrk ${dayIdx+1}/${totalDays}`;
+          const mdClass=isFirst?"multiday-start":isLast?"multiday-end":"multiday-mid";
+          addEv(ds,{id:s.id,name:s.name,type:s.type,maxPersons:s.maxPersons,reitti:isFirst?(s.reitti||""):"",timeLabel:tlBase,_isSession:false,_isMultiDay:true,_mdClass:mdClass});
+          cur.setDate(cur.getDate()+1);dayIdx++;
+        }
+      }else{
+        let tl="";if(s.startTime&&s.endTime)tl=s.startTime+"–"+s.endTime;else if(s.startTime)tl="klo "+s.startTime;
+        // REITTI: lisätään eventMap-objektiin
+        addEv(s.date,{id:s.id,name:s.name,type:s.type,maxPersons:s.maxPersons,reitti:s.reitti||"",timeLabel:tl,_isSession:false});
+      }
+    }else{
+      for(let i=0;i<s.sessions.length;i++){
+        const sess=s.sessions[i];if(!sess.date)continue;
+        let tl="";if(sess.start&&sess.end)tl=sess.start+"–"+sess.end;else if(sess.start)tl="klo "+sess.start;
+        addEv(sess.date,{id:s.id,name:s.name,type:s.type,maxPersons:s.maxPersons,reitti:"",timeLabel:tl,_isSession:true,_sessIdx:i});
+      }
+    }
+  }
+  const totalCells=Math.ceil((startOffset+daysInMonth)/7)*7;
+  let cells="";
+  for(let i=0;i<totalCells;i++){
+    let d,m,y,other=false;
+    if(i<startOffset){d=daysInPrev-startOffset+i+1;m=month===1?12:month-1;y=month===1?year-1:year;other=true;}
+    else if(i>=startOffset+daysInMonth){d=i-startOffset-daysInMonth+1;m=month===12?1:month+1;y=month===12?year+1:year;other=true;}
+    else{d=i-startOffset+1;m=month;y=year;}
+    const ds=y+"-"+String(m).padStart(2,"0")+"-"+String(d).padStart(2,"0");
+    const isToday=ds===todayStr;
+    const evs=eventMap[ds]||[];
+    const evHTML=evs.slice(0,3).map(ev=>{
+      const tc="type-"+ev.type+(ev._mdClass?" "+ev._mdClass:"");
+      const booked=ev._isSession||ev._isMultiDay?"":` (${enrolledCount(ev.id)}/${ev.maxPersons||0})`;
+      const action=ev._isSession?"edit-session-cal":"edit-sailing";
+      const sidx=ev._isSession?String(ev._sessIdx):"";
+      const tl=ev.timeLabel?`<span style="display:block;opacity:.75;font-size:9px">${esc(ev.timeLabel)}</span>`:"";
+      // REITTI: näytetään kalenterimerkinnässä pienen rivin
+      const rl=ev.reitti?`<span style="display:block;opacity:.7;font-size:9px;overflow:hidden;text-overflow:ellipsis">📍${esc(ev.reitti)}</span>`:"";
+      const sv=state.sailings.find(x=>x.id===ev.id);
+      const gcKey=ev._isSession?`gcal_${ev.id}_${ev._sessIdx}`:`gcal_${ev.id}`;
+      const gcDot=sv&&sv[gcKey]?`<span title="Lisätty Google Kalenteriin" style="position:absolute;top:2px;right:2px;width:6px;height:6px;border-radius:50%;background:#4285F4;display:block"></span>`:"";
+      return`<button class="cal-event ${tc}" data-action="${action}" data-id="${ev.id}" data-idx="${sidx}" style="padding:3px 5px;position:relative">${gcDot}<span style="display:block">${esc(ev.name)}${booked}</span>${tl}${rl}</button>`;
+    }).join("");
+    const more=evs.length>3?`<div style="font-size:9px;color:#6b7280;padding:1px 4px">+${evs.length-3}</div>`:"";
+    cells+=`<div class="cal-cell${other?" other-month":""}${isToday?" today":""}"><div class="cal-date">${d}</div>${evHTML}${more}</div>`;
+  }
+  const TYPES=["Kurssi","Charter","Iltapurjehdus","Päiväpurjehdus","Purjehdusretki","Yritystilaisuus","Muu","Teoria"];
+  const prev=month===1?`${year-1}-12`:`${year}-${String(month-1).padStart(2,"0")}`;
+  const next=month===12?`${year+1}-01`:`${year}-${String(month+1).padStart(2,"0")}`;
+  return`<div class="card">
+    <div class="row-between">
+      <div class="cal-nav-bar"><button class="btn btn-secondary btn-sm" data-action="cal-nav" data-month="${prev}">‹</button><div class="cal-month-label">${monthNames[month-1]} ${year}</div><button class="btn btn-secondary btn-sm" data-action="cal-nav" data-month="${next}">›</button></div>
+      <button class="btn btn-secondary btn-sm" data-action="cal-today">Tänään</button>
+    </div>
+    <div class="cal-legend">${TYPES.map(t=>`<div class="cal-legend-item"><div class="cal-legend-dot cal-event type-${t}"></div>${esc(t)}</div>`).join("")}<div class="cal-legend-item"><div style="width:10px;height:10px;border-radius:50%;background:#4285F4;flex-shrink:0"></div>Google Kalenterissa</div></div>
+    <div class="cal-grid">${dayNames.map(d=>`<div class="cal-dayname">${d}</div>`).join("")}${cells}</div>
   </div>`;
 }
 
 function renderSailings(){
-const counts=groupCounts();
-const g=SAILING_GROUPS.find(x=>x.id===state.sailingGroup)||SAILING_GROUPS[0];
-const term=(state.searchSailings||””).toLowerCase();
-let list=state.sailings.slice().sort((a,b)=>(a.date||””).localeCompare(b.date||””));
-if(g.types)list=list.filter(s=>g.types.includes(s.type));
-if(term)list=list.filter(s=>(s.name||””).toLowerCase().includes(term)||(s.type||””).toLowerCase().includes(term)||(s.date||””).includes(term));
-return`<div class="card"> <div class="row-between"><div><div class="card-title">Purjehdukset</div><div class="card-sub">Hallitse purjehdukset, kurssipäivät ja osallistujat</div></div><button class="btn btn-primary" data-action="new-sailing">+ Uusi purjehdus</button></div> <div class="hr"></div> <div class="groupbar">${SAILING_GROUPS.map(x=>`<button class=“btn ${state.sailingGroup===x.id?“btn-primary”:“btn-secondary”}” data-action=“set-group” data-id=”${x.id}”>${esc(x.label)} (${counts[x.id]||0})</button>`).join("")}</div> <div class="hr"></div> <div class="field"><label class="lbl">Haku</label><input data-action="search-sailings" value="${esc(state.searchSailings)}" placeholder="Hae nimellä, tyypillä tai päivällä…"></div> ${list.length===0?`<div class="muted">Ei purjehduksia.</div>`:`
-${list.map(s=>{
-const max=Number(s.maxPersons||0),rsv=Number(s.reserveSlots||0),resFee=Number(s.reservationFee||0);
-const sessions=Array.isArray(s.sessions)?s.sessions:[];
-const isCourse=s.type===“Kurssi”;
-const isMultiDay=s.endDate&&s.endDate>s.date;
-const teoria=s.teoria||null;
-let dateLabel=fmtDate(s.date);
-if(isMultiDay){
-const days=Math.round((new Date(s.endDate+“T12:00:00”)-new Date(s.date+“T12:00:00”))/86400000)+1;
-dateLabel=`${fmtDate(s.date)} – ${fmtDate(s.endDate)} (${days} vrk)`;
-if(s.startTime)dateLabel+=` · lähtö ${s.startTime}`;
-if(s.endTime)dateLabel+=` · paluu ${s.endTime}`;
-}else if(s.startTime&&s.endTime)dateLabel+=` klo ${s.startTime}–${s.endTime}`;
-else if(s.startTime)dateLabel+=` klo ${s.startTime}`;
-const teoriaUI=isCourse?`<div class="teoria-box"><div><span class="teoria-badge">📚 Teoriapäivä</span>${teoria&&teoria.date?`<span style="font-weight:600;font-size:13px;margin-left:8px">${fmtDate(teoria.date)}${teoria.start?” klo “+esc(teoria.start):””}${teoria.end?”–”+esc(teoria.end):””}</span>${teoria.place?`<span class="small muted" style="margin-left:6px">📍 ${esc(teoria.place)}</span>`:””}${teoria.note?`<div class="small muted" style="margin-top:2px">${esc(teoria.note)}</div>`:””}`:` <span class="small muted" style="margin-left:8px">Ei teoriapäivää lisätty</span>`}</div><button class="btn btn-secondary btn-sm" data-action="edit-teoria" data-id="${s.id}">${teoria&&teoria.date?"Muokkaa":"+ Lisää teoriapäivä"}</button></div>`:””;
-const sessUI=isCourse?`<div class="session-box"><div class="row-between" style="margin-bottom:10px"><div style="font-size:12px;font-weight:700">Kurssipäivät</div><button class="btn btn-secondary btn-sm" data-action="add-session" data-id="${s.id}">+ Lisää päivä</button></div>${sessions.length===0?`<div class="muted small">Ei päiviä lisätty.</div>`:`${sessions.map((x,idx)=>`<div class="session-item"><div><div style="font-weight:600;font-size:13px">${esc(x.date||"")}${x.start?" klo "+esc(x.start):""}${x.end?"–"+esc(x.end):""}</div>${x.note?`<div class="small muted">${esc(x.note)}</div>`:""}</div><div class="row" style="flex-wrap:wrap;gap:6px">${gcalButton(s,idx)}<button class="btn btn-secondary btn-sm" data-action="edit-session-direct" data-id="${s.id}" data-idx="${idx}">Muokkaa</button><button class="btn btn-danger btn-sm" data-action="delete-session" data-id="${s.id}" data-idx="${idx}">Poista</button></div></div>`).join(””)}`}</div>`:””;
-const gcalUI=`<div class="row" style="margin-top:8px">${gcalButton(s,null)}</div>`;
-const attendeesUI=state.openSailingId===s.id?`<div style="margin:6px 0 14px;padding:14px;background:rgba(232,244,253,.5);border-radius:10px;border:1px solid #d1d5db"><div class="row-between" style="margin-bottom:10px"><div style="font-size:12px;font-weight:700">Osallistujat</div><div class="row"><span class="badge badge-green">✓${confirmedCount(s.id)}</span><span class="badge badge-red">●${pendingCount(s.id)}</span><span class="badge badge-amber">◎${reserveCount(s.id)}</span></div></div>${state.customers.filter(c=>c.sailingId===s.id).length===0?`<div class="muted small">Ei ilmoittautuneita</div>`:state.customers.filter(c=>c.sailingId===s.id).sort((a,b)=>{const o={pending:0,reserve:1,paid:2};return(o[a.reservationStatus]??1)-(o[b.reservationStatus]??1)||a.name.localeCompare(b.name);}).map(c=>{const st=c.reservationStatus||"pending",dc=st==="paid"?"dot-green":st==="reserve"?"dot-amber":"dot-red";return`<div class="attendee-card ${st}"><div class="row"><span class="dot ${dc}"></span><span style="font-weight:600;font-size:14px">${esc(c.name||””)}</span>${statusBadge(st)}</div><div class="row">${st===“pending”?`<button class="btn btn-teal btn-sm" data-action="confirm-payment" data-id="${c.id}">✓ Maksettu</button>`:””}${st===“reserve”?`<button class="btn btn-secondary btn-sm" data-action="promote-reserve" data-id="${c.id}">↑ Vahvista</button>`:””}<button class="btn btn-danger btn-sm" data-action="delete-customer" data-id="${c.id}">Poista</button></div></div>`;}).join("")}</div>`:””;
-// REITTI: näytetään meta-rivillä
-const reittiMeta=s.reitti?` · 📍 ${esc(s.reitti)}`:””;
-return`<div class="item"><div style="flex:1"><h3>${esc(s.name||"")} <span class="pill">${esc(s.type||"")}</span>${isMultiDay?`<span class="badge badge-navy" style="margin-left:6px;font-size:10px">⚓ Merimatka</span>`:""}</h3><div class="meta">${dateLabel}${reittiMeta} · Max ${max}+${rsv} vara · ${Number(s.pricePerPerson||0).toFixed(0)} €/hlö${resFee>0?` · varausmaksu ${resFee} €`:""}</div>${fillUI(s.id,max,rsv)}${gcalUI}${teoriaUI}${sessUI}${attendeesUI}</div><div class="row" style="align-items:flex-start;flex-shrink:0"><button class="btn btn-secondary btn-sm" data-action="toggle-sailing" data-id="${s.id}">${state.openSailingId===s.id?"Piilota":"Osallistujat"}</button><button class="btn btn-secondary btn-sm" data-action="edit-sailing" data-id="${s.id}">Muokkaa</button><button class="btn btn-danger btn-sm" data-action="delete-sailing" data-id="${s.id}">Poista</button></div></div>`;
-}).join(””)}
-`}
-
+  const counts=groupCounts();
+  const g=SAILING_GROUPS.find(x=>x.id===state.sailingGroup)||SAILING_GROUPS[0];
+  const term=(state.searchSailings||"").toLowerCase();
+  let list=state.sailings.slice().sort((a,b)=>(a.date||"").localeCompare(b.date||""));
+  if(g.types)list=list.filter(s=>g.types.includes(s.type));
+  if(term)list=list.filter(s=>(s.name||"").toLowerCase().includes(term)||(s.type||"").toLowerCase().includes(term)||(s.date||"").includes(term));
+  return`<div class="card">
+    <div class="row-between"><div><div class="card-title">Purjehdukset</div><div class="card-sub">Hallitse purjehdukset, kurssipäivät ja osallistujat</div></div><button class="btn btn-primary" data-action="new-sailing">+ Uusi purjehdus</button></div>
+    <div class="hr"></div>
+    <div class="groupbar">${SAILING_GROUPS.map(x=>`<button class="btn ${state.sailingGroup===x.id?"btn-primary":"btn-secondary"}" data-action="set-group" data-id="${x.id}">${esc(x.label)} (${counts[x.id]||0})</button>`).join("")}</div>
+    <div class="hr"></div>
+    <div class="field"><label class="lbl">Haku</label><input data-action="search-sailings" value="${esc(state.searchSailings)}" placeholder="Hae nimellä, tyypillä tai päivällä…"></div>
+    ${list.length===0?`<div class="muted">Ei purjehduksia.</div>`:`
+      ${list.map(s=>{
+        const max=Number(s.maxPersons||0),rsv=Number(s.reserveSlots||0),resFee=Number(s.reservationFee||0);
+        const sessions=Array.isArray(s.sessions)?s.sessions:[];
+        const isCourse=s.type==="Kurssi";
+        const isMultiDay=s.endDate&&s.endDate>s.date;
+        const teoria=s.teoria||null;
+        let dateLabel=fmtDate(s.date);
+        if(isMultiDay){
+          const days=Math.round((new Date(s.endDate+"T12:00:00")-new Date(s.date+"T12:00:00"))/86400000)+1;
+          dateLabel=`${fmtDate(s.date)} – ${fmtDate(s.endDate)} (${days} vrk)`;
+          if(s.startTime)dateLabel+=` · lähtö ${s.startTime}`;
+          if(s.endTime)dateLabel+=` · paluu ${s.endTime}`;
+        }else if(s.startTime&&s.endTime)dateLabel+=` klo ${s.startTime}–${s.endTime}`;
+        else if(s.startTime)dateLabel+=` klo ${s.startTime}`;
+        const teoriaUI=isCourse?`<div class="teoria-box"><div><span class="teoria-badge">📚 Teoriapäivä</span>${teoria&&teoria.date?`<span style="font-weight:600;font-size:13px;margin-left:8px">${fmtDate(teoria.date)}${teoria.start?" klo "+esc(teoria.start):""}${teoria.end?"–"+esc(teoria.end):""}</span>${teoria.place?`<span class="small muted" style="margin-left:6px">📍 ${esc(teoria.place)}</span>`:""}${teoria.note?`<div class="small muted" style="margin-top:2px">${esc(teoria.note)}</div>`:""}`:` <span class="small muted" style="margin-left:8px">Ei teoriapäivää lisätty</span>`}</div><button class="btn btn-secondary btn-sm" data-action="edit-teoria" data-id="${s.id}">${teoria&&teoria.date?"Muokkaa":"+ Lisää teoriapäivä"}</button></div>`:"";
+        const sessUI=isCourse?`<div class="session-box"><div class="row-between" style="margin-bottom:10px"><div style="font-size:12px;font-weight:700">Kurssipäivät</div><button class="btn btn-secondary btn-sm" data-action="add-session" data-id="${s.id}">+ Lisää päivä</button></div>${sessions.length===0?`<div class="muted small">Ei päiviä lisätty.</div>`:`${sessions.map((x,idx)=>`<div class="session-item"><div><div style="font-weight:600;font-size:13px">${esc(x.date||"")}${x.start?" klo "+esc(x.start):""}${x.end?"–"+esc(x.end):""}</div>${x.note?`<div class="small muted">${esc(x.note)}</div>`:""}</div><div class="row" style="flex-wrap:wrap;gap:6px">${gcalButton(s,idx)}<button class="btn btn-secondary btn-sm" data-action="edit-session-direct" data-id="${s.id}" data-idx="${idx}">Muokkaa</button><button class="btn btn-danger btn-sm" data-action="delete-session" data-id="${s.id}" data-idx="${idx}">Poista</button></div></div>`).join("")}`}</div>`:"";
+        const gcalUI=`<div class="row" style="margin-top:8px">${gcalButton(s,null)}</div>`;
+        const attendeesUI=state.openSailingId===s.id?`<div style="margin:6px 0 14px;padding:14px;background:rgba(232,244,253,.5);border-radius:10px;border:1px solid #d1d5db"><div class="row-between" style="margin-bottom:10px"><div style="font-size:12px;font-weight:700">Osallistujat</div><div class="row"><span class="badge badge-green">✓${confirmedCount(s.id)}</span><span class="badge badge-red">●${pendingCount(s.id)}</span><span class="badge badge-amber">◎${reserveCount(s.id)}</span></div></div>${state.customers.filter(c=>c.sailingId===s.id).length===0?`<div class="muted small">Ei ilmoittautuneita</div>`:state.customers.filter(c=>c.sailingId===s.id).sort((a,b)=>{const o={pending:0,reserve:1,paid:2};return(o[a.reservationStatus]??1)-(o[b.reservationStatus]??1)||a.name.localeCompare(b.name);}).map(c=>{const st=c.reservationStatus||"pending",dc=st==="paid"?"dot-green":st==="reserve"?"dot-amber":"dot-red";return`<div class="attendee-card ${st}"><div class="row"><span class="dot ${dc}"></span><span style="font-weight:600;font-size:14px">${esc(c.name||"")}</span>${statusBadge(st)}</div><div class="row">${st==="pending"?`<button class="btn btn-teal btn-sm" data-action="confirm-payment" data-id="${c.id}">✓ Maksettu</button>`:""}${st==="reserve"?`<button class="btn btn-secondary btn-sm" data-action="promote-reserve" data-id="${c.id}">↑ Vahvista</button>`:""}<button class="btn btn-danger btn-sm" data-action="delete-customer" data-id="${c.id}">Poista</button></div></div>`;}).join("")}</div>`:"";
+        // REITTI: näytetään meta-rivillä
+        const reittiMeta=s.reitti?` · 📍 ${esc(s.reitti)}`:"";
+        return`<div class="item"><div style="flex:1"><h3>${esc(s.name||"")} <span class="pill">${esc(s.type||"")}</span>${isMultiDay?`<span class="badge badge-navy" style="margin-left:6px;font-size:10px">⚓ Merimatka</span>`:""}</h3><div class="meta">${dateLabel}${reittiMeta} · Max ${max}+${rsv} vara · ${Number(s.pricePerPerson||0).toFixed(0)} €/hlö${resFee>0?` · varausmaksu ${resFee} €`:""}</div>${fillUI(s.id,max,rsv)}${gcalUI}${teoriaUI}${sessUI}${attendeesUI}</div><div class="row" style="align-items:flex-start;flex-shrink:0"><button class="btn btn-secondary btn-sm" data-action="toggle-sailing" data-id="${s.id}">${state.openSailingId===s.id?"Piilota":"Osallistujat"}</button><button class="btn btn-secondary btn-sm" data-action="edit-sailing" data-id="${s.id}">Muokkaa</button><button class="btn btn-danger btn-sm" data-action="delete-sailing" data-id="${s.id}">Poista</button></div></div>`;
+      }).join("")}
+    `}
   </div>`;
 }
 
 function renderCustomers(){
-const term=(state.searchCustomers||””).toLowerCase();
-const list=state.customers.slice().sort((a,b)=>{const o={pending:0,reserve:1,paid:2};return(o[a.reservationStatus]??1)-(o[b.reservationStatus]??1)||(a.name||””).localeCompare(b.name||””);}).filter(c=>!term||(c.name||””).toLowerCase().includes(term)||(c.phone||””).toLowerCase().includes(term)||(c.email||””).toLowerCase().includes(term));
-return`<div class="card"><div class="row-between"><div><div class="card-title">Asiakkaat</div><div class="card-sub">🔴 Varausmaksu odottaa · 🟢 Vahvistettu · 🟡 Varapaikka</div></div><button class="btn btn-primary" data-action="new-customer">+ Uusi asiakas</button></div> <div class="hr"></div><div class="field"><label class="lbl">Haku</label><input data-action="search-customers" value="${esc(state.searchCustomers)}" placeholder="Hae nimellä, puhelimella tai sähköpostilla…"></div> ${list.length===0?`<div class="muted">Ei osumia.</div>`:`${list.map(c=>{const s=state.sailings.find(x=>x.id===c.sailingId),co=state.companies.find(x=>x.id===c.companyId);const st=c.reservationStatus||“pending”,dc=st===“paid”?“dot-green”:st===“reserve”?“dot-amber”:“dot-red”;return`<div class="item"><div style="display:flex;gap:10px;flex:1;align-items:flex-start"><span class="dot ${dc}" style="margin-top:6px;flex-shrink:0"></span><div><h3>${esc(c.name||"")}${s?`<span class="pill">${esc(s.name)}</span>`:""}</h3><div class="meta">${statusBadge(st)}</div><div class="meta">${c.email?`<a href="mailto:${esc(c.email)}" style="color:#1e40af">${esc(c.email)}</a>`:""}${c.email&&c.phone?" · ":""}${esc(c.phone||"")}${co&&c.billTo==="company"?` · <span class="badge badge-silver">${esc(co.name)}</span>`:""}</div></div></div><div class="row" style="flex-shrink:0;align-items:flex-start">${st==="pending"?`<button class="btn btn-teal btn-sm" data-action="confirm-payment" data-id="${c.id}">✓ Maksettu</button>`:""}<button class="btn btn-secondary btn-sm" data-action="edit-customer" data-id="${c.id}">Muokkaa</button><button class="btn btn-danger btn-sm" data-action="delete-customer" data-id="${c.id}">Poista</button></div></div>`;}).join(””)}`}
-
+  const term=(state.searchCustomers||"").toLowerCase();
+  const list=state.customers.slice().sort((a,b)=>{const o={pending:0,reserve:1,paid:2};return(o[a.reservationStatus]??1)-(o[b.reservationStatus]??1)||(a.name||"").localeCompare(b.name||"");}).filter(c=>!term||(c.name||"").toLowerCase().includes(term)||(c.phone||"").toLowerCase().includes(term)||(c.email||"").toLowerCase().includes(term));
+  return`<div class="card"><div class="row-between"><div><div class="card-title">Asiakkaat</div><div class="card-sub">🔴 Varausmaksu odottaa · 🟢 Vahvistettu · 🟡 Varapaikka</div></div><button class="btn btn-primary" data-action="new-customer">+ Uusi asiakas</button></div>
+    <div class="hr"></div><div class="field"><label class="lbl">Haku</label><input data-action="search-customers" value="${esc(state.searchCustomers)}" placeholder="Hae nimellä, puhelimella tai sähköpostilla…"></div>
+    ${list.length===0?`<div class="muted">Ei osumia.</div>`:`${list.map(c=>{const s=state.sailings.find(x=>x.id===c.sailingId),co=state.companies.find(x=>x.id===c.companyId);const st=c.reservationStatus||"pending",dc=st==="paid"?"dot-green":st==="reserve"?"dot-amber":"dot-red";return`<div class="item"><div style="display:flex;gap:10px;flex:1;align-items:flex-start"><span class="dot ${dc}" style="margin-top:6px;flex-shrink:0"></span><div><h3>${esc(c.name||"")}${s?`<span class="pill">${esc(s.name)}</span>`:""}</h3><div class="meta">${statusBadge(st)}</div><div class="meta">${c.email?`<a href="mailto:${esc(c.email)}" style="color:#1e40af">${esc(c.email)}</a>`:""}${c.email&&c.phone?" · ":""}${esc(c.phone||"")}${co&&c.billTo==="company"?` · <span class="badge badge-silver">${esc(co.name)}</span>`:""}</div></div></div><div class="row" style="flex-shrink:0;align-items:flex-start">${st==="pending"?`<button class="btn btn-teal btn-sm" data-action="confirm-payment" data-id="${c.id}">✓ Maksettu</button>`:""}<button class="btn btn-secondary btn-sm" data-action="edit-customer" data-id="${c.id}">Muokkaa</button><button class="btn btn-danger btn-sm" data-action="delete-customer" data-id="${c.id}">Poista</button></div></div>`;}).join("")}`}
   </div>`;
 }
 function renderCompanies(){
@@ -549,21 +573,35 @@ function renderCompanies(){
 }
 
 function renderInvoicing(){
-const source=state.invoice.source||“sailing”,isTutkinto=source===“tutkinto”;
-const inv=computeInvoice();
-const evOpts=state.sailings.slice().sort((a,b)=>(a.date||””).localeCompare(b.date||””)).map(x=>`<option value="${x.id}" ${x.id===state.invoice.sailingId?"selected":""}>${esc(x.name)} (${fmtDate(x.date)})</option>`).join(””);
-const tutkintoOpts=state.tutkinnot.slice().sort((a,b)=>(b.date||””).localeCompare(a.date||””)).map(x=>`<option value="${x.id}" ${x.id===state.invoice.tutkintoId?"selected":""}>${esc(x.type)}${x.boatType?" ("+esc(x.boatType)+")":""} — ${esc(x.customerName)} — ${fmtDate(x.date)}</option>`).join(””);
-const custOpts=state.customers.slice().sort((a,b)=>(a.name||””).localeCompare(b.name||””)).map(x=>`<option value="${x.id}" ${x.id===state.invoice.customerId?"selected":""}>${esc(x.name)}</option>`).join(””);
-const coOpts=state.companies.slice().sort((a,b)=>(a.name||””).localeCompare(b.name||””)).map(x=>`<option value="${x.id}" ${x.id===state.invoice.companyId?"selected":""}>${esc(x.name)}</option>`).join(””);
-const selS=state.sailings.find(x=>x.id===state.invoice.sailingId);
-const hasFee=!isTutkinto&&selS&&Number(selS.reservationFee||0)>0;
-const itype=state.invoice.type||“full”,isCredit=itype===“credit”,isPartial=itype===“partial”;
-const creditRefOpts=state.invoices.filter(x=>!x.isCredit).sort((a,b)=>(a.invoiceDate||””).localeCompare(b.invoiceDate||””)).map(x=>`<option value="${x.id}" ${x.id===state.invoice.creditRefId?"selected":""}>${esc(x.invoiceNo)} — ${esc(x.payerName)} — ${Number(x.grossTotal||0).toFixed(2)} €</option>`).join(””);
-const invTitle=isCredit?“HYVITYSLASKU”:itype===“reservation”?“LASKU — VARAUSMAKSU”:itype===“partial”?“LASKU — OSASUORITUS”:“LASKU — LOPPULASKU”;
-return`<div class="card noPrint"><div class="card-title">Laskutus</div><div class="card-sub">Luo lasku — valitse laskutettava kohde</div> <div class="hr"></div> <div class="grid2" style="margin-bottom:14px"> <div class="field"><label class="lbl">Laskutettava kohde</label><select data-action="inv-source"><option value="sailing" ${!isTutkinto?"selected":""}>⛵ Purjehdus / Kurssi</option><option value="tutkinto" ${isTutkinto?"selected":""}>🎓 Tutkinto</option></select></div> ${isTutkinto?`<div class="field"><label class="lbl">Tutkinto *</label><select data-action="inv-tutkinto"><option value="">– valitse tutkinto –</option>${tutkintoOpts}</select></div>`:`<div class="field"><label class="lbl">Tapahtuma *</label><select data-action="inv-sailing">${evOpts}</select></div>`} </div> <div class="grid3"> ${isTutkinto?`<div class="field"><label class="lbl">Malli</label><div style="padding:10px 13px;border:1.5px solid #d1d5db;border-radius:8px;background:#f0f4f8;color:#374151">Asiakaskohtainen</div></div>`:`<div class="field"><label class="lbl">Malli</label><select data-action="inv-mode"><option value=“customer” ${state.invoice.mode===“customer”?“selected”:””}>Asiakaskohtainen</option><option value=“company” ${state.invoice.mode===“company”?“selected”:””}>Yrityslasku</option></select></div>`} <div class="field"><label class="lbl">Laskulaji</label><select data-action="inv-type"><option value="full" ${itype==="full"?"selected":""}>Loppulasku</option>${hasFee?`<option value=“reservation” ${itype===“reservation”?“selected”:””}>Varausmaksu</option>`:""}<option value="partial" ${itype==="partial"?"selected":""}>Osasuoritus</option><option value="credit" ${itype==="credit"?"selected":""}>Hyvityslasku</option></select></div> <div class="field"><label class="lbl">Päivä</label><input type="date" data-action="inv-date" value="${esc(state.invoice.invoiceDate)}"></div> </div> ${(isPartial||isTutkinto)?`<div class="field" style="max-width:240px"><label class="lbl">${isTutkinto?“Summa (€ brutto) *”:“Osasuorituksen summa (€ brutto)”}</label><input type=“number” min=“0” step=“0.01” data-action=“inv-partial-amount” value=”${esc(String(state.invoice.partialAmount||””))}” placeholder=“esim. 150.00”></div>`:""} ${isCredit?`<div class="field"><label class="lbl">Kohdistetaan laskulle</label><select data-action="inv-credit-ref"><option value="">– valitse alkuperäinen lasku –</option>${creditRefOpts}</select>${inv.creditRef?`<div class="infobox infobox-amber" style="margin-top:8px">Hyvitetään lasku ${esc(inv.creditRef.invoiceNo)} · ${Number(inv.creditRef.grossTotal||0).toFixed(2)} €</div>`:””}</div>`:""} <div class="row" style="margin-bottom:16px;flex-wrap:wrap;gap:10px"> <div style="flex:1;min-width:200px" class="field"><label class="lbl">Asiakas</label><select data-action="inv-customer"><option value="">-- valitse --</option>${custOpts}</select></div> ${(!isTutkinto&&state.invoice.mode==="company")?`<div style="flex:1;min-width:200px" class="field"><label class="lbl">Yritys</label><select data-action="inv-company"><option value="">– valitse –</option>${coOpts}</select></div>`:””}
-<div style="min-width:160px" class="field"><label class="lbl">Laskunro (seuraava)</label><div style="padding:10px 13px;border:1.5px solid #d1d5db;border-radius:8px;background:#f0f4f8;font-weight:800;color:#0a4272;font-size:15px">${esc(inv.invNo)}</div><div class="small muted" style="margin-top:4px">Viite: ${esc(inv.reference)}</div></div>
-</div>
-
+  const source=state.invoice.source||"sailing",isTutkinto=source==="tutkinto";
+  const inv=computeInvoice();
+  const evOpts=state.sailings.slice().sort((a,b)=>(a.date||"").localeCompare(b.date||"")).map(x=>`<option value="${x.id}" ${x.id===state.invoice.sailingId?"selected":""}>${esc(x.name)} (${fmtDate(x.date)})</option>`).join("");
+  const tutkintoOpts=state.tutkinnot.slice().sort((a,b)=>(b.date||"").localeCompare(a.date||"")).map(x=>`<option value="${x.id}" ${x.id===state.invoice.tutkintoId?"selected":""}>${esc(x.type)}${x.boatType?" ("+esc(x.boatType)+")":""} — ${esc(x.customerName)} — ${fmtDate(x.date)}</option>`).join("");
+  const custOpts=state.customers.slice().sort((a,b)=>(a.name||"").localeCompare(b.name||"")).map(x=>`<option value="${x.id}" ${x.id===state.invoice.customerId?"selected":""}>${esc(x.name)}</option>`).join("");
+  const coOpts=state.companies.slice().sort((a,b)=>(a.name||"").localeCompare(b.name||"")).map(x=>`<option value="${x.id}" ${x.id===state.invoice.companyId?"selected":""}>${esc(x.name)}</option>`).join("");
+  const selS=state.sailings.find(x=>x.id===state.invoice.sailingId);
+  const hasFee=!isTutkinto&&selS&&Number(selS.reservationFee||0)>0;
+  const itype=state.invoice.type||"full",isCredit=itype==="credit",isPartial=itype==="partial";
+  const creditRefOpts=state.invoices.filter(x=>!x.isCredit).sort((a,b)=>(a.invoiceDate||"").localeCompare(b.invoiceDate||"")).map(x=>`<option value="${x.id}" ${x.id===state.invoice.creditRefId?"selected":""}>${esc(x.invoiceNo)} — ${esc(x.payerName)} — ${Number(x.grossTotal||0).toFixed(2)} €</option>`).join("");
+  const invTitle=isCredit?"HYVITYSLASKU":itype==="reservation"?"LASKU — VARAUSMAKSU":itype==="partial"?"LASKU — OSASUORITUS":"LASKU — LOPPULASKU";
+  return`<div class="card noPrint"><div class="card-title">Laskutus</div><div class="card-sub">Luo lasku — valitse laskutettava kohde</div>
+    <div class="hr"></div>
+    <div class="grid2" style="margin-bottom:14px">
+      <div class="field"><label class="lbl">Laskutettava kohde</label><select data-action="inv-source"><option value="sailing" ${!isTutkinto?"selected":""}>⛵ Purjehdus / Kurssi</option><option value="tutkinto" ${isTutkinto?"selected":""}>🎓 Tutkinto</option></select></div>
+      ${isTutkinto?`<div class="field"><label class="lbl">Tutkinto *</label><select data-action="inv-tutkinto"><option value="">-- valitse tutkinto --</option>${tutkintoOpts}</select></div>`:`<div class="field"><label class="lbl">Tapahtuma *</label><select data-action="inv-sailing">${evOpts}</select></div>`}
+    </div>
+    <div class="grid3">
+      ${isTutkinto?`<div class="field"><label class="lbl">Malli</label><div style="padding:10px 13px;border:1.5px solid #d1d5db;border-radius:8px;background:#f0f4f8;color:#374151">Asiakaskohtainen</div></div>`:`<div class="field"><label class="lbl">Malli</label><select data-action="inv-mode"><option value="customer" ${state.invoice.mode==="customer"?"selected":""}>Asiakaskohtainen</option><option value="company" ${state.invoice.mode==="company"?"selected":""}>Yrityslasku</option></select></div>`}
+      <div class="field"><label class="lbl">Laskulaji</label><select data-action="inv-type"><option value="full" ${itype==="full"?"selected":""}>Loppulasku</option>${hasFee?`<option value="reservation" ${itype==="reservation"?"selected":""}>Varausmaksu</option>`:""}<option value="partial" ${itype==="partial"?"selected":""}>Osasuoritus</option><option value="credit" ${itype==="credit"?"selected":""}>Hyvityslasku</option></select></div>
+      <div class="field"><label class="lbl">Päivä</label><input type="date" data-action="inv-date" value="${esc(state.invoice.invoiceDate)}"></div>
+    </div>
+    ${(isPartial||isTutkinto)?`<div class="field" style="max-width:240px"><label class="lbl">${isTutkinto?"Summa (€ brutto) *":"Osasuorituksen summa (€ brutto)"}</label><input type="number" min="0" step="0.01" data-action="inv-partial-amount" value="${esc(String(state.invoice.partialAmount||""))}" placeholder="esim. 150.00"></div>`:""}
+    ${isCredit?`<div class="field"><label class="lbl">Kohdistetaan laskulle</label><select data-action="inv-credit-ref"><option value="">-- valitse alkuperäinen lasku --</option>${creditRefOpts}</select>${inv.creditRef?`<div class="infobox infobox-amber" style="margin-top:8px">Hyvitetään lasku ${esc(inv.creditRef.invoiceNo)} · ${Number(inv.creditRef.grossTotal||0).toFixed(2)} €</div>`:""}</div>`:""}
+    <div class="row" style="margin-bottom:16px;flex-wrap:wrap;gap:10px">
+      <div style="flex:1;min-width:200px" class="field"><label class="lbl">Asiakas</label><select data-action="inv-customer"><option value="">-- valitse --</option>${custOpts}</select></div>
+      ${(!isTutkinto&&state.invoice.mode==="company")?`<div style="flex:1;min-width:200px" class="field"><label class="lbl">Yritys</label><select data-action="inv-company"><option value="">-- valitse --</option>${coOpts}</select></div>`:""}
+      <div style="min-width:160px" class="field"><label class="lbl">Laskunro (seuraava)</label><div style="padding:10px 13px;border:1.5px solid #d1d5db;border-radius:8px;background:#f0f4f8;font-weight:800;color:#0a4272;font-size:15px">${esc(inv.invNo)}</div><div class="small muted" style="margin-top:4px">Viite: ${esc(inv.reference)}</div></div>
+    </div>
   </div>
   <div class="card"><div class="invoice-box" id="invoiceBox">
     <div class="row-between">
@@ -589,11 +627,14 @@ return`<div class="card noPrint"><div class="card-title">Laskutus</div><div clas
 }
 
 function renderTutkinnot(){
-const term=(state.searchTutkinnot||””).toLowerCase();
-const list=state.tutkinnot.slice().sort((a,b)=>(b.date||””).localeCompare(a.date||””)).filter(t=>!term||(t.customerName||””).toLowerCase().includes(term)||(t.type||””).toLowerCase().includes(term)||(t.date||””).includes(term)||(t.notes||””).toLowerCase().includes(term));
-const typeCounts={};for(const t of state.tutkinnot)typeCounts[t.type]=(typeCounts[t.type]||0)+1;
-return`<div class="card"><div class="row-between"><div><div class="card-title">🎓 Tutkinnot</div><div class="card-sub">Suoritetut näyttökokeet ja pätevyydet</div></div><button class="btn btn-primary" data-action="new-tutkinto">+ Uusi tutkinto</button></div> ${state.tutkinnot.length>0?`<div class="stats-grid" style="margin:16px 0">${TUTKINTO_TYPES.map(t=>`<div class="stat-card"><div class="stat-label" style="font-size:10px">${esc(t)}</div><div class="stat-val" style="font-size:28px;color:#1e40af">${typeCounts[t]||0}</div></div>`).join(””)}</div>`:""} <div class="hr"></div> <div class="field"><label class="lbl">Haku</label><input data-action="search-tutkinnot" value="${esc(state.searchTutkinnot)}" placeholder="Hae nimellä, tutkintotyypillä tai päivällä…"></div> ${list.length===0?`<div class="muted">Ei tutkintoja.</div>`:`<table class="table"><thead><tr><th>Suorituspäivä</th><th>Tutkintotyyppi</th><th>Suorittaja</th><th>Lisätiedot</th><th></th></tr></thead><tbody>${list.map(t=>{const typeKey=(t.type||””).split(” “)[0];return`<tr><td style="font-weight:600;white-space:nowrap">${fmtDate(t.date)}</td><td><span class="tutkinto-type-badge tutkinto-${esc(typeKey)}">${esc(t.type||"")}</span></td><td style="font-weight:600">${esc(t.customerName||"")}</td><td class="small muted">${esc(t.notes||"")}</td><td><div class="row" style="gap:6px"><button class="btn btn-secondary btn-sm" data-action="edit-tutkinto" data-id="${t.id}">Muokkaa</button><button class="btn btn-danger btn-sm" data-action="delete-tutkinto" data-id="${t.id}">Poista</button></div></td></tr>`;}).join(””)}</tbody></table>`}
-
+  const term=(state.searchTutkinnot||"").toLowerCase();
+  const list=state.tutkinnot.slice().sort((a,b)=>(b.date||"").localeCompare(a.date||"")).filter(t=>!term||(t.customerName||"").toLowerCase().includes(term)||(t.type||"").toLowerCase().includes(term)||(t.date||"").includes(term)||(t.notes||"").toLowerCase().includes(term));
+  const typeCounts={};for(const t of state.tutkinnot)typeCounts[t.type]=(typeCounts[t.type]||0)+1;
+  return`<div class="card"><div class="row-between"><div><div class="card-title">🎓 Tutkinnot</div><div class="card-sub">Suoritetut näyttökokeet ja pätevyydet</div></div><button class="btn btn-primary" data-action="new-tutkinto">+ Uusi tutkinto</button></div>
+    ${state.tutkinnot.length>0?`<div class="stats-grid" style="margin:16px 0">${TUTKINTO_TYPES.map(t=>`<div class="stat-card"><div class="stat-label" style="font-size:10px">${esc(t)}</div><div class="stat-val" style="font-size:28px;color:#1e40af">${typeCounts[t]||0}</div></div>`).join("")}</div>`:""}
+    <div class="hr"></div>
+    <div class="field"><label class="lbl">Haku</label><input data-action="search-tutkinnot" value="${esc(state.searchTutkinnot)}" placeholder="Hae nimellä, tutkintotyypillä tai päivällä…"></div>
+    ${list.length===0?`<div class="muted">Ei tutkintoja.</div>`:`<table class="table"><thead><tr><th>Suorituspäivä</th><th>Tutkintotyyppi</th><th>Suorittaja</th><th>Lisätiedot</th><th></th></tr></thead><tbody>${list.map(t=>{const typeKey=(t.type||"").split(" ")[0];return`<tr><td style="font-weight:600;white-space:nowrap">${fmtDate(t.date)}</td><td><span class="tutkinto-type-badge tutkinto-${esc(typeKey)}">${esc(t.type||"")}</span></td><td style="font-weight:600">${esc(t.customerName||"")}</td><td class="small muted">${esc(t.notes||"")}</td><td><div class="row" style="gap:6px"><button class="btn btn-secondary btn-sm" data-action="edit-tutkinto" data-id="${t.id}">Muokkaa</button><button class="btn btn-danger btn-sm" data-action="delete-tutkinto" data-id="${t.id}">Poista</button></div></td></tr>`;}).join("")}</tbody></table>`}
   </div>`;
 }
 function renderReskontra(){
@@ -623,80 +664,109 @@ function renderReskontra(){
 }
 
 function renderModal(){
-if(!state.modal)return””;
-if(state.modal===“dash-quick”)return renderDashQuickModal();
-if(state.modal===“teoria”)return renderTeoriaModal();
-if(state.modal===“session”)return renderSessionModal();
-if(state.modal===“customer”)return renderCustomerModal();
-if(state.modal===“sailing”)return renderSailingModal();
-if(state.modal===“company”)return renderCompanyModal();
-if(state.modal===“register”)return renderRegisterModal();
-if(state.modal===“tutkinto”)return renderTutkintoModal();
-if(state.modal===“invoice-preview”)return renderInvoicePreviewModal();
-return””;
+  if(!state.modal)return"";
+  if(state.modal==="dash-quick")return renderDashQuickModal();
+  if(state.modal==="teoria")return renderTeoriaModal();
+  if(state.modal==="session")return renderSessionModal();
+  if(state.modal==="customer")return renderCustomerModal();
+  if(state.modal==="sailing")return renderSailingModal();
+  if(state.modal==="company")return renderCompanyModal();
+  if(state.modal==="register")return renderRegisterModal();
+  if(state.modal==="tutkinto")return renderTutkintoModal();
+  if(state.modal==="invoice-preview")return renderInvoicePreviewModal();
+  return"";
 }
 function renderInvoicePreviewModal(){
-const inv=state.invoices.find(x=>x.id===state.previewInvoiceId);if(!inv)return””;
-const isCredit=inv.isCredit||inv.itype===“credit”;
-const invTitle=isCredit?“HYVITYSLASKU”:inv.itype===“reservation”?“LASKU — VARAUSMAKSU”:inv.itype===“partial”?“LASKU — OSASUORITUS”:“LASKU — LOPPULASKU”;
-const vatPct=Number(inv.vatRatePct||25.5).toFixed(1);
-return`<div class="overlay" data-action="close-modal"><div class="modal" onclick="event.stopPropagation()"> <div class="modal-head"><div class="row-between"><div><div class="modal-title">Lasku ${esc(inv.invoiceNo||"")}</div><div class="card-sub">${esc(inv.payerName||"")} · ${fmtDate(inv.invoiceDate)}</div></div><div class="row"><button class="btn btn-primary btn-sm" data-action="print-preview">🖨️ Tulosta</button><button class="btn btn-secondary btn-sm" data-action="close-modal">✕</button></div></div></div> <div class="modal-body"><div class="invoice-box" id="invoicePreviewBox"> <div class="row-between"><div style="line-height:1.7;font-size:14px"><strong style="font-size:16px;color:${isCredit?"#991b1b":"#111827"}">${invTitle}</strong><br>${esc(ISSUER.name)}<br>Y-tunnus ${esc(ISSUER.businessId)}<br><span style="color:#6b7280;font-size:12px">IBAN</span> ${esc(BANK.iban)}<br><span style="color:#6b7280;font-size:12px">BIC</span> ${esc(BANK.bic)}</div> <div style="text-align:right;line-height:1.7;font-size:14px"><strong style="color:#0a4272;font-size:15px">Nro: ${esc(inv.invoiceNo||"")}</strong><br>Päivä: ${esc(inv.invoiceDate||"")}<br>Viite: <strong>${esc(inv.reference||"")}</strong>${inv.creditRefNo?`<br><span style="font-size:12px;color:#6b7280">Hyvittää: ${esc(inv.creditRefNo)}</span>`:""}</div> </div> <div class="hr"></div> <div style="font-size:14px;line-height:1.7"><strong>Maksaja:</strong><br>${esc(inv.payerName||"—")}${inv.payerBusinessId?`<div style="font-size:12px;color:#6b7280">Y-tunnus ${esc(inv.payerBusinessId)}</div>`:""}${inv.payerEmail?`<div><a href="mailto:${esc(inv.payerEmail)}" style="color:#1e40af">${esc(inv.payerEmail)}</a></div>`:""}</div> <div class="hr"></div> <table class="table"><thead><tr><th>Kuvaus</th><th class="r">Kpl</th><th class="r">€/kpl</th><th class="r">Yht</th></tr></thead><tbody><tr><td>${esc(inv.eventName||"—")}</td><td class="r">1</td><td class="r">${Number(inv.grossTotal||0).toFixed(2)}</td><td class="r" style="${Number(inv.grossTotal||0)<0?"color:#991b1b;font-weight:700":""}">${Number(inv.grossTotal||0).toFixed(2)}</td></tr></tbody></table> <div class="hr"></div> <table class="table" style="max-width:280px;margin-left:auto"><tr><td>Netto</td><td class="r">${Number(inv.net||0).toFixed(2)} €</td></tr><tr><td>ALV ${vatPct}%</td><td class="r">${Number(inv.vat||0).toFixed(2)} €</td></tr><tr><td><strong>Yhteensä</strong></td><td class="r"><strong style="color:${isCredit?"#991b1b":"#0a4272"};font-size:18px">${Number(inv.grossTotal||0).toFixed(2)} €</strong></td></tr></table> <div class="hr"></div> <div style="font-size:13px;color:#6b7280">${inv.paid?`<span class="badge badge-green">✓ Maksettu ${esc(inv.paidDate||””)}</span>`:`<span class="badge badge-red">● Avoin</span>`}<span style="margin-left:10px">${invTypeBadge(inv.itype||inv.invoiceType||(inv.isReservation?“reservation”:“full”))}</span></div>
-</div></div>
-
+  const inv=state.invoices.find(x=>x.id===state.previewInvoiceId);if(!inv)return"";
+  const isCredit=inv.isCredit||inv.itype==="credit";
+  const invTitle=isCredit?"HYVITYSLASKU":inv.itype==="reservation"?"LASKU — VARAUSMAKSU":inv.itype==="partial"?"LASKU — OSASUORITUS":"LASKU — LOPPULASKU";
+  const vatPct=Number(inv.vatRatePct||25.5).toFixed(1);
+  return`<div class="overlay" data-action="close-modal"><div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-head"><div class="row-between"><div><div class="modal-title">Lasku ${esc(inv.invoiceNo||"")}</div><div class="card-sub">${esc(inv.payerName||"")} · ${fmtDate(inv.invoiceDate)}</div></div><div class="row"><button class="btn btn-primary btn-sm" data-action="print-preview">🖨️ Tulosta</button><button class="btn btn-secondary btn-sm" data-action="close-modal">✕</button></div></div></div>
+    <div class="modal-body"><div class="invoice-box" id="invoicePreviewBox">
+      <div class="row-between"><div style="line-height:1.7;font-size:14px"><strong style="font-size:16px;color:${isCredit?"#991b1b":"#111827"}">${invTitle}</strong><br>${esc(ISSUER.name)}<br>Y-tunnus ${esc(ISSUER.businessId)}<br><span style="color:#6b7280;font-size:12px">IBAN</span> ${esc(BANK.iban)}<br><span style="color:#6b7280;font-size:12px">BIC</span> ${esc(BANK.bic)}</div>
+        <div style="text-align:right;line-height:1.7;font-size:14px"><strong style="color:#0a4272;font-size:15px">Nro: ${esc(inv.invoiceNo||"")}</strong><br>Päivä: ${esc(inv.invoiceDate||"")}<br>Viite: <strong>${esc(inv.reference||"")}</strong>${inv.creditRefNo?`<br><span style="font-size:12px;color:#6b7280">Hyvittää: ${esc(inv.creditRefNo)}</span>`:""}</div>
+      </div>
+      <div class="hr"></div>
+      <div style="font-size:14px;line-height:1.7"><strong>Maksaja:</strong><br>${esc(inv.payerName||"—")}${inv.payerBusinessId?`<div style="font-size:12px;color:#6b7280">Y-tunnus ${esc(inv.payerBusinessId)}</div>`:""}${inv.payerEmail?`<div><a href="mailto:${esc(inv.payerEmail)}" style="color:#1e40af">${esc(inv.payerEmail)}</a></div>`:""}</div>
+      <div class="hr"></div>
+      <table class="table"><thead><tr><th>Kuvaus</th><th class="r">Kpl</th><th class="r">€/kpl</th><th class="r">Yht</th></tr></thead><tbody><tr><td>${esc(inv.eventName||"—")}</td><td class="r">1</td><td class="r">${Number(inv.grossTotal||0).toFixed(2)}</td><td class="r" style="${Number(inv.grossTotal||0)<0?"color:#991b1b;font-weight:700":""}">${Number(inv.grossTotal||0).toFixed(2)}</td></tr></tbody></table>
+      <div class="hr"></div>
+      <table class="table" style="max-width:280px;margin-left:auto"><tr><td>Netto</td><td class="r">${Number(inv.net||0).toFixed(2)} €</td></tr><tr><td>ALV ${vatPct}%</td><td class="r">${Number(inv.vat||0).toFixed(2)} €</td></tr><tr><td><strong>Yhteensä</strong></td><td class="r"><strong style="color:${isCredit?"#991b1b":"#0a4272"};font-size:18px">${Number(inv.grossTotal||0).toFixed(2)} €</strong></td></tr></table>
+      <div class="hr"></div>
+      <div style="font-size:13px;color:#6b7280">${inv.paid?`<span class="badge badge-green">✓ Maksettu ${esc(inv.paidDate||"")}</span>`:`<span class="badge badge-red">● Avoin</span>`}<span style="margin-left:10px">${invTypeBadge(inv.itype||inv.invoiceType||(inv.isReservation?"reservation":"full"))}</span></div>
+    </div></div>
   </div></div>`;
 }
 
 // SAILING MODAL — V8.2 + REITTI-kenttä
 function renderSailingModal(){
-const editing=!!state.editId;
-const s=editing?state.sailings.find(x=>x.id===state.editId):null;
-const draft=state.sailingDraft||{};
-const selType=draft.type||s?.type||SAILING_TYPES[0];
-const isMultiDay=!!(draft.endDate||(s?.endDate));
-let durationInfo=””;
-const d1=draft.date||s?.date||””;
-const d2=draft.endDate!==undefined?draft.endDate:(s?.endDate||””);
-if(d1&&d2&&d2>d1){const days=Math.round((new Date(d2+“T12:00:00”)-new Date(d1+“T12:00:00”))/86400000)+1;durationInfo=`<div class="infobox infobox-blue" style="margin-top:4px">📅 Kesto: ${days} vrk (${fmtDate(d1)} – ${fmtDate(d2)})</div>`;}
-return`<div class="overlay" data-action="close-modal"><div class="modal" onclick="event.stopPropagation()"> <div class="modal-head"><div class="row-between"><div class="modal-title">${editing?"Muokkaa purjehdusta":"Uusi purjehdus"}</div><button class="btn btn-secondary btn-sm" data-action="close-modal">✕</button></div></div> <div class="modal-body"> <div class="field"><label class="lbl">Nimi *</label><input data-field="name" value="${esc(draft.name||s?.name||"")}"></div> <div class="field"><label class="lbl">Reitti <span style="font-weight:400;text-transform:none;font-size:11px;color:#6b7280">(esim. Hanko–Tallinna–Helsinki)</span></label><input data-field="reitti" value="${esc(draft.reitti!==undefined?draft.reitti:(s?.reitti||""))}" placeholder="Valinnainen — näkyy kalenterissa ja Google Calendarissa"></div> <div class="grid2"> <div class="field"><label class="lbl">Tyyppi *</label> <select data-field="sailing-type-live" data-action="sailing-type-changed"> ${SAILING_TYPES.map(t=>`<option value=”${esc(t)}” ${t===selType?“selected”:””}>${esc(t)}</option>`).join(””)}
-</select>
-</div>
-<div class="field"><label class="lbl">Alkamispäivä *</label><input type="date" data-field="date" data-action="multiday-date-changed" value="${esc(draft.date||s?.date||today())}"></div>
-</div>
-<div class="grid2">
-<div class="field"><label class="lbl">Paluupäivä <span style="font-weight:400;text-transform:none;font-size:11px;color:#6b7280">(jos useampi päivä)</span></label><input type=“date” data-field=“endDate” data-action=“multiday-date-changed” value=”${esc(draft.endDate!==undefined?draft.endDate:(s?.endDate||””))}”></div>
-<div class="field">${durationInfo}</div>
-</div>
-<div class="grid2">
-<div class="field"><label class="lbl">${isMultiDay?“Lähtöaika”:“Aloitusaika”}</label><input type=“time” data-field=“startTime” value=”${esc(draft.startTime||s?.startTime||””)}”></div>
-<div class="field"><label class="lbl">${isMultiDay?“Paluuaika”:“Lopetusaika”}</label><input type=“time” data-field=“endTime” value=”${esc(draft.endTime||s?.endTime||””)}”></div>
-</div>
-<div class="hr"></div>
-<div class="grid2">
-<div class="field"><label class="lbl">Max hlö *</label><input type="number" min="1" step="1" data-field="maxPersons" value="${esc(String(Number(s?.maxPersons??6)))}"></div>
-<div class="field"><label class="lbl">Varapaikkoja</label><input type="number" min="0" step="1" data-field="reserveSlots" value="${esc(String(Number(s?.reserveSlots??2)))}"><div class="small muted" style="margin-top:4px">Suositus: vähintään 2</div></div>
-</div>
-<div class="grid2">
-<div class="field"><label class="lbl">Hinta/hlö (€)</label><input type="number" min="0" step="0.01" data-field="pricePerPerson" value="${esc(String(Number(s?.pricePerPerson??0)))}"></div>
-<div class="field"><label class="lbl">Varausmaksu (€)</label><input type="number" min="0" step="0.01" data-field="reservationFee" value="${esc(String(Number(s?.reservationFee??0)))}"><div class="small muted" style="margin-top:4px">0 = ei varausmaksua</div></div>
-</div>
-<div class="row" style="justify-content:flex-end;margin-top:16px"><button class="btn btn-primary" data-action="save-sailing">${editing?“Tallenna muutokset”:“Tallenna”}</button></div>
-</div>
-
+  const editing=!!state.editId;
+  const s=editing?state.sailings.find(x=>x.id===state.editId):null;
+  const draft=state.sailingDraft||{};
+  const selType=draft.type||s?.type||SAILING_TYPES[0];
+  const isMultiDay=!!(draft.endDate||(s?.endDate));
+  let durationInfo="";
+  const d1=draft.date||s?.date||"";
+  const d2=draft.endDate!==undefined?draft.endDate:(s?.endDate||"");
+  if(d1&&d2&&d2>d1){const days=Math.round((new Date(d2+"T12:00:00")-new Date(d1+"T12:00:00"))/86400000)+1;durationInfo=`<div class="infobox infobox-blue" style="margin-top:4px">📅 Kesto: ${days} vrk (${fmtDate(d1)} – ${fmtDate(d2)})</div>`;}
+  return`<div class="overlay" data-action="close-modal"><div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-head"><div class="row-between"><div class="modal-title">${editing?"Muokkaa purjehdusta":"Uusi purjehdus"}</div><button class="btn btn-secondary btn-sm" data-action="close-modal">✕</button></div></div>
+    <div class="modal-body">
+      <div class="field"><label class="lbl">Nimi *</label><input data-field="name" value="${esc(draft.name||s?.name||"")}"></div>
+      <div class="field"><label class="lbl">Reitti <span style="font-weight:400;text-transform:none;font-size:11px;color:#6b7280">(esim. Hanko–Tallinna–Helsinki)</span></label><input data-field="reitti" value="${esc(draft.reitti!==undefined?draft.reitti:(s?.reitti||""))}" placeholder="Valinnainen — näkyy kalenterissa ja Google Calendarissa"></div>
+      <div class="grid2">
+        <div class="field"><label class="lbl">Tyyppi *</label>
+          <select data-field="sailing-type-live" data-action="sailing-type-changed">
+            ${SAILING_TYPES.map(t=>`<option value="${esc(t)}" ${t===selType?"selected":""}>${esc(t)}</option>`).join("")}
+          </select>
+        </div>
+        <div class="field"><label class="lbl">Alkamispäivä *</label><input type="date" data-field="date" data-action="multiday-date-changed" value="${esc(draft.date||s?.date||today())}"></div>
+      </div>
+      <div class="grid2">
+        <div class="field"><label class="lbl">Paluupäivä <span style="font-weight:400;text-transform:none;font-size:11px;color:#6b7280">(jos useampi päivä)</span></label><input type="date" data-field="endDate" data-action="multiday-date-changed" value="${esc(draft.endDate!==undefined?draft.endDate:(s?.endDate||""))}"></div>
+        <div class="field">${durationInfo}</div>
+      </div>
+      <div class="grid2">
+        <div class="field"><label class="lbl">${isMultiDay?"Lähtöaika":"Aloitusaika"}</label><input type="time" data-field="startTime" value="${esc(draft.startTime||s?.startTime||"")}"></div>
+        <div class="field"><label class="lbl">${isMultiDay?"Paluuaika":"Lopetusaika"}</label><input type="time" data-field="endTime" value="${esc(draft.endTime||s?.endTime||"")}"></div>
+      </div>
+      <div class="hr"></div>
+      <div class="grid2">
+        <div class="field"><label class="lbl">Max hlö *</label><input type="number" min="1" step="1" data-field="maxPersons" value="${esc(String(Number(s?.maxPersons??6)))}"></div>
+        <div class="field"><label class="lbl">Varapaikkoja</label><input type="number" min="0" step="1" data-field="reserveSlots" value="${esc(String(Number(s?.reserveSlots??2)))}"><div class="small muted" style="margin-top:4px">Suositus: vähintään 2</div></div>
+      </div>
+      <div class="grid2">
+        <div class="field"><label class="lbl">Hinta/hlö (€)</label><input type="number" min="0" step="0.01" data-field="pricePerPerson" value="${esc(String(Number(s?.pricePerPerson??0)))}"></div>
+        <div class="field"><label class="lbl">Varausmaksu (€)</label><input type="number" min="0" step="0.01" data-field="reservationFee" value="${esc(String(Number(s?.reservationFee??0)))}"><div class="small muted" style="margin-top:4px">0 = ei varausmaksua</div></div>
+      </div>
+      <div class="row" style="justify-content:flex-end;margin-top:16px"><button class="btn btn-primary" data-action="save-sailing">${editing?"Tallenna muutokset":"Tallenna"}</button></div>
+    </div>
   </div></div>`;
 }
 
 function renderTutkintoModal(){
-const editing=!!state.editId;
-const t=editing?state.tutkinnot.find(x=>x.id===state.editId):null;
-const selType=t?.type||TUTKINTO_TYPES[0];
-const isPaikka=[“Rannikkopäällikkö”,“Saaristopäällikkö”].includes(selType);
-const custOpts=state.customers.slice().sort((a,b)=>(a.name||””).localeCompare(b.name||””)).map(c=>`<option value="${esc(c.name)}" ${c.name===(t?.customerName||"")?"selected":""}>${esc(c.name)}</option>`).join(””);
-return`<div class="overlay" data-action="close-modal"><div class="modal" style="max-width:560px" onclick="event.stopPropagation()"> <div class="modal-head"><div class="row-between"><div class="modal-title">${editing?"Muokkaa tutkintoa":"Uusi tutkinto"}</div><button class="btn btn-secondary btn-sm" data-action="close-modal">✕</button></div></div> <div class="modal-body"> <div class="grid2"> <div class="field"><label class="lbl">Tutkintotyyppi *</label> <select data-field="tutkinto-type" data-action="sailing-type-changed"> ${TUTKINTO_TYPES.map(tt=>`<option value=”${esc(tt)}” ${tt===selType?“selected”:””}>${esc(tt)}</option>`).join("")} </select> </div> <div class="field"><label class="lbl">Suorituspäivä *</label><input type="date" data-field="tutkinto-date" value="${esc(t?.date||today())}"></div> </div> ${isPaikka?`<div class="grid2"><div class="field"><label class="lbl">Venetyyppi *</label><select data-field="tutkinto-boattype"><option value=“Purjevene” ${(t?.boatType||“Purjevene”)===“Purjevene”?“selected”:””}>⛵ Purjevene</option><option value=“Moottorivene” ${t?.boatType===“Moottorivene”?“selected”:””}> Moottorivene</option></select></div><div class="field"><label class="lbl">Paikkoja (max)</label><input type="number" min="1" step="1" data-field="tutkinto-maxpersons" value="${esc(String(Number(t?.maxPersons||4)))}"></div></div><div class="field" style="max-width:200px"><label class="lbl">Varapaikkoja</label><input type="number" min="0" step="1" data-field="tutkinto-reserveslots" value="${esc(String(Number(t?.reserveSlots||2)))}"></div>`:””}
-<div class="field"><label class="lbl">Suorittaja *</label><input list=“cust-list” data-field=“tutkinto-customer” value=”${esc(t?.customerName||””)}” placeholder=“Nimi tai valitse listalta”><datalist id="cust-list">${custOpts}</datalist></div>
-<div class="field"><label class="lbl">Lisätiedot</label><textarea data-field="tutkinto-notes" rows="3" placeholder="Esim. suorituspaikka, arvosana, huomiot…">${esc(t?.notes||””)}</textarea></div>
-<div class="row" style="justify-content:flex-end;margin-top:16px"><button class="btn btn-primary" data-action="save-tutkinto">${editing?“Tallenna muutokset”:“Tallenna”}</button></div>
-</div>
-
+  const editing=!!state.editId;
+  const t=editing?state.tutkinnot.find(x=>x.id===state.editId):null;
+  const selType=t?.type||TUTKINTO_TYPES[0];
+  const isPaikka=["Rannikkopäällikkö","Saaristopäällikkö"].includes(selType);
+  const custOpts=state.customers.slice().sort((a,b)=>(a.name||"").localeCompare(b.name||"")).map(c=>`<option value="${esc(c.name)}" ${c.name===(t?.customerName||"")?"selected":""}>${esc(c.name)}</option>`).join("");
+  return`<div class="overlay" data-action="close-modal"><div class="modal" style="max-width:560px" onclick="event.stopPropagation()">
+    <div class="modal-head"><div class="row-between"><div class="modal-title">${editing?"Muokkaa tutkintoa":"Uusi tutkinto"}</div><button class="btn btn-secondary btn-sm" data-action="close-modal">✕</button></div></div>
+    <div class="modal-body">
+      <div class="grid2">
+        <div class="field"><label class="lbl">Tutkintotyyppi *</label>
+          <select data-field="tutkinto-type" data-action="sailing-type-changed">
+            ${TUTKINTO_TYPES.map(tt=>`<option value="${esc(tt)}" ${tt===selType?"selected":""}>${esc(tt)}</option>`).join("")}
+          </select>
+        </div>
+        <div class="field"><label class="lbl">Suorituspäivä *</label><input type="date" data-field="tutkinto-date" value="${esc(t?.date||today())}"></div>
+      </div>
+      ${isPaikka?`<div class="grid2"><div class="field"><label class="lbl">Venetyyppi *</label><select data-field="tutkinto-boattype"><option value="Purjevene" ${(t?.boatType||"Purjevene")==="Purjevene"?"selected":""}>⛵ Purjevene</option><option value="Moottorivene" ${t?.boatType==="Moottorivene"?"selected":""}> Moottorivene</option></select></div><div class="field"><label class="lbl">Paikkoja (max)</label><input type="number" min="1" step="1" data-field="tutkinto-maxpersons" value="${esc(String(Number(t?.maxPersons||4)))}"></div></div><div class="field" style="max-width:200px"><label class="lbl">Varapaikkoja</label><input type="number" min="0" step="1" data-field="tutkinto-reserveslots" value="${esc(String(Number(t?.reserveSlots||2)))}"></div>`:""}
+      <div class="field"><label class="lbl">Suorittaja *</label><input list="cust-list" data-field="tutkinto-customer" value="${esc(t?.customerName||"")}" placeholder="Nimi tai valitse listalta"><datalist id="cust-list">${custOpts}</datalist></div>
+      <div class="field"><label class="lbl">Lisätiedot</label><textarea data-field="tutkinto-notes" rows="3" placeholder="Esim. suorituspaikka, arvosana, huomiot…">${esc(t?.notes||"")}</textarea></div>
+      <div class="row" style="justify-content:flex-end;margin-top:16px"><button class="btn btn-primary" data-action="save-tutkinto">${editing?"Tallenna muutokset":"Tallenna"}</button></div>
+    </div>
   </div></div>`;
 }
 function renderDashQuickModal(){
@@ -793,413 +863,439 @@ function renderRegisterModal(){
   const monthName=new Date(month+"-01T12:00:00").toLocaleDateString("fi-FI",{month:"long",year:"numeric"});
   const printDate=new Date().toLocaleDateString("fi-FI",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"});
 
-// ALV-erittely per kanta, maksettu vs avoin
-const vatBreakdown=(rows)=>{
-const r255=rows.filter(x=>Math.abs(Number(x.vatRatePct||0)-25.5)<0.2);
-const r135=rows.filter(x=>Math.abs(Number(x.vatRatePct||0)-13.5)<0.2);
-const sum255={net:r255.reduce((s,x)=>s+Number(x.net||0),0),vat:r255.reduce((s,x)=>s+Number(x.vat||0),0),gross:r255.reduce((s,x)=>s+Number(x.grossTotal||0),0),count:r255.length};
-const sum135={net:r135.reduce((s,x)=>s+Number(x.net||0),0),vat:r135.reduce((s,x)=>s+Number(x.vat||0),0),gross:r135.reduce((s,x)=>s+Number(x.grossTotal||0),0),count:r135.length};
-return{r255:sum255,r135:sum135};
-};
-const paidVat=vatBreakdown(paid);
-const openVat=vatBreakdown(openList);
+  // ALV-erittely per kanta, maksettu vs avoin
+  const vatBreakdown=(rows)=>{
+    const r255=rows.filter(x=>Math.abs(Number(x.vatRatePct||0)-25.5)<0.2);
+    const r135=rows.filter(x=>Math.abs(Number(x.vatRatePct||0)-13.5)<0.2);
+    const sum255={net:r255.reduce((s,x)=>s+Number(x.net||0),0),vat:r255.reduce((s,x)=>s+Number(x.vat||0),0),gross:r255.reduce((s,x)=>s+Number(x.grossTotal||0),0),count:r255.length};
+    const sum135={net:r135.reduce((s,x)=>s+Number(x.net||0),0),vat:r135.reduce((s,x)=>s+Number(x.vat||0),0),gross:r135.reduce((s,x)=>s+Number(x.grossTotal||0),0),count:r135.length};
+    return{r255:sum255,r135:sum135};
+  };
+  const paidVat=vatBreakdown(paid);
+  const openVat=vatBreakdown(openList);
 
-const invoiceRow=(x)=>`<tr style="background:${Number(x.grossTotal||0)<0?"#fff5f5":""}"> <td style="white-space:nowrap;font-size:11px">${esc(x.invoiceDate||"")}</td> <td style="font-weight:700;color:#0a4272;white-space:nowrap;font-size:11px">${esc(x.invoiceNo||"")}</td> <td style="font-size:11px">${esc(x.payerName||"")}<div style="font-size:10px;color:#6b7280">${esc(x.eventName||"")}</div></td> <td style="font-size:10px">${invTypeBadge(x.itype||x.invoiceType||(x.isReservation?"reservation":"full"))}</td> <td style="white-space:nowrap;font-size:11px;text-align:center">${Number(x.vatRatePct||0).toFixed(1)}%</td> <td style="text-align:right;font-size:11px">${Number(x.net||0).toFixed(2)}</td> <td style="text-align:right;font-size:11px">${Number(x.vat||0).toFixed(2)}</td> <td style="text-align:right;font-weight:700;font-size:11px;color:${Number(x.grossTotal||0)<0?"#991b1b":"#0a4272"}">${Number(x.grossTotal||0).toFixed(2)}</td> <td style="font-size:10px">${x.paid?`<span style="background:#dcfce7;color:#166534;border:1px solid #86efac;border-radius:999px;padding:2px 7px;font-size:10px;font-weight:700">✓ ${esc(x.paidDate||””)}</span>`:`<span style="background:#fee2e2;color:#991b1b;border:1px solid #fca5a5;border-radius:999px;padding:2px 7px;font-size:10px;font-weight:700">● Avoin</span>`}</td>
-<td class="noPrint"><label style="display:flex;gap:5px;align-items:center;cursor:pointer;font-size:12px"><input type=“checkbox” data-action=“reg-paid” data-id=”${x.id}” ${x.paid?“checked”:””}> ${x.paid?“✓”:“Ei”}</label></td>
-
+  const invoiceRow=(x)=>`<tr style="background:${Number(x.grossTotal||0)<0?"#fff5f5":""}">
+    <td style="white-space:nowrap;font-size:11px">${esc(x.invoiceDate||"")}</td>
+    <td style="font-weight:700;color:#0a4272;white-space:nowrap;font-size:11px">${esc(x.invoiceNo||"")}</td>
+    <td style="font-size:11px">${esc(x.payerName||"")}<div style="font-size:10px;color:#6b7280">${esc(x.eventName||"")}</div></td>
+    <td style="font-size:10px">${invTypeBadge(x.itype||x.invoiceType||(x.isReservation?"reservation":"full"))}</td>
+    <td style="white-space:nowrap;font-size:11px;text-align:center">${Number(x.vatRatePct||0).toFixed(1)}%</td>
+    <td style="text-align:right;font-size:11px">${Number(x.net||0).toFixed(2)}</td>
+    <td style="text-align:right;font-size:11px">${Number(x.vat||0).toFixed(2)}</td>
+    <td style="text-align:right;font-weight:700;font-size:11px;color:${Number(x.grossTotal||0)<0?"#991b1b":"#0a4272"}">${Number(x.grossTotal||0).toFixed(2)}</td>
+    <td style="font-size:10px">${x.paid?`<span style="background:#dcfce7;color:#166534;border:1px solid #86efac;border-radius:999px;padding:2px 7px;font-size:10px;font-weight:700">✓ ${esc(x.paidDate||"")}</span>`:`<span style="background:#fee2e2;color:#991b1b;border:1px solid #fca5a5;border-radius:999px;padding:2px 7px;font-size:10px;font-weight:700">● Avoin</span>`}</td>
+    <td class="noPrint"><label style="display:flex;gap:5px;align-items:center;cursor:pointer;font-size:12px"><input type="checkbox" data-action="reg-paid" data-id="${x.id}" ${x.paid?"checked":""}> ${x.paid?"✓":"Ei"}</label></td>
   </tr>`;
 
-const tableHead=`<thead><tr style="background:#f9fafb"><th style="font-size:10px">Päivä</th><th style="font-size:10px">Nro</th><th style="font-size:10px">Maksaja / Tapahtuma</th><th style="font-size:10px">Tyyppi</th><th style="font-size:10px;text-align:center">ALV%</th><th style="font-size:10px;text-align:right">Netto €</th><th style="font-size:10px;text-align:right">ALV €</th><th style="font-size:10px;text-align:right">Brutto €</th><th style="font-size:10px">Tila</th><th class="noPrint"></th></tr></thead>`;
+  const tableHead=`<thead><tr style="background:#f9fafb"><th style="font-size:10px">Päivä</th><th style="font-size:10px">Nro</th><th style="font-size:10px">Maksaja / Tapahtuma</th><th style="font-size:10px">Tyyppi</th><th style="font-size:10px;text-align:center">ALV%</th><th style="font-size:10px;text-align:right">Netto €</th><th style="font-size:10px;text-align:right">ALV €</th><th style="font-size:10px;text-align:right">Brutto €</th><th style="font-size:10px">Tila</th><th class="noPrint"></th></tr></thead>`;
 
-return`<div class="overlay noPrint" data-action="close-modal"><div class="modal" onclick="event.stopPropagation()">
-<div class="modal-head"><div class="row-between">
-<div class="modal-title">📒 Kirjanpitoraportti</div>
-<div class="row">
-<button class="btn btn-primary btn-sm" data-action="print-register">🖨️ Tulosta kirjanpitoon</button>
-<button class="btn btn-secondary btn-sm" data-action="export-register-csv">⬇ CSV</button>
-<button class="btn btn-secondary btn-sm" data-action="close-modal">✕</button>
-</div>
-</div></div>
-<div class="modal-body">
-<div class="field" style="max-width:220px"><label class="lbl">Kuukausi</label><input data-action="reg-month" value="${esc(month)}" placeholder="2026-05"></div>
-<div id="reg-print-area">
+  return`<div class="overlay noPrint" data-action="close-modal"><div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-head"><div class="row-between">
+      <div class="modal-title">📒 Kirjanpitoraportti</div>
+      <div class="row">
+        <button class="btn btn-primary btn-sm" data-action="print-register">🖨️ Tulosta kirjanpitoon</button>
+        <button class="btn btn-secondary btn-sm" data-action="export-register-csv">⬇ CSV</button>
+        <button class="btn btn-secondary btn-sm" data-action="close-modal">✕</button>
+      </div>
+    </div></div>
+    <div class="modal-body">
+      <div class="field" style="max-width:220px"><label class="lbl">Kuukausi</label><input data-action="reg-month" value="${esc(month)}" placeholder="2026-05"></div>
+      <div id="reg-print-area">
 
-```
-    <!-- OTSIKKO: yrityksen tiedot + ajanjakso -->
-    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;gap:20px">
-      <div>
-        <div style="font-family:'Cormorant Garamond',serif;font-size:26px;font-weight:700;color:#0a4272;line-height:1.1">${esc(ISSUER.name)}</div>
-        <div style="font-size:12px;color:#374151;margin-top:4px;line-height:1.7">
-          Y-tunnus: <strong>${esc(ISSUER.businessId)}</strong><br>
-          IBAN: ${esc(BANK.iban)} &nbsp;·&nbsp; BIC: ${esc(BANK.bic)}
+        <!-- OTSIKKO: yrityksen tiedot + ajanjakso -->
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;gap:20px">
+          <div>
+            <div style="font-family:'Cormorant Garamond',serif;font-size:26px;font-weight:700;color:#0a4272;line-height:1.1">${esc(ISSUER.name)}</div>
+            <div style="font-size:12px;color:#374151;margin-top:4px;line-height:1.7">
+              Y-tunnus: <strong>${esc(ISSUER.businessId)}</strong><br>
+              IBAN: ${esc(BANK.iban)} &nbsp;·&nbsp; BIC: ${esc(BANK.bic)}
+            </div>
+          </div>
+          <div style="text-align:right;flex-shrink:0">
+            <div style="font-size:18px;font-weight:800;color:#111827">Myyntilaskuerittely</div>
+            <div style="font-size:12px;color:#374151;margin-top:4px;line-height:1.7">
+              Ajanjakso: <strong>${monthName}</strong><br>
+              Tulostettu: ${printDate}<br>
+              <span style="font-size:10px;color:#6b7280">${APP_VERSION} · ${UPDATE_DATE}</span>
+            </div>
+          </div>
         </div>
-      </div>
-      <div style="text-align:right;flex-shrink:0">
-        <div style="font-size:18px;font-weight:800;color:#111827">Myyntilaskuerittely</div>
-        <div style="font-size:12px;color:#374151;margin-top:4px;line-height:1.7">
-          Ajanjakso: <strong>${monthName}</strong><br>
-          Tulostettu: ${printDate}<br>
-          <span style="font-size:10px;color:#6b7280">${APP_VERSION} · ${UPDATE_DATE}</span>
-        </div>
-      </div>
-    </div>
-    <div style="border-top:3px solid #0a4272;margin-bottom:16px"></div>
+        <div style="border-top:3px solid #0a4272;margin-bottom:16px"></div>
 
-    <!-- ALV-ERITTELY YHTEENVETO -->
-    <div style="font-weight:800;font-size:11px;text-transform:uppercase;letter-spacing:.6px;color:#374151;margin-bottom:8px">ALV-erittely</div>
-    <table class="table" style="margin-bottom:16px">
-      <thead><tr style="background:#f9fafb">
-        <th style="font-size:10px">ALV-kanta</th>
-        <th style="font-size:10px;text-align:right">Laskuja</th>
-        <th style="font-size:10px;text-align:right">Netto €</th>
-        <th style="font-size:10px;text-align:right">ALV €</th>
-        <th style="font-size:10px;text-align:right">Brutto €</th>
-      </tr></thead>
-      <tbody>
-        ${sum.r255.count>0?`<tr>
-          <td style="font-weight:600;font-size:11px">ALV 25,5 % <span style="font-weight:400;color:#6b7280;font-size:10px">(purjehdukset, kurssit)</span></td>
-          <td style="text-align:right;font-size:11px">${sum.r255.count}</td>
-          <td style="text-align:right;font-size:11px">${sum.r255.net.toFixed(2)}</td>
-          <td style="text-align:right;font-size:11px">${sum.r255.vat.toFixed(2)}</td>
-          <td style="text-align:right;font-weight:700;font-size:11px">${sum.r255.gross.toFixed(2)}</td>
-        </tr>`:""}
-        ${sum.r135.count>0?`<tr>
-          <td style="font-weight:600;font-size:11px">ALV 13,5 % <span style="font-weight:400;color:#6b7280;font-size:10px">(charter)</span></td>
-          <td style="text-align:right;font-size:11px">${sum.r135.count}</td>
-          <td style="text-align:right;font-size:11px">${sum.r135.net.toFixed(2)}</td>
-          <td style="text-align:right;font-size:11px">${sum.r135.vat.toFixed(2)}</td>
-          <td style="text-align:right;font-weight:700;font-size:11px">${sum.r135.gross.toFixed(2)}</td>
-        </tr>`:""}
-        <tr style="background:#f0f4f8;border-top:2px solid #d1d5db">
-          <td style="font-weight:800;font-size:12px">Yhteensä</td>
-          <td style="text-align:right;font-weight:800;font-size:12px">${sum.all.count}</td>
-          <td style="text-align:right;font-weight:800;font-size:12px;color:#0a4272">${sum.all.net.toFixed(2)}</td>
-          <td style="text-align:right;font-weight:800;font-size:12px;color:#0a4272">${sum.all.vat.toFixed(2)}</td>
-          <td style="text-align:right;font-weight:800;font-size:14px;color:#0a4272">${sum.all.gross.toFixed(2)}</td>
-        </tr>
-      </tbody>
-    </table>
-
-    <!-- MAKSETTU / AVOIN -KORTIT -->
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
-      <div style="background:#dcfce7;border:1px solid #86efac;border-radius:10px;padding:14px 16px">
-        <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;color:#166534">✓ Maksettu — ${paidSum.count} laskua</div>
-        <div style="font-size:26px;font-weight:700;color:#166534;margin:6px 0 2px">${paidSum.gross.toFixed(2)} €</div>
-        <div style="font-size:11px;color:#166534">Netto ${paidSum.net.toFixed(2)} € &nbsp;·&nbsp; ALV ${paidSum.vat.toFixed(2)} €</div>
-        ${paidVat.r255.count>0?`<div style="font-size:10px;color:#166534;margin-top:2px">25,5%: netto ${paidVat.r255.net.toFixed(2)} € · alv ${paidVat.r255.vat.toFixed(2)} €</div>`:""}
-        ${paidVat.r135.count>0?`<div style="font-size:10px;color:#166534">13,5%: netto ${paidVat.r135.net.toFixed(2)} € · alv ${paidVat.r135.vat.toFixed(2)} €</div>`:""}
-      </div>
-      <div style="background:#fee2e2;border:1px solid #fca5a5;border-radius:10px;padding:14px 16px">
-        <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;color:#991b1b">● Avoin — ${openSum.count} laskua</div>
-        <div style="font-size:26px;font-weight:700;color:#991b1b;margin:6px 0 2px">${openSum.gross.toFixed(2)} €</div>
-        <div style="font-size:11px;color:#991b1b">Netto ${openSum.net.toFixed(2)} € &nbsp;·&nbsp; ALV ${openSum.vat.toFixed(2)} €</div>
-        ${openVat.r255.count>0?`<div style="font-size:10px;color:#991b1b;margin-top:2px">25,5%: netto ${openVat.r255.net.toFixed(2)} € · alv ${openVat.r255.vat.toFixed(2)} €</div>`:""}
-        ${openVat.r135.count>0?`<div style="font-size:10px;color:#991b1b">13,5%: netto ${openVat.r135.net.toFixed(2)} € · alv ${openVat.r135.vat.toFixed(2)} €</div>`:""}
-      </div>
-    </div>
-
-    <!-- MAKSETUT LASKUT -->
-    ${paid.length>0?`
-      <div style="border-top:1.5px solid #e5e7eb;margin:16px 0 10px"></div>
-      <div style="font-weight:800;font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:#166534;margin-bottom:6px">✓ Maksetut laskut — ${paid.length} kpl</div>
-      <table class="table">
-        ${tableHead}
-        <tbody>${paid.map(invoiceRow).join("")}</tbody>
-        <tfoot><tr style="background:#dcfce7;font-weight:800;border-top:2px solid #86efac">
-          <td colspan="5" style="font-size:11px">Maksetut yhteensä</td>
-          <td style="text-align:right;font-size:11px">${paidSum.net.toFixed(2)}</td>
-          <td style="text-align:right;font-size:11px">${paidSum.vat.toFixed(2)}</td>
-          <td style="text-align:right;font-size:12px;color:#166534">${paidSum.gross.toFixed(2)}</td>
-          <td colspan="2"></td>
-        </tr></tfoot>
-      </table>
-    `:""}
-
-    <!-- AVOIMET LASKUT -->
-    ${openList.length>0?`
-      <div style="border-top:1.5px solid #e5e7eb;margin:16px 0 10px"></div>
-      <div style="font-weight:800;font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:#991b1b;margin-bottom:6px">● Avoimet laskut — ${openList.length} kpl</div>
-      <table class="table">
-        ${tableHead}
-        <tbody>${openList.map(invoiceRow).join("")}</tbody>
-        <tfoot><tr style="background:#fee2e2;font-weight:800;border-top:2px solid #fca5a5">
-          <td colspan="5" style="font-size:11px">Avoimet yhteensä</td>
-          <td style="text-align:right;font-size:11px">${openSum.net.toFixed(2)}</td>
-          <td style="text-align:right;font-size:11px">${openSum.vat.toFixed(2)}</td>
-          <td style="text-align:right;font-size:12px;color:#991b1b">${openSum.gross.toFixed(2)}</td>
-          <td colspan="2"></td>
-        </tr></tfoot>
-      </table>
-    `:""}
-
-    ${list.length===0?`<div style="background:#dbeafe;color:#1e3a8a;border:1px solid #93c5fd;border-radius:10px;padding:10px 14px;font-size:13px">Ei laskuja valitulle kuukaudelle.</div>`:""}
-
-    <!-- LOPPUSUMMA -->
-    ${list.length>0?`
-      <div style="border-top:3px solid #0a4272;margin-top:20px;padding-top:14px">
-        <table style="width:100%;border-collapse:collapse;max-width:420px;margin-left:auto">
-          <tr><td style="font-size:12px;font-weight:600;padding:4px 8px">Laskutettu netto yhteensä</td><td style="text-align:right;font-size:12px;font-weight:700;padding:4px 8px">${sum.all.net.toFixed(2)} €</td></tr>
-          <tr><td style="font-size:12px;font-weight:600;padding:4px 8px">ALV yhteensä</td><td style="text-align:right;font-size:12px;font-weight:700;padding:4px 8px">${sum.all.vat.toFixed(2)} €</td></tr>
-          <tr style="background:#f0f4f8"><td style="font-size:14px;font-weight:800;padding:6px 8px">Laskutettu brutto yhteensä</td><td style="text-align:right;font-size:16px;font-weight:800;color:#0a4272;padding:6px 8px">${sum.all.gross.toFixed(2)} €</td></tr>
-          <tr><td style="font-size:12px;font-weight:600;color:#166534;padding:4px 8px">Josta maksettu</td><td style="text-align:right;font-size:12px;font-weight:700;color:#166534;padding:4px 8px">${paidSum.gross.toFixed(2)} €</td></tr>
-          <tr><td style="font-size:12px;font-weight:600;color:#991b1b;padding:4px 8px">Josta avoin</td><td style="text-align:right;font-size:12px;font-weight:700;color:#991b1b;padding:4px 8px">${openSum.gross.toFixed(2)} €</td></tr>
+        <!-- ALV-ERITTELY YHTEENVETO -->
+        <div style="font-weight:800;font-size:11px;text-transform:uppercase;letter-spacing:.6px;color:#374151;margin-bottom:8px">ALV-erittely</div>
+        <table class="table" style="margin-bottom:16px">
+          <thead><tr style="background:#f9fafb">
+            <th style="font-size:10px">ALV-kanta</th>
+            <th style="font-size:10px;text-align:right">Laskuja</th>
+            <th style="font-size:10px;text-align:right">Netto €</th>
+            <th style="font-size:10px;text-align:right">ALV €</th>
+            <th style="font-size:10px;text-align:right">Brutto €</th>
+          </tr></thead>
+          <tbody>
+            ${sum.r255.count>0?`<tr>
+              <td style="font-weight:600;font-size:11px">ALV 25,5 % <span style="font-weight:400;color:#6b7280;font-size:10px">(purjehdukset, kurssit)</span></td>
+              <td style="text-align:right;font-size:11px">${sum.r255.count}</td>
+              <td style="text-align:right;font-size:11px">${sum.r255.net.toFixed(2)}</td>
+              <td style="text-align:right;font-size:11px">${sum.r255.vat.toFixed(2)}</td>
+              <td style="text-align:right;font-weight:700;font-size:11px">${sum.r255.gross.toFixed(2)}</td>
+            </tr>`:""}
+            ${sum.r135.count>0?`<tr>
+              <td style="font-weight:600;font-size:11px">ALV 13,5 % <span style="font-weight:400;color:#6b7280;font-size:10px">(charter)</span></td>
+              <td style="text-align:right;font-size:11px">${sum.r135.count}</td>
+              <td style="text-align:right;font-size:11px">${sum.r135.net.toFixed(2)}</td>
+              <td style="text-align:right;font-size:11px">${sum.r135.vat.toFixed(2)}</td>
+              <td style="text-align:right;font-weight:700;font-size:11px">${sum.r135.gross.toFixed(2)}</td>
+            </tr>`:""}
+            <tr style="background:#f0f4f8;border-top:2px solid #d1d5db">
+              <td style="font-weight:800;font-size:12px">Yhteensä</td>
+              <td style="text-align:right;font-weight:800;font-size:12px">${sum.all.count}</td>
+              <td style="text-align:right;font-weight:800;font-size:12px;color:#0a4272">${sum.all.net.toFixed(2)}</td>
+              <td style="text-align:right;font-weight:800;font-size:12px;color:#0a4272">${sum.all.vat.toFixed(2)}</td>
+              <td style="text-align:right;font-weight:800;font-size:14px;color:#0a4272">${sum.all.gross.toFixed(2)}</td>
+            </tr>
+          </tbody>
         </table>
-      </div>
-      <div style="font-size:10px;color:#9ca3af;margin-top:14px;padding-top:8px;border-top:1px solid #e5e7eb;text-align:center">
-        ${esc(ISSUER.name)} · Y-tunnus ${esc(ISSUER.businessId)} · Raportti tulostettu J Sailing -hallintapaneelista ${APP_VERSION} · ${printDate}
-      </div>
-    `:""}
-  </div>
-</div>
-```
 
+        <!-- MAKSETTU / AVOIN -KORTIT -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
+          <div style="background:#dcfce7;border:1px solid #86efac;border-radius:10px;padding:14px 16px">
+            <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;color:#166534">✓ Maksettu — ${paidSum.count} laskua</div>
+            <div style="font-size:26px;font-weight:700;color:#166534;margin:6px 0 2px">${paidSum.gross.toFixed(2)} €</div>
+            <div style="font-size:11px;color:#166534">Netto ${paidSum.net.toFixed(2)} € &nbsp;·&nbsp; ALV ${paidSum.vat.toFixed(2)} €</div>
+            ${paidVat.r255.count>0?`<div style="font-size:10px;color:#166534;margin-top:2px">25,5%: netto ${paidVat.r255.net.toFixed(2)} € · alv ${paidVat.r255.vat.toFixed(2)} €</div>`:""}
+            ${paidVat.r135.count>0?`<div style="font-size:10px;color:#166534">13,5%: netto ${paidVat.r135.net.toFixed(2)} € · alv ${paidVat.r135.vat.toFixed(2)} €</div>`:""}
+          </div>
+          <div style="background:#fee2e2;border:1px solid #fca5a5;border-radius:10px;padding:14px 16px">
+            <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;color:#991b1b">● Avoin — ${openSum.count} laskua</div>
+            <div style="font-size:26px;font-weight:700;color:#991b1b;margin:6px 0 2px">${openSum.gross.toFixed(2)} €</div>
+            <div style="font-size:11px;color:#991b1b">Netto ${openSum.net.toFixed(2)} € &nbsp;·&nbsp; ALV ${openSum.vat.toFixed(2)} €</div>
+            ${openVat.r255.count>0?`<div style="font-size:10px;color:#991b1b;margin-top:2px">25,5%: netto ${openVat.r255.net.toFixed(2)} € · alv ${openVat.r255.vat.toFixed(2)} €</div>`:""}
+            ${openVat.r135.count>0?`<div style="font-size:10px;color:#991b1b">13,5%: netto ${openVat.r135.net.toFixed(2)} € · alv ${openVat.r135.vat.toFixed(2)} €</div>`:""}
+          </div>
+        </div>
+
+        <!-- MAKSETUT LASKUT -->
+        ${paid.length>0?`
+          <div style="border-top:1.5px solid #e5e7eb;margin:16px 0 10px"></div>
+          <div style="font-weight:800;font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:#166534;margin-bottom:6px">✓ Maksetut laskut — ${paid.length} kpl</div>
+          <table class="table">
+            ${tableHead}
+            <tbody>${paid.map(invoiceRow).join("")}</tbody>
+            <tfoot><tr style="background:#dcfce7;font-weight:800;border-top:2px solid #86efac">
+              <td colspan="5" style="font-size:11px">Maksetut yhteensä</td>
+              <td style="text-align:right;font-size:11px">${paidSum.net.toFixed(2)}</td>
+              <td style="text-align:right;font-size:11px">${paidSum.vat.toFixed(2)}</td>
+              <td style="text-align:right;font-size:12px;color:#166534">${paidSum.gross.toFixed(2)}</td>
+              <td colspan="2"></td>
+            </tr></tfoot>
+          </table>
+        `:""}
+
+        <!-- AVOIMET LASKUT -->
+        ${openList.length>0?`
+          <div style="border-top:1.5px solid #e5e7eb;margin:16px 0 10px"></div>
+          <div style="font-weight:800;font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:#991b1b;margin-bottom:6px">● Avoimet laskut — ${openList.length} kpl</div>
+          <table class="table">
+            ${tableHead}
+            <tbody>${openList.map(invoiceRow).join("")}</tbody>
+            <tfoot><tr style="background:#fee2e2;font-weight:800;border-top:2px solid #fca5a5">
+              <td colspan="5" style="font-size:11px">Avoimet yhteensä</td>
+              <td style="text-align:right;font-size:11px">${openSum.net.toFixed(2)}</td>
+              <td style="text-align:right;font-size:11px">${openSum.vat.toFixed(2)}</td>
+              <td style="text-align:right;font-size:12px;color:#991b1b">${openSum.gross.toFixed(2)}</td>
+              <td colspan="2"></td>
+            </tr></tfoot>
+          </table>
+        `:""}
+
+        ${list.length===0?`<div style="background:#dbeafe;color:#1e3a8a;border:1px solid #93c5fd;border-radius:10px;padding:10px 14px;font-size:13px">Ei laskuja valitulle kuukaudelle.</div>`:""}
+
+        <!-- LOPPUSUMMA -->
+        ${list.length>0?`
+          <div style="border-top:3px solid #0a4272;margin-top:20px;padding-top:14px">
+            <table style="width:100%;border-collapse:collapse;max-width:420px;margin-left:auto">
+              <tr><td style="font-size:12px;font-weight:600;padding:4px 8px">Laskutettu netto yhteensä</td><td style="text-align:right;font-size:12px;font-weight:700;padding:4px 8px">${sum.all.net.toFixed(2)} €</td></tr>
+              <tr><td style="font-size:12px;font-weight:600;padding:4px 8px">ALV yhteensä</td><td style="text-align:right;font-size:12px;font-weight:700;padding:4px 8px">${sum.all.vat.toFixed(2)} €</td></tr>
+              <tr style="background:#f0f4f8"><td style="font-size:14px;font-weight:800;padding:6px 8px">Laskutettu brutto yhteensä</td><td style="text-align:right;font-size:16px;font-weight:800;color:#0a4272;padding:6px 8px">${sum.all.gross.toFixed(2)} €</td></tr>
+              <tr><td style="font-size:12px;font-weight:600;color:#166534;padding:4px 8px">Josta maksettu</td><td style="text-align:right;font-size:12px;font-weight:700;color:#166534;padding:4px 8px">${paidSum.gross.toFixed(2)} €</td></tr>
+              <tr><td style="font-size:12px;font-weight:600;color:#991b1b;padding:4px 8px">Josta avoin</td><td style="text-align:right;font-size:12px;font-weight:700;color:#991b1b;padding:4px 8px">${openSum.gross.toFixed(2)} €</td></tr>
+            </table>
+          </div>
+          <div style="font-size:10px;color:#9ca3af;margin-top:14px;padding-top:8px;border-top:1px solid #e5e7eb;text-align:center">
+            ${esc(ISSUER.name)} · Y-tunnus ${esc(ISSUER.businessId)} · Raportti tulostettu J Sailing -hallintapaneelista ${APP_VERSION} · ${printDate}
+          </div>
+        `:""}
+      </div>
+    </div>
   </div></div>`;
 }
 
 function renderAuthScreen(errorMsg){
-document.getElementById(“app”).innerHTML=`<div class="auth-screen"><div class="auth-card"> <div class="auth-emblem">⛵</div> <div class="auth-title">J <em>Sailing</em></div> <div class="auth-sub">Absolut 37 · Hallintapaneeli ${APP_VERSION}<br>Kirjaudu sisään Google-tilillä jatkaaksesi.</div> ${errorMsg?`<div class="infobox infobox-red" style="margin-bottom:16px">${esc(errorMsg)}</div>`:””}
-<button class="btn-google" id="btnGoogle">
-<svg viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
-Kirjaudu Google-tilillä
-</button>
-<div class="auth-note">Vain ${esc(ALLOWED_EMAIL)} voi kirjautua sisään.</div>
-
+  document.getElementById("app").innerHTML=`<div class="auth-screen"><div class="auth-card">
+    <div class="auth-emblem">⛵</div>
+    <div class="auth-title">J <em>Sailing</em></div>
+    <div class="auth-sub">Absolut 37 · Hallintapaneeli ${APP_VERSION}<br>Kirjaudu sisään Google-tilillä jatkaaksesi.</div>
+    ${errorMsg?`<div class="infobox infobox-red" style="margin-bottom:16px">${esc(errorMsg)}</div>`:""}
+    <button class="btn-google" id="btnGoogle">
+      <svg viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+      Kirjaudu Google-tilillä
+    </button>
+    <div class="auth-note">Vain ${esc(ALLOWED_EMAIL)} voi kirjautua sisään.</div>
   </div></div>`;
   document.getElementById("btnGoogle")?.addEventListener("click",async()=>{try{const provider=new GoogleAuthProvider();await signInWithPopup(auth,provider);}catch(e){renderAuthScreen("Kirjautuminen epäonnistui: "+e.message);}});
 }
 
 function bind(){
-document.querySelectorAll(”[data-tab]”).forEach(b=>{b.onclick=()=>{state.tab=b.dataset.tab;render();};});
-document.querySelector(’[data-action=“restore-json”]’)?.addEventListener(“change”,async(e)=>{
-const file=e.target.files?.[0];if(!file)return;
-try{const text=await file.text(),data=JSON.parse(text);if(!confirm(“Palautus korvaa nykyiset tiedot. Jatketaanko?”))return;
-if(CONFIG_READY&&db){const cols=[“customers”,“sailings”,“companies”,“invoices”,“tutkinnot”];for(const col of cols){const items=Array.isArray(data[col])?data[col]:[];for(const item of items){const{id,…rest}=item;await fsSet(col,id||genId(“X”),rest);}}alert(“Palautettu Firebaseen ✓”);}
-else{state.customers=Array.isArray(data.customers)?data.customers:[];state.sailings=Array.isArray(data.sailings)?data.sailings:[];state.companies=Array.isArray(data.companies)?data.companies:[];state.invoices=Array.isArray(data.invoices)?data.invoices:[];state.tutkinnot=Array.isArray(data.tutkinnot)?data.tutkinnot:[];alert(“Palautettu demo-tilaan ✓”);render();}
-}catch(err){alert(“Palautus epäonnistui: tiedosto ei ole kelvollinen JSON.”);}finally{e.target.value=””;}
-});
-// V8.2: tyyppi-valinta re-renderöi modalin kestolaskennalle + tallentaa reitti-draftin
-document.querySelector(’[data-action=“sailing-type-changed”]’)?.addEventListener(“change”,()=>{
-const d=state.sailingDraft||{};
-const nameEl=document.querySelector(’[data-field=“name”]’);
-const reittiEl=document.querySelector(’[data-field=“reitti”]’);
-const dateEl=document.querySelector(’[data-field=“date”]’);
-const endDateEl=document.querySelector(’[data-field=“endDate”]’);
-const startEl=document.querySelector(’[data-field=“startTime”]’);
-const endEl=document.querySelector(’[data-field=“endTime”]’);
-const typeEl=document.querySelector(’[data-field=“sailing-type-live”]’);
-if(nameEl) d.name=nameEl.value;
-if(reittiEl) d.reitti=reittiEl.value;
-if(dateEl) d.date=dateEl.value;
-if(endDateEl) d.endDate=endDateEl.value;
-if(startEl) d.startTime=startEl.value;
-if(endEl) d.endTime=endEl.value;
-if(typeEl) d.type=typeEl.value;
-state.sailingDraft=d;
-render();
-});
-document.querySelector(’[data-action=“multiday-date-changed”]’)?.addEventListener(“change”,()=>{
-const d=state.sailingDraft||{};
-const nameEl=document.querySelector(’[data-field=“name”]’);
-const reittiEl=document.querySelector(’[data-field=“reitti”]’);
-const dateEl=document.querySelector(’[data-field=“date”]’);
-const endDateEl=document.querySelector(’[data-field=“endDate”]’);
-const startEl=document.querySelector(’[data-field=“startTime”]’);
-const endEl=document.querySelector(’[data-field=“endTime”]’);
-const typeEl=document.querySelector(’[data-field=“sailing-type-live”]’);
-if(nameEl) d.name=nameEl.value;
-if(reittiEl) d.reitti=reittiEl.value;
-if(dateEl) d.date=dateEl.value;
-if(endDateEl) d.endDate=endDateEl.value;
-if(startEl) d.startTime=startEl.value;
-if(endEl) d.endTime=endEl.value;
-if(typeEl) d.type=typeEl.value;
-state.sailingDraft=d;
-render();
-});
-document.querySelector(’[data-action=“search-customers”]’)?.addEventListener(“input”,e=>{state.searchCustomers=e.target.value;render();});
-document.querySelector(’[data-action=“search-sailings”]’)?.addEventListener(“input”,e=>{state.searchSailings=e.target.value;render();});
-document.querySelector(’[data-action=“search-tutkinnot”]’)?.addEventListener(“input”,e=>{state.searchTutkinnot=e.target.value;render();});
-document.querySelector(’[data-action=“inv-source”]’)?.addEventListener(“change”,e=>{state.invoice.source=e.target.value;state.invoice.type=“full”;state.invoice.partialAmount=””;state.invoice.creditRefId=””;render();});
-document.querySelector(’[data-action=“inv-tutkinto”]’)?.addEventListener(“change”,e=>{state.invoice.tutkintoId=e.target.value;render();});
-document.querySelector(’[data-action=“inv-sailing”]’)?.addEventListener(“change”,e=>{state.invoice.sailingId=e.target.value;state.invoice.type=“full”;state.invoice.creditRefId=””;render();});
-document.querySelector(’[data-action=“inv-mode”]’)?.addEventListener(“change”,e=>{state.invoice.mode=e.target.value;render();});
-document.querySelector(’[data-action=“inv-type”]’)?.addEventListener(“change”,e=>{state.invoice.type=e.target.value;render();});
-document.querySelector(’[data-action=“inv-customer”]’)?.addEventListener(“change”,e=>{state.invoice.customerId=e.target.value;render();});
-document.querySelector(’[data-action=“inv-company”]’)?.addEventListener(“change”,e=>{state.invoice.companyId=e.target.value;render();});
-document.querySelector(’[data-action=“inv-date”]’)?.addEventListener(“change”,e=>{state.invoice.invoiceDate=e.target.value;render();});
-document.querySelector(’[data-action=“inv-partial-amount”]’)?.addEventListener(“input”,e=>{state.invoice.partialAmount=e.target.value;render();});
-document.querySelector(’[data-action=“inv-credit-ref”]’)?.addEventListener(“change”,e=>{state.invoice.creditRefId=e.target.value;render();});
-document.querySelector(’[data-action=“reg-month”]’)?.addEventListener(“input”,e=>{state.registerMonth=(e.target.value||””).trim();});
-document.querySelector(’[data-field=“qnc-name”]’)?.addEventListener(“input”,e=>{if(!state.dashNewCustomer)state.dashNewCustomer={};state.dashNewCustomer.name=e.target.value;});
-document.querySelector(’[data-field=“qnc-phone”]’)?.addEventListener(“input”,e=>{if(!state.dashNewCustomer)state.dashNewCustomer={};state.dashNewCustomer.phone=e.target.value;});
-document.querySelector(’[data-field=“qnc-email”]’)?.addEventListener(“input”,e=>{if(!state.dashNewCustomer)state.dashNewCustomer={};state.dashNewCustomer.email=e.target.value;});
-document.querySelector(’[data-field=“qnc-status”]’)?.addEventListener(“change”,e=>{if(!state.dashNewCustomer)state.dashNewCustomer={};state.dashNewCustomer.status=e.target.value;});
-document.querySelectorAll(’[data-action=“reg-paid”]’).forEach(cb=>{cb.onchange=async()=>{const x=state.invoices.find(z=>z.id===cb.dataset.id);if(!x)return;x.paid=!!cb.checked;if(x.paid){const pd=prompt(“Maksupäivä (YYYY-MM-DD):”,x.paidDate||today());if(!pd){x.paid=false;x.paidDate=””;}else{x.paidDate=pd;}}else x.paidDate=””;await fsSet(“invoices”,x.id,x);render();};});
-document.querySelectorAll(”[data-action]”).forEach(el=>{
-if(el.tagName===“INPUT”&&el.type===“checkbox”)return;
-if(el.tagName===“A”&&el.dataset.action===“gcal-mark”){el.onclick=async()=>{const sailingId=el.dataset.id,idxRaw=el.dataset.idx;const idx=(idxRaw!==””&&idxRaw!=null)?Number(idxRaw):null;setTimeout(()=>markGcalAdded(sailingId,idx),300);};return;}
-el.onclick=async(e)=>{
-e.stopPropagation();
-const a=el.dataset.action,itemId=el.dataset.id;
-const idx=(el.dataset.idx!==””&&el.dataset.idx!=null)?Number(el.dataset.idx):null;
-if(a===“sign-out”){await signOut(auth);return;}
-if(a===“set-group”){state.sailingGroup=itemId;render();return;}
-if(a===“cal-nav”){state.calendarMonth=el.dataset.month;render();return;}
-if(a===“cal-today”){state.calendarMonth=today().slice(0,7);render();return;}
-if(a===“toggle-sailing”){state.openSailingId=(state.openSailingId===itemId)?null:itemId;render();return;}
-if(a===“close-modal”){state.modal=null;state.editId=null;state.editSession=null;state.previewInvoiceId=null;state.dashQuickId=null;state.dashQuickType=null;render();return;}
-if(a===“dash-open”){state.dashQuickId=itemId;state.dashQuickType=el.dataset.type||“sailing”;state.dashNewCustomer={name:””,phone:””,email:””,status:“pending”};state.modal=“dash-quick”;render();return;}
-if(a===“qnc-clear”){state.dashNewCustomer={name:””,phone:””,email:””,status:“pending”};render();return;}
-if(a===“qnc-save”){
-const name=(document.querySelector(’[data-field=“qnc-name”]’)?.value||””).trim();if(!name)return alert(“Nimi on pakollinen.”);
-const phone=(document.querySelector(’[data-field=“qnc-phone”]’)?.value||””).trim();
-const email=(document.querySelector(’[data-field=“qnc-email”]’)?.value||””).trim();
-const status=document.querySelector(’[data-field=“qnc-status”]’)?.value||“pending”;
-await fsAdd(“customers”,{name,phone,email,sailingId:state.dashQuickType===“sailing”?state.dashQuickId:””,billTo:“self”,companyId:””,reservationStatus:status});
-state.dashNewCustomer={name:””,phone:””,email:””,status:“pending”};alert(`${name} lisätty!`);render();return;
-}
-if(a===“new-customer”){state.modal=“customer”;state.editId=null;render();return;}
-if(a===“edit-customer”){state.modal=“customer”;state.editId=itemId;render();return;}
-if(a===“new-sailing”){state.modal=“sailing”;state.editId=null;state.sailingDraft={};render();return;}
-if(a===“edit-sailing”){state.modal=“sailing”;state.editId=itemId;state.sailingDraft={};render();return;}
-if(a===“new-company”){state.modal=“company”;state.editId=null;render();return;}
-if(a===“edit-company”){state.modal=“company”;state.editId=itemId;render();return;}
-if(a===“open-register”){state.modal=“register”;render();return;}
-if(a===“new-tutkinto”){state.modal=“tutkinto”;state.editId=null;render();return;}
-if(a===“edit-tutkinto”){state.modal=“tutkinto”;state.editId=itemId;render();return;}
-if(a===“delete-tutkinto”){if(!confirm(“Poistetaanko tutkinto?”))return;await fsDel(“tutkinnot”,itemId);render();return;}
-if(a===“save-tutkinto”){
-const type=document.querySelector(’[data-field=“tutkinto-type”]’)?.value||””;
-const date=document.querySelector(’[data-field=“tutkinto-date”]’)?.value||””;
-const customerName=(document.querySelector(’[data-field=“tutkinto-customer”]’)?.value||””).trim();
-const notes=(document.querySelector(’[data-field=“tutkinto-notes”]’)?.value||””).trim();
-const isPaikka=[“Rannikkopäällikkö”,“Saaristopäällikkö”].includes(type);
-const boatType=isPaikka?(document.querySelector(’[data-field=“tutkinto-boattype”]’)?.value||“Purjevene”):””;
-const maxPersons=isPaikka?parseInt(document.querySelector(’[data-field=“tutkinto-maxpersons”]’)?.value||“4”,10):0;
-const reserveSlots=isPaikka?parseInt(document.querySelector(’[data-field=“tutkinto-reserveslots”]’)?.value||“2”,10):0;
-if(!type||!date||!customerName)return alert(“Täytä pakolliset kentät.”);
-const data={type,date,customerName,sailingId:””,notes,boatType,maxPersons,reserveSlots,enrolled:0};
-if(state.editId){const ex=state.tutkinnot.find(x=>x.id===state.editId);data.enrolled=ex?.enrolled||0;await fsSet(“tutkinnot”,state.editId,data);}else await fsAdd(“tutkinnot”,data);
-state.modal=null;state.editId=null;render();return;
-}
-if(a===“preview-invoice”){state.previewInvoiceId=itemId;state.modal=“invoice-preview”;render();return;}
-if(a===“print-preview”){window.print();return;}
-if(a===“edit-session-cal”||a===“edit-session-direct”){if(idx===null||isNaN(idx))return;state.editSession={sailingId:itemId,idx};state.modal=“session”;render();return;}
-if(a===“confirm-payment”){const c=state.customers.find(x=>x.id===itemId);if(!c)return;if(!confirm(`Merkitäänkö ${c.name} varausmaksu suoritetuksi?`))return;c.reservationStatus=“paid”;await fsSet(“customers”,c.id,c);render();return;}
-if(a===“promote-reserve”){const c=state.customers.find(x=>x.id===itemId);if(!c)return;const s=state.sailings.find(x=>x.id===c.sailingId);if(!s)return;if(confirmedCount(s.id)>=Number(s.maxPersons||0)){alert(“Kurssi on täynnä.”);return;}if(!confirm(`Siirretäänkö ${c.name} odottamaan varausmaksua?`))return;c.reservationStatus=“pending”;await fsSet(“customers”,c.id,c);render();return;}
-if(a===“add-session”){const s=state.sailings.find(x=>x.id===itemId);if(!s)return;const date=prompt(“Kurssipäivä (YYYY-MM-DD):”,today());if(!date)return;const start=prompt(“Aloitusaika (HH:MM):”,“17:00”)||””;const end=prompt(“Lopetusaika (HH:MM):”,“20:00”)||””;const note=prompt(“Lisähuomio:”,””)||””;if(!Array.isArray(s.sessions))s.sessions=[];s.sessions.push({date,start,end,note});await fsSet(“sailings”,s.id,s);render();return;}
-if(a===“delete-session”){const s=state.sailings.find(x=>x.id===itemId);if(!s||!Array.isArray(s.sessions))return;if(idx===null||isNaN(idx))return;if(!confirm(“Poistetaanko kurssipäivä?”))return;s.sessions.splice(idx,1);await fsSet(“sailings”,s.id,s);render();return;}
-if(a===“edit-teoria”){state.modal=“teoria”;state.editId=itemId;render();return;}
-if(a===“save-teoria”){const s=state.sailings.find(x=>x.id===state.editId);if(!s)return;const date=document.querySelector(’[data-field=“teo-date”]’)?.value||””;if(!date)return alert(“Teoriapäivän päivämäärä on pakollinen.”);s.teoria={date,place:(document.querySelector(’[data-field=“teo-place”]’)?.value||””).trim(),start:document.querySelector(’[data-field=“teo-start”]’)?.value||””,end:document.querySelector(’[data-field=“teo-end”]’)?.value||””,note:(document.querySelector(’[data-field=“teo-note”]’)?.value||””).trim()};await fsSet(“sailings”,s.id,s);state.modal=null;state.editId=null;render();return;}
-if(a===“delete-teoria”){const s=state.sailings.find(x=>x.id===itemId);if(!s)return;if(!confirm(“Poistetaanko teoriapäivä?”))return;s.teoria=null;await fsSet(“sailings”,s.id,s);state.modal=null;render();return;}
-if(a===“save-session-modal”){const{sailingId,idx}=state.editSession||{};const s=state.sailings.find(x=>x.id===sailingId);if(!s||!s.sessions?.[idx])return;const newDate=document.querySelector(’[data-field=“sess-date”]’)?.value||””;if(!newDate)return alert(“Päivämäärä on pakollinen.”);s.sessions[idx].date=newDate;s.sessions[idx].start=document.querySelector(’[data-field=“sess-start”]’)?.value||””;s.sessions[idx].end=document.querySelector(’[data-field=“sess-end”]’)?.value||””;s.sessions[idx].note=document.querySelector(’[data-field=“sess-note”]’)?.value||””;await fsSet(“sailings”,s.id,s);state.modal=null;state.editSession=null;render();return;}
-if(a===“save-customer”){
-const name=(document.querySelector(’[data-field=“name”]’)?.value||””).trim();if(!name)return alert(“Nimi pakollinen”);
-const phone=(document.querySelector(’[data-field=“phone”]’)?.value||””).trim();
-const email=(document.querySelector(’[data-field=“email”]’)?.value||””).trim();
-const sailingId=document.querySelector(’[data-field=“sailingId”]’)?.value||””;
-const billTo=document.querySelector(’[data-field=“billTo”]’)?.value||“self”;
-const companyId=document.querySelector(’[data-field=“companyId”]’)?.value||””;
-const reservationStatus=document.querySelector(’[data-field=“reservationStatus”]’)?.value||“pending”;
-if(billTo===“company”&&!companyId)return alert(“Valitse tilaajayritys.”);
-const data={name,phone,email,sailingId,billTo,companyId:(billTo===“company”)?companyId:””,reservationStatus};
-if(state.editId)await fsSet(“customers”,state.editId,data);else await fsAdd(“customers”,data);
-state.modal=null;state.editId=null;render();return;
-}
-if(a===“save-sailing”){
-const name=(document.querySelector(’[data-field=“name”]’)?.value||””).trim();
-const date=document.querySelector(’[data-field=“date”]’)?.value||””;
-const type=document.querySelector(’[data-field=“sailing-type-live”]’)?.value||””;
-if(!name||!date||!type)return alert(“Täytä pakolliset kentät.”);
-const endDate=(document.querySelector(’[data-field=“endDate”]’)?.value||””);
-if(endDate&&endDate<date)return alert(“Paluupäivä ei voi olla ennen alkamispäivää.”);
-const existing=state.editId?state.sailings.find(x=>x.id===state.editId):null;
-const data={name,date,type,
-reitti:(document.querySelector(’[data-field=“reitti”]’)?.value||””).trim(),
-endDate:endDate||””,
-startTime:document.querySelector(’[data-field=“startTime”]’)?.value||””,
-endTime:document.querySelector(’[data-field=“endTime”]’)?.value||””,
-maxPersons:parseInt(document.querySelector(’[data-field=“maxPersons”]’)?.value,10)||1,
-reserveSlots:Math.max(0,parseInt(document.querySelector(’[data-field=“reserveSlots”]’)?.value,10)||0),
-pricePerPerson:parseFloat(document.querySelector(’[data-field=“pricePerPerson”]’)?.value)||0,
-reservationFee:parseFloat(document.querySelector(’[data-field=“reservationFee”]’)?.value)||0,
-sessions:existing?.sessions||[],
-teoria:existing?.teoria||null
-};
-if(state.editId)await fsSet(“sailings”,state.editId,data);
-else{const newId=await fsAdd(“sailings”,data);if(!state.invoice.sailingId)state.invoice.sailingId=newId;}
-state.modal=null;state.editId=null;state.sailingDraft={};render();return;
-}
-if(a===“save-company”){const name=(document.querySelector(’[data-field=“name”]’)?.value||””).trim();if(!name)return alert(“Yrityksen nimi pakollinen.”);const data={name,businessId:document.querySelector(’[data-field=“businessId”]’)?.value||””,email:document.querySelector(’[data-field=“email”]’)?.value||””,commissionPct:parseFloat(document.querySelector(’[data-field=“commissionPct”]’)?.value)||0};if(state.editId)await fsSet(“companies”,state.editId,data);else await fsAdd(“companies”,data);state.modal=null;state.editId=null;render();return;}
-if(a===“delete-customer”){if(!confirm(“Poistetaanko asiakas?”))return;await fsDel(“customers”,itemId);render();return;}
-if(a===“delete-sailing”){if(!confirm(“Poistetaanko purjehdus?”))return;await fsDel(“sailings”,itemId);if(state.openSailingId===itemId)state.openSailingId=null;render();return;}
-if(a===“delete-company”){if(!confirm(“Poistetaanko yritys?”))return;await fsDel(“companies”,itemId);render();return;}
-if(a===“delete-register”){if(!confirm(“Poistetaanko lasku rekisteristä?”))return;await fsDel(“invoices”,itemId);render();return;}
-if(a===“reskontra-mark-paid”){const x=state.invoices.find(z=>z.id===itemId);if(!x)return;const pd=prompt(`Merkitään ${x.invoiceNo} maksetuksi.\nMaksupäivä (YYYY-MM-DD):`,x.paidDate||today());if(!pd)return;x.paid=true;x.paidDate=pd;await fsSet(“invoices”,x.id,x);render();return;}
-if(a===“save-invoice”){
-const inv=computeInvoice();
-if(!inv.isTutkinto&&!inv.sailing)return alert(“Valitse tapahtuma.”);
-if(inv.isTutkinto&&!inv.tutkinto)return alert(“Valitse tutkinto.”);
-if(inv.isTutkinto&&!parseFloat(state.invoice.partialAmount||0))return alert(“Syötä laskutettava summa.”);
-if(!inv.payerName)return alert(“Valitse asiakas.”);
-if(inv.lines.length===0)return alert(“Laskulla ei ole rivejä.”);
-if(inv.isCredit&&!state.invoice.creditRefId)return alert(“Valitse hyvitettävä lasku.”);
-if(inv.isPartial&&!parseFloat(state.invoice.partialAmount||0))return alert(“Syötä osasuorituksen summa.”);
-const rec={mode:inv.isTutkinto?“customer”:state.invoice.mode,source:state.invoice.source||“sailing”,isReservation:!!inv.isReservation,itype:inv.itype,isCredit:!!inv.isCredit,creditRefId:state.invoice.creditRefId||””,creditRefNo:inv.creditRef?.invoiceNo||””,invoiceNo:inv.invNo,invoiceDate:state.invoice.invoiceDate,reference:inv.reference,payerName:inv.payerName,payerBusinessId:inv.payerBusinessId||””,payerEmail:inv.payerEmail||””,eventId:inv.isTutkinto?(state.invoice.tutkintoId||””):(inv.sailing?.id||””),eventName:inv.eventName,vatRatePct:Number(inv.ratePct),net:Number(inv.net||0),vat:Number(inv.vat||0),grossTotal:Number(inv.grossTotal||0),paid:false,paidDate:””};
-await fsAdd(“invoices”,rec);alert(`Tallennettu!\nLaskunro: ${inv.invNo}\nViite: ${inv.reference}`);render();return;
-}
-if(a===“export-json”){const blob=new Blob([JSON.stringify({customers:state.customers,sailings:state.sailings,companies:state.companies,invoices:state.invoices,tutkinnot:state.tutkinnot},null,2)],{type:“application/json”});const url=URL.createObjectURL(blob);const x=document.createElement(“a”);x.href=url;x.download=`jsailing_backup_${today()}.json`;x.click();URL.revokeObjectURL(url);return;}
-if(a===“export-register-csv”){
-const month=state.registerMonth||today().slice(0,7);
-const rows=state.invoices.filter(x=>String(x.invoiceDate||””).slice(0,7)===month).sort((a,b)=>(a.invoiceDate||””).localeCompare(b.invoiceDate||””));
-if(!rows.length){alert(“Ei laskuja.”);return;}
-const sep=”;”;
-const hdr=[“Päivä”,“Laskunro”,“Viite”,“Maksaja”,“Y-tunnus”,“Sähköposti”,“Tapahtuma”,“Malli”,“Laskulaji”,“ALV%”,“Netto”,“ALV”,“Brutto”,“Maksettu”,“Maksupäivä”].join(sep);
-const lines=rows.map(x=>[x.invoiceDate,x.invoiceNo,x.reference,x.payerName,x.payerBusinessId||””,x.payerEmail||””,x.eventName||””,x.mode===“company”?“Yrityslasku”:“Asiakaskohtainen”,x.isReservation?“Varausmaksu”:x.itype===“partial”?“Osasuoritus”:x.itype===“credit”?“Hyvityslasku”:“Loppulasku”,String(x.vatRatePct||””).replace(”.”,”,”),Number(x.net||0).toFixed(2).replace(”.”,”,”),Number(x.vat||0).toFixed(2).replace(”.”,”,”),Number(x.grossTotal||0).toFixed(2).replace(”.”,”,”),x.paid?“Kyllä”:“Ei”,x.paidDate||””].map(v=>`"${String(v).replace(/"/g,'""')}"`).join(sep));
-const csv=[hdr,…lines].join(”\n”);const blob=new Blob([csv],{type:“text/csv;charset=utf-8”});const url=URL.createObjectURL(blob);const a2=document.createElement(“a”);a2.href=url;a2.download=`laskurekisteri_${month}.csv`;a2.click();URL.revokeObjectURL(url);return;
-}
-if(a===“print”){window.print();return;}
-if(a===“print-register”){
-const area=document.getElementById(“reg-print-area”);
-if(!area)return;
-const win=window.open(””,”_blank”,“width=1000,height=750”);
-win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Kirjanpitoraportti</title><link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Outfit:wght@400;600;700;800&display=swap" rel="stylesheet"><style> *{box-sizing:border-box;margin:0;padding:0} body{font-family:'Outfit',sans-serif;font-size:11px;color:#111;padding:28px;max-width:960px;margin:0 auto} .table{width:100%;border-collapse:collapse} .table th,.table td{border-top:1px solid #e5e7eb;padding:6px 8px;font-size:10px;vertical-align:top} .table th{font-size:9px;font-weight:800;color:#374151;text-transform:uppercase;letter-spacing:.4px;background:#f9fafb} .table tfoot td{border-top:2px solid #374151;font-weight:800} .r{text-align:right} .badge-green{background:#dcfce7;color:#166534;border:1px solid #86efac;border-radius:999px;padding:2px 7px;font-size:9px;font-weight:700} .badge-red{background:#fee2e2;color:#991b1b;border:1px solid #fca5a5;border-radius:999px;padding:2px 7px;font-size:9px;font-weight:700} .badge-blue{background:#dbeafe;color:#1e40af;border:1px solid #93c5fd;border-radius:999px;padding:2px 7px;font-size:9px;font-weight:700} .badge-amber{background:#fef3c7;color:#92400e;border:1px solid #fcd34d;border-radius:999px;padding:2px 7px;font-size:9px;font-weight:700} .badge-silver{background:#f3f4f6;color:#1f2937;border:1px solid #d1d5db;border-radius:999px;padding:2px 7px;font-size:9px;font-weight:700} .infobox-blue{background:#dbeafe;color:#1e3a8a;border:1px solid #93c5fd;padding:8px 12px;border-radius:8px} .small{font-size:9px}.muted{color:#6b7280} .noPrint{display:none} hr{border-top:1.5px solid #e5e7eb;margin:10px 0} @page{margin:15mm;size:A4} @media print{.noPrint{display:none}body{padding:0}} </style></head><body>`+area.innerHTML+`</body></html>`);
-win.document.close();
-setTimeout(()=>{win.focus();win.print();},500);
-return;
-}
-if(a===“email-invoice”){
-const box=document.getElementById(“invoiceBox”);if(!box)return;
-let to=””;if(state.invoice.mode===“customer”){const c=state.customers.find(x=>x.id===state.invoice.customerId);to=c?.email||””;}else{const co=state.companies.find(x=>x.id===state.invoice.companyId);to=co?.email||””;}
-const inv=computeInvoice();window.location.href=`mailto:${encodeURIComponent(to)}?subject=${encodeURIComponent("Lasku "+inv.invNo)}&body=${encodeURIComponent(box.innerText)}`;return;
-}
-};
-});
+  document.querySelectorAll("[data-tab]").forEach(b=>{b.onclick=()=>{state.tab=b.dataset.tab;render();};});
+  document.querySelector('[data-action="restore-json"]')?.addEventListener("change",async(e)=>{
+    const file=e.target.files?.[0];if(!file)return;
+    try{const text=await file.text(),data=JSON.parse(text);if(!confirm("Palautus korvaa nykyiset tiedot. Jatketaanko?"))return;
+      if(CONFIG_READY&&db){const cols=["customers","sailings","companies","invoices","tutkinnot"];for(const col of cols){const items=Array.isArray(data[col])?data[col]:[];for(const item of items){const{id,...rest}=item;await fsSet(col,id||genId("X"),rest);}}alert("Palautettu Firebaseen ✓");}
+      else{state.customers=Array.isArray(data.customers)?data.customers:[];state.sailings=Array.isArray(data.sailings)?data.sailings:[];state.companies=Array.isArray(data.companies)?data.companies:[];state.invoices=Array.isArray(data.invoices)?data.invoices:[];state.tutkinnot=Array.isArray(data.tutkinnot)?data.tutkinnot:[];alert("Palautettu demo-tilaan ✓");render();}
+    }catch(err){alert("Palautus epäonnistui: tiedosto ei ole kelvollinen JSON.");}finally{e.target.value="";}
+  });
+  // V8.2: tyyppi-valinta re-renderöi modalin kestolaskennalle + tallentaa reitti-draftin
+  document.querySelector('[data-action="sailing-type-changed"]')?.addEventListener("change",()=>{
+    const d=state.sailingDraft||{};
+    const nameEl=document.querySelector('[data-field="name"]');
+    const reittiEl=document.querySelector('[data-field="reitti"]');
+    const dateEl=document.querySelector('[data-field="date"]');
+    const endDateEl=document.querySelector('[data-field="endDate"]');
+    const startEl=document.querySelector('[data-field="startTime"]');
+    const endEl=document.querySelector('[data-field="endTime"]');
+    const typeEl=document.querySelector('[data-field="sailing-type-live"]');
+    if(nameEl) d.name=nameEl.value;
+    if(reittiEl) d.reitti=reittiEl.value;
+    if(dateEl) d.date=dateEl.value;
+    if(endDateEl) d.endDate=endDateEl.value;
+    if(startEl) d.startTime=startEl.value;
+    if(endEl) d.endTime=endEl.value;
+    if(typeEl) d.type=typeEl.value;
+    state.sailingDraft=d;
+    render();
+  });
+  document.querySelector('[data-action="multiday-date-changed"]')?.addEventListener("change",()=>{
+    const d=state.sailingDraft||{};
+    const nameEl=document.querySelector('[data-field="name"]');
+    const reittiEl=document.querySelector('[data-field="reitti"]');
+    const dateEl=document.querySelector('[data-field="date"]');
+    const endDateEl=document.querySelector('[data-field="endDate"]');
+    const startEl=document.querySelector('[data-field="startTime"]');
+    const endEl=document.querySelector('[data-field="endTime"]');
+    const typeEl=document.querySelector('[data-field="sailing-type-live"]');
+    if(nameEl) d.name=nameEl.value;
+    if(reittiEl) d.reitti=reittiEl.value;
+    if(dateEl) d.date=dateEl.value;
+    if(endDateEl) d.endDate=endDateEl.value;
+    if(startEl) d.startTime=startEl.value;
+    if(endEl) d.endTime=endEl.value;
+    if(typeEl) d.type=typeEl.value;
+    state.sailingDraft=d;
+    render();
+  });
+  document.querySelector('[data-action="search-customers"]')?.addEventListener("input",e=>{state.searchCustomers=e.target.value;render();});
+  document.querySelector('[data-action="search-sailings"]')?.addEventListener("input",e=>{state.searchSailings=e.target.value;render();});
+  document.querySelector('[data-action="search-tutkinnot"]')?.addEventListener("input",e=>{state.searchTutkinnot=e.target.value;render();});
+  document.querySelector('[data-action="inv-source"]')?.addEventListener("change",e=>{state.invoice.source=e.target.value;state.invoice.type="full";state.invoice.partialAmount="";state.invoice.creditRefId="";render();});
+  document.querySelector('[data-action="inv-tutkinto"]')?.addEventListener("change",e=>{state.invoice.tutkintoId=e.target.value;render();});
+  document.querySelector('[data-action="inv-sailing"]')?.addEventListener("change",e=>{state.invoice.sailingId=e.target.value;state.invoice.type="full";state.invoice.creditRefId="";render();});
+  document.querySelector('[data-action="inv-mode"]')?.addEventListener("change",e=>{state.invoice.mode=e.target.value;render();});
+  document.querySelector('[data-action="inv-type"]')?.addEventListener("change",e=>{state.invoice.type=e.target.value;render();});
+  document.querySelector('[data-action="inv-customer"]')?.addEventListener("change",e=>{state.invoice.customerId=e.target.value;render();});
+  document.querySelector('[data-action="inv-company"]')?.addEventListener("change",e=>{state.invoice.companyId=e.target.value;render();});
+  document.querySelector('[data-action="inv-date"]')?.addEventListener("change",e=>{state.invoice.invoiceDate=e.target.value;render();});
+  document.querySelector('[data-action="inv-partial-amount"]')?.addEventListener("input",e=>{state.invoice.partialAmount=e.target.value;render();});
+  document.querySelector('[data-action="inv-credit-ref"]')?.addEventListener("change",e=>{state.invoice.creditRefId=e.target.value;render();});
+  document.querySelector('[data-action="reg-month"]')?.addEventListener("input",e=>{state.registerMonth=(e.target.value||"").trim();});
+  document.querySelector('[data-field="qnc-name"]')?.addEventListener("input",e=>{if(!state.dashNewCustomer)state.dashNewCustomer={};state.dashNewCustomer.name=e.target.value;});
+  document.querySelector('[data-field="qnc-phone"]')?.addEventListener("input",e=>{if(!state.dashNewCustomer)state.dashNewCustomer={};state.dashNewCustomer.phone=e.target.value;});
+  document.querySelector('[data-field="qnc-email"]')?.addEventListener("input",e=>{if(!state.dashNewCustomer)state.dashNewCustomer={};state.dashNewCustomer.email=e.target.value;});
+  document.querySelector('[data-field="qnc-status"]')?.addEventListener("change",e=>{if(!state.dashNewCustomer)state.dashNewCustomer={};state.dashNewCustomer.status=e.target.value;});
+  document.querySelectorAll('[data-action="reg-paid"]').forEach(cb=>{cb.onchange=async()=>{const x=state.invoices.find(z=>z.id===cb.dataset.id);if(!x)return;x.paid=!!cb.checked;if(x.paid){const pd=prompt("Maksupäivä (YYYY-MM-DD):",x.paidDate||today());if(!pd){x.paid=false;x.paidDate="";}else{x.paidDate=pd;}}else x.paidDate="";await fsSet("invoices",x.id,x);render();};});
+  document.querySelectorAll("[data-action]").forEach(el=>{
+    if(el.tagName==="INPUT"&&el.type==="checkbox")return;
+    if(el.tagName==="A"&&el.dataset.action==="gcal-mark"){el.onclick=async()=>{const sailingId=el.dataset.id,idxRaw=el.dataset.idx;const idx=(idxRaw!==""&&idxRaw!=null)?Number(idxRaw):null;setTimeout(()=>markGcalAdded(sailingId,idx),300);};return;}
+    el.onclick=async(e)=>{
+      e.stopPropagation();
+      const a=el.dataset.action,itemId=el.dataset.id;
+      const idx=(el.dataset.idx!==""&&el.dataset.idx!=null)?Number(el.dataset.idx):null;
+      if(a==="sign-out"){await signOut(auth);return;}
+      if(a==="set-group"){state.sailingGroup=itemId;render();return;}
+      if(a==="cal-nav"){state.calendarMonth=el.dataset.month;render();return;}
+      if(a==="cal-today"){state.calendarMonth=today().slice(0,7);render();return;}
+      if(a==="toggle-sailing"){state.openSailingId=(state.openSailingId===itemId)?null:itemId;render();return;}
+      if(a==="close-modal"){state.modal=null;state.editId=null;state.editSession=null;state.previewInvoiceId=null;state.dashQuickId=null;state.dashQuickType=null;render();return;}
+      if(a==="dash-open"){state.dashQuickId=itemId;state.dashQuickType=el.dataset.type||"sailing";state.dashNewCustomer={name:"",phone:"",email:"",status:"pending"};state.modal="dash-quick";render();return;}
+      if(a==="qnc-clear"){state.dashNewCustomer={name:"",phone:"",email:"",status:"pending"};render();return;}
+      if(a==="qnc-save"){
+        const name=(document.querySelector('[data-field="qnc-name"]')?.value||"").trim();if(!name)return alert("Nimi on pakollinen.");
+        const phone=(document.querySelector('[data-field="qnc-phone"]')?.value||"").trim();
+        const email=(document.querySelector('[data-field="qnc-email"]')?.value||"").trim();
+        const status=document.querySelector('[data-field="qnc-status"]')?.value||"pending";
+        await fsAdd("customers",{name,phone,email,sailingId:state.dashQuickType==="sailing"?state.dashQuickId:"",billTo:"self",companyId:"",reservationStatus:status});
+        state.dashNewCustomer={name:"",phone:"",email:"",status:"pending"};alert(`${name} lisätty!`);render();return;
+      }
+      if(a==="new-customer"){state.modal="customer";state.editId=null;render();return;}
+      if(a==="edit-customer"){state.modal="customer";state.editId=itemId;render();return;}
+      if(a==="new-sailing"){state.modal="sailing";state.editId=null;state.sailingDraft={};render();return;}
+      if(a==="edit-sailing"){state.modal="sailing";state.editId=itemId;state.sailingDraft={};render();return;}
+      if(a==="new-company"){state.modal="company";state.editId=null;render();return;}
+      if(a==="edit-company"){state.modal="company";state.editId=itemId;render();return;}
+      if(a==="open-register"){state.modal="register";render();return;}
+      if(a==="new-tutkinto"){state.modal="tutkinto";state.editId=null;render();return;}
+      if(a==="edit-tutkinto"){state.modal="tutkinto";state.editId=itemId;render();return;}
+      if(a==="delete-tutkinto"){if(!confirm("Poistetaanko tutkinto?"))return;await fsDel("tutkinnot",itemId);render();return;}
+      if(a==="save-tutkinto"){
+        const type=document.querySelector('[data-field="tutkinto-type"]')?.value||"";
+        const date=document.querySelector('[data-field="tutkinto-date"]')?.value||"";
+        const customerName=(document.querySelector('[data-field="tutkinto-customer"]')?.value||"").trim();
+        const notes=(document.querySelector('[data-field="tutkinto-notes"]')?.value||"").trim();
+        const isPaikka=["Rannikkopäällikkö","Saaristopäällikkö"].includes(type);
+        const boatType=isPaikka?(document.querySelector('[data-field="tutkinto-boattype"]')?.value||"Purjevene"):"";
+        const maxPersons=isPaikka?parseInt(document.querySelector('[data-field="tutkinto-maxpersons"]')?.value||"4",10):0;
+        const reserveSlots=isPaikka?parseInt(document.querySelector('[data-field="tutkinto-reserveslots"]')?.value||"2",10):0;
+        if(!type||!date||!customerName)return alert("Täytä pakolliset kentät.");
+        const data={type,date,customerName,sailingId:"",notes,boatType,maxPersons,reserveSlots,enrolled:0};
+        if(state.editId){const ex=state.tutkinnot.find(x=>x.id===state.editId);data.enrolled=ex?.enrolled||0;await fsSet("tutkinnot",state.editId,data);}else await fsAdd("tutkinnot",data);
+        state.modal=null;state.editId=null;render();return;
+      }
+      if(a==="preview-invoice"){state.previewInvoiceId=itemId;state.modal="invoice-preview";render();return;}
+      if(a==="print-preview"){window.print();return;}
+      if(a==="edit-session-cal"||a==="edit-session-direct"){if(idx===null||isNaN(idx))return;state.editSession={sailingId:itemId,idx};state.modal="session";render();return;}
+      if(a==="confirm-payment"){const c=state.customers.find(x=>x.id===itemId);if(!c)return;if(!confirm(`Merkitäänkö ${c.name} varausmaksu suoritetuksi?`))return;c.reservationStatus="paid";await fsSet("customers",c.id,c);render();return;}
+      if(a==="promote-reserve"){const c=state.customers.find(x=>x.id===itemId);if(!c)return;const s=state.sailings.find(x=>x.id===c.sailingId);if(!s)return;if(confirmedCount(s.id)>=Number(s.maxPersons||0)){alert("Kurssi on täynnä.");return;}if(!confirm(`Siirretäänkö ${c.name} odottamaan varausmaksua?`))return;c.reservationStatus="pending";await fsSet("customers",c.id,c);render();return;}
+      if(a==="add-session"){const s=state.sailings.find(x=>x.id===itemId);if(!s)return;const date=prompt("Kurssipäivä (YYYY-MM-DD):",today());if(!date)return;const start=prompt("Aloitusaika (HH:MM):","17:00")||"";const end=prompt("Lopetusaika (HH:MM):","20:00")||"";const note=prompt("Lisähuomio:","")||"";if(!Array.isArray(s.sessions))s.sessions=[];s.sessions.push({date,start,end,note});await fsSet("sailings",s.id,s);render();return;}
+      if(a==="delete-session"){const s=state.sailings.find(x=>x.id===itemId);if(!s||!Array.isArray(s.sessions))return;if(idx===null||isNaN(idx))return;if(!confirm("Poistetaanko kurssipäivä?"))return;s.sessions.splice(idx,1);await fsSet("sailings",s.id,s);render();return;}
+      if(a==="edit-teoria"){state.modal="teoria";state.editId=itemId;render();return;}
+      if(a==="save-teoria"){const s=state.sailings.find(x=>x.id===state.editId);if(!s)return;const date=document.querySelector('[data-field="teo-date"]')?.value||"";if(!date)return alert("Teoriapäivän päivämäärä on pakollinen.");s.teoria={date,place:(document.querySelector('[data-field="teo-place"]')?.value||"").trim(),start:document.querySelector('[data-field="teo-start"]')?.value||"",end:document.querySelector('[data-field="teo-end"]')?.value||"",note:(document.querySelector('[data-field="teo-note"]')?.value||"").trim()};await fsSet("sailings",s.id,s);state.modal=null;state.editId=null;render();return;}
+      if(a==="delete-teoria"){const s=state.sailings.find(x=>x.id===itemId);if(!s)return;if(!confirm("Poistetaanko teoriapäivä?"))return;s.teoria=null;await fsSet("sailings",s.id,s);state.modal=null;render();return;}
+      if(a==="save-session-modal"){const{sailingId,idx}=state.editSession||{};const s=state.sailings.find(x=>x.id===sailingId);if(!s||!s.sessions?.[idx])return;const newDate=document.querySelector('[data-field="sess-date"]')?.value||"";if(!newDate)return alert("Päivämäärä on pakollinen.");s.sessions[idx].date=newDate;s.sessions[idx].start=document.querySelector('[data-field="sess-start"]')?.value||"";s.sessions[idx].end=document.querySelector('[data-field="sess-end"]')?.value||"";s.sessions[idx].note=document.querySelector('[data-field="sess-note"]')?.value||"";await fsSet("sailings",s.id,s);state.modal=null;state.editSession=null;render();return;}
+      if(a==="save-customer"){
+        const name=(document.querySelector('[data-field="name"]')?.value||"").trim();if(!name)return alert("Nimi pakollinen");
+        const phone=(document.querySelector('[data-field="phone"]')?.value||"").trim();
+        const email=(document.querySelector('[data-field="email"]')?.value||"").trim();
+        const sailingId=document.querySelector('[data-field="sailingId"]')?.value||"";
+        const billTo=document.querySelector('[data-field="billTo"]')?.value||"self";
+        const companyId=document.querySelector('[data-field="companyId"]')?.value||"";
+        const reservationStatus=document.querySelector('[data-field="reservationStatus"]')?.value||"pending";
+        if(billTo==="company"&&!companyId)return alert("Valitse tilaajayritys.");
+        const data={name,phone,email,sailingId,billTo,companyId:(billTo==="company")?companyId:"",reservationStatus};
+        if(state.editId)await fsSet("customers",state.editId,data);else await fsAdd("customers",data);
+        state.modal=null;state.editId=null;render();return;
+      }
+      if(a==="save-sailing"){
+        const name=(document.querySelector('[data-field="name"]')?.value||"").trim();
+        const date=document.querySelector('[data-field="date"]')?.value||"";
+        const type=document.querySelector('[data-field="sailing-type-live"]')?.value||"";
+        if(!name||!date||!type)return alert("Täytä pakolliset kentät.");
+        const endDate=(document.querySelector('[data-field="endDate"]')?.value||"");
+        if(endDate&&endDate<date)return alert("Paluupäivä ei voi olla ennen alkamispäivää.");
+        const existing=state.editId?state.sailings.find(x=>x.id===state.editId):null;
+        const data={name,date,type,
+          reitti:(document.querySelector('[data-field="reitti"]')?.value||"").trim(),
+          endDate:endDate||"",
+          startTime:document.querySelector('[data-field="startTime"]')?.value||"",
+          endTime:document.querySelector('[data-field="endTime"]')?.value||"",
+          maxPersons:parseInt(document.querySelector('[data-field="maxPersons"]')?.value,10)||1,
+          reserveSlots:Math.max(0,parseInt(document.querySelector('[data-field="reserveSlots"]')?.value,10)||0),
+          pricePerPerson:parseFloat(document.querySelector('[data-field="pricePerPerson"]')?.value)||0,
+          reservationFee:parseFloat(document.querySelector('[data-field="reservationFee"]')?.value)||0,
+          sessions:existing?.sessions||[],
+          teoria:existing?.teoria||null
+        };
+        if(state.editId)await fsSet("sailings",state.editId,data);
+        else{const newId=await fsAdd("sailings",data);if(!state.invoice.sailingId)state.invoice.sailingId=newId;}
+        state.modal=null;state.editId=null;state.sailingDraft={};render();return;
+      }
+      if(a==="save-company"){const name=(document.querySelector('[data-field="name"]')?.value||"").trim();if(!name)return alert("Yrityksen nimi pakollinen.");const data={name,businessId:document.querySelector('[data-field="businessId"]')?.value||"",email:document.querySelector('[data-field="email"]')?.value||"",commissionPct:parseFloat(document.querySelector('[data-field="commissionPct"]')?.value)||0};if(state.editId)await fsSet("companies",state.editId,data);else await fsAdd("companies",data);state.modal=null;state.editId=null;render();return;}
+      if(a==="delete-customer"){if(!confirm("Poistetaanko asiakas?"))return;await fsDel("customers",itemId);render();return;}
+      if(a==="delete-sailing"){if(!confirm("Poistetaanko purjehdus?"))return;await fsDel("sailings",itemId);if(state.openSailingId===itemId)state.openSailingId=null;render();return;}
+      if(a==="delete-company"){if(!confirm("Poistetaanko yritys?"))return;await fsDel("companies",itemId);render();return;}
+      if(a==="delete-register"){if(!confirm("Poistetaanko lasku rekisteristä?"))return;await fsDel("invoices",itemId);render();return;}
+      if(a==="reskontra-mark-paid"){const x=state.invoices.find(z=>z.id===itemId);if(!x)return;const pd=prompt(`Merkitään ${x.invoiceNo} maksetuksi.\nMaksupäivä (YYYY-MM-DD):`,x.paidDate||today());if(!pd)return;x.paid=true;x.paidDate=pd;await fsSet("invoices",x.id,x);render();return;}
+      if(a==="save-invoice"){
+        const inv=computeInvoice();
+        if(!inv.isTutkinto&&!inv.sailing)return alert("Valitse tapahtuma.");
+        if(inv.isTutkinto&&!inv.tutkinto)return alert("Valitse tutkinto.");
+        if(inv.isTutkinto&&!parseFloat(state.invoice.partialAmount||0))return alert("Syötä laskutettava summa.");
+        if(!inv.payerName)return alert("Valitse asiakas.");
+        if(inv.lines.length===0)return alert("Laskulla ei ole rivejä.");
+        if(inv.isCredit&&!state.invoice.creditRefId)return alert("Valitse hyvitettävä lasku.");
+        if(inv.isPartial&&!parseFloat(state.invoice.partialAmount||0))return alert("Syötä osasuorituksen summa.");
+        const rec={mode:inv.isTutkinto?"customer":state.invoice.mode,source:state.invoice.source||"sailing",isReservation:!!inv.isReservation,itype:inv.itype,isCredit:!!inv.isCredit,creditRefId:state.invoice.creditRefId||"",creditRefNo:inv.creditRef?.invoiceNo||"",invoiceNo:inv.invNo,invoiceDate:state.invoice.invoiceDate,reference:inv.reference,payerName:inv.payerName,payerBusinessId:inv.payerBusinessId||"",payerEmail:inv.payerEmail||"",eventId:inv.isTutkinto?(state.invoice.tutkintoId||""):(inv.sailing?.id||""),eventName:inv.eventName,vatRatePct:Number(inv.ratePct),net:Number(inv.net||0),vat:Number(inv.vat||0),grossTotal:Number(inv.grossTotal||0),paid:false,paidDate:""};
+        await fsAdd("invoices",rec);alert(`Tallennettu!\nLaskunro: ${inv.invNo}\nViite: ${inv.reference}`);render();return;
+      }
+      if(a==="export-json"){const blob=new Blob([JSON.stringify({customers:state.customers,sailings:state.sailings,companies:state.companies,invoices:state.invoices,tutkinnot:state.tutkinnot},null,2)],{type:"application/json"});const url=URL.createObjectURL(blob);const x=document.createElement("a");x.href=url;x.download=`jsailing_backup_${today()}.json`;x.click();URL.revokeObjectURL(url);return;}
+      if(a==="export-register-csv"){
+        const month=state.registerMonth||today().slice(0,7);
+        const rows=state.invoices.filter(x=>String(x.invoiceDate||"").slice(0,7)===month).sort((a,b)=>(a.invoiceDate||"").localeCompare(b.invoiceDate||""));
+        if(!rows.length){alert("Ei laskuja.");return;}
+        const sep=";";
+        const hdr=["Päivä","Laskunro","Viite","Maksaja","Y-tunnus","Sähköposti","Tapahtuma","Malli","Laskulaji","ALV%","Netto","ALV","Brutto","Maksettu","Maksupäivä"].join(sep);
+        const lines=rows.map(x=>[x.invoiceDate,x.invoiceNo,x.reference,x.payerName,x.payerBusinessId||"",x.payerEmail||"",x.eventName||"",x.mode==="company"?"Yrityslasku":"Asiakaskohtainen",x.isReservation?"Varausmaksu":x.itype==="partial"?"Osasuoritus":x.itype==="credit"?"Hyvityslasku":"Loppulasku",String(x.vatRatePct||"").replace(".",","),Number(x.net||0).toFixed(2).replace(".",","),Number(x.vat||0).toFixed(2).replace(".",","),Number(x.grossTotal||0).toFixed(2).replace(".",","),x.paid?"Kyllä":"Ei",x.paidDate||""].map(v=>`"${String(v).replace(/"/g,'""')}"`).join(sep));
+        const csv=[hdr,...lines].join("\n");const blob=new Blob([csv],{type:"text/csv;charset=utf-8"});const url=URL.createObjectURL(blob);const a2=document.createElement("a");a2.href=url;a2.download=`laskurekisteri_${month}.csv`;a2.click();URL.revokeObjectURL(url);return;
+      }
+      if(a==="print"){window.print();return;}
+      if(a==="print-register"){
+        const area=document.getElementById("reg-print-area");
+        if(!area)return;
+        const win=window.open("","_blank","width=1000,height=750");
+        win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Kirjanpitoraportti</title><link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Outfit:wght@400;600;700;800&display=swap" rel="stylesheet"><style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Outfit',sans-serif;font-size:11px;color:#111;padding:28px;max-width:960px;margin:0 auto}
+.table{width:100%;border-collapse:collapse}
+.table th,.table td{border-top:1px solid #e5e7eb;padding:6px 8px;font-size:10px;vertical-align:top}
+.table th{font-size:9px;font-weight:800;color:#374151;text-transform:uppercase;letter-spacing:.4px;background:#f9fafb}
+.table tfoot td{border-top:2px solid #374151;font-weight:800}
+.r{text-align:right}
+.badge-green{background:#dcfce7;color:#166534;border:1px solid #86efac;border-radius:999px;padding:2px 7px;font-size:9px;font-weight:700}
+.badge-red{background:#fee2e2;color:#991b1b;border:1px solid #fca5a5;border-radius:999px;padding:2px 7px;font-size:9px;font-weight:700}
+.badge-blue{background:#dbeafe;color:#1e40af;border:1px solid #93c5fd;border-radius:999px;padding:2px 7px;font-size:9px;font-weight:700}
+.badge-amber{background:#fef3c7;color:#92400e;border:1px solid #fcd34d;border-radius:999px;padding:2px 7px;font-size:9px;font-weight:700}
+.badge-silver{background:#f3f4f6;color:#1f2937;border:1px solid #d1d5db;border-radius:999px;padding:2px 7px;font-size:9px;font-weight:700}
+.infobox-blue{background:#dbeafe;color:#1e3a8a;border:1px solid #93c5fd;padding:8px 12px;border-radius:8px}
+.small{font-size:9px}.muted{color:#6b7280}
+.noPrint{display:none}
+hr{border-top:1.5px solid #e5e7eb;margin:10px 0}
+@page{margin:15mm;size:A4}
+@media print{.noPrint{display:none}body{padding:0}}
+</style></head><body>`+area.innerHTML+`</body></html>`);
+        win.document.close();
+        setTimeout(()=>{win.focus();win.print();},500);
+        return;
+      }
+      if(a==="email-invoice"){
+        const box=document.getElementById("invoiceBox");if(!box)return;
+        let to="";if(state.invoice.mode==="customer"){const c=state.customers.find(x=>x.id===state.invoice.customerId);to=c?.email||"";}else{const co=state.companies.find(x=>x.id===state.invoice.companyId);to=co?.email||"";}
+        const inv=computeInvoice();window.location.href=`mailto:${encodeURIComponent(to)}?subject=${encodeURIComponent("Lasku "+inv.invNo)}&body=${encodeURIComponent(box.innerText)}`;return;
+      }
+    };
+  });
 }
 
 // INIT
 if(!CONFIG_READY){
-state.user={displayName:“Demo”,email:“demo@jsailing.fi”};
-const sid=genId(“S”);
-state.sailings=[{id:sid,name:“Merenkulkukurssi 1”,date:today(),type:“Kurssi”,maxPersons:4,reserveSlots:2,pricePerPerson:350,reservationFee:80,sessions:[]}];
-state.customers=[
-{id:genId(“C”),name:“Matti Merimies”,phone:“0401111111”,email:“matti@demo.fi”,sailingId:sid,billTo:“self”,companyId:””,reservationStatus:“paid”},
-{id:genId(“C”),name:“Siiri Seteli”,phone:“0402222222”,email:“siiri@demo.fi”,sailingId:sid,billTo:“self”,companyId:””,reservationStatus:“pending”},
-];
-state.tutkinnot=[{id:genId(“T”),type:“Rannikkopäällikkö”,date:today(),customerName:“Matti Merimies”,sailingId:sid,notes:“Hyväksytty suoritus”}];
-state.invoice.sailingId=sid;render();
+  state.user={displayName:"Demo",email:"demo@jsailing.fi"};
+  const sid=genId("S");
+  state.sailings=[{id:sid,name:"Merenkulkukurssi 1",date:today(),type:"Kurssi",maxPersons:4,reserveSlots:2,pricePerPerson:350,reservationFee:80,sessions:[]}];
+  state.customers=[
+    {id:genId("C"),name:"Matti Merimies",phone:"0401111111",email:"matti@demo.fi",sailingId:sid,billTo:"self",companyId:"",reservationStatus:"paid"},
+    {id:genId("C"),name:"Siiri Seteli",phone:"0402222222",email:"siiri@demo.fi",sailingId:sid,billTo:"self",companyId:"",reservationStatus:"pending"},
+  ];
+  state.tutkinnot=[{id:genId("T"),type:"Rannikkopäällikkö",date:today(),customerName:"Matti Merimies",sailingId:sid,notes:"Hyväksytty suoritus"}];
+  state.invoice.sailingId=sid;render();
 }else{
-onAuthStateChanged(auth,user=>{
-if(user){
-if(user.email!==ALLOWED_EMAIL){signOut(auth);renderAuthScreen(`Pääsy estetty. Vain ${ALLOWED_EMAIL} voi kirjautua.`);return;}
-state.user=user;startListeners(user.uid);
-}else{
-stopListeners();state.user=null;state.customers=[];state.sailings=[];state.companies=[];state.invoices=[];state.tutkinnot=[];
-renderAuthScreen();
-}
-});
+  onAuthStateChanged(auth,user=>{
+    if(user){
+      if(user.email!==ALLOWED_EMAIL){signOut(auth);renderAuthScreen(`Pääsy estetty. Vain ${ALLOWED_EMAIL} voi kirjautua.`);return;}
+      state.user=user;startListeners(user.uid);
+    }else{
+      stopListeners();state.user=null;state.customers=[];state.sailings=[];state.companies=[];state.invoices=[];state.tutkinnot=[];
+      renderAuthScreen();
+    }
+  });
 }
 </script>
-
 </body>
 </html>
