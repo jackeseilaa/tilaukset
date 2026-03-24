@@ -9,7 +9,7 @@
 <meta name="theme-color" content="#0a1628"/>
 <link rel="manifest" href="manifest.json"/>
 <link rel="apple-touch-icon" href="icon-512.png"/>
-<title>J Sailing V8.3 — Hallintapaneeli</title>
+<title>J Sailing V8.6 — Hallintapaneeli</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400;1,600&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -188,7 +188,7 @@ import{getAuth,GoogleAuthProvider,signInWithPopup,signOut,onAuthStateChanged}fro
 import{getFirestore,collection,doc,addDoc,setDoc,deleteDoc,onSnapshot,serverTimestamp}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 const FIREBASE_CONFIG={apiKey:"AIzaSyB7Dp5_5fN0Iko-4Jn1D2Dp6NNNih63UO0",authDomain:"jsailing-f716c.firebaseapp.com",projectId:"jsailing-f716c",storageBucket:"jsailing-f716c.firebasestorage.app",messagingSenderId:"543523103696",appId:"1:543523103696:web:439a312efa6aec398a8fd5"};
 const ALLOWED_EMAIL="jacke.seilaa@gmail.com";
-const APP_VERSION="V8.5";const UPDATE_DATE="24.3.2026";
+const APP_VERSION="V8.6";const UPDATE_DATE=(()=>{const n=new Date();return n.toLocaleDateString("fi-FI")+' klo '+String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0');})();
 const ISSUER={name:"J Sailing",businessId:"1728993-9"};
 const BANK={iban:"FI62 1132 3000 4277 43",bic:"NDEAFIHH"};
 const SAILING_TYPES=["Iltapurjehdus","Päiväpurjehdus","Charter","Kurssi","Yritystilaisuus","Purjehdusretki","Muu"];
@@ -360,6 +360,7 @@ function render(){
   const keepAction=ae?.dataset?.action||null,keepField=ae?.dataset?.field||null;
   const keepPos=(ae&&typeof ae.selectionStart==="number")?ae.selectionStart:null;
   document.getElementById("app").innerHTML=renderTopBar()+renderNavTabs()+`<div class="main-content">${CONFIG_READY?"":renderSetupBanner()}${renderTab()}</div>`+renderModal();
+  document.title=`J Sailing ${APP_VERSION} — Hallintapaneeli`;
   bind();
   const sel=keepAction?`[data-action="${keepAction}"]`:keepField?`[data-field="${keepField}"]`:null;
   if(sel){const el=document.querySelector(sel);if(el){el.focus();if(keepPos!==null&&typeof el.setSelectionRange==="function"){try{el.setSelectionRange(keepPos,keepPos);}catch(e){}}}}
@@ -389,12 +390,20 @@ function renderDashboard(){
   const totalConf=state.customers.filter(c=>c.reservationStatus==="paid").length;
   const totalPend=state.customers.filter(c=>c.reservationStatus==="pending").length;
   const totalRes=state.customers.filter(c=>c.reservationStatus==="reserve").length;
+  // Järjestetään seuraavan tulevan päivän mukaan
+  const nextDate=(s)=>{
+    if(Array.isArray(s.sessions)&&s.sessions.length>0){
+      const fut=s.sessions.filter(x=>(x.date||"")>=today()).sort((a,b)=>(a.date||"").localeCompare(b.date||""));
+      if(fut.length>0)return fut[0].date;
+    }
+    return s.date||"";
+  };
   const upcoming=state.sailings.filter(s=>{
     const hasFutureSessions=Array.isArray(s.sessions)&&s.sessions.some(sess=>(sess.date||"")>=today());
     const isFuture=(s.date||"")>=today()||(s.endDate&&s.endDate>=today());
     if(!isFuture&&!hasFutureSessions)return false;
     return enrolledCount(s.id)<Number(s.maxPersons||0)&&Number(s.maxPersons||0)>0;
-  }).sort((a,b)=>(a.date||"").localeCompare(b.date||"")).slice(0,8);
+  }).sort((a,b)=>nextDate(a).localeCompare(nextDate(b))).slice(0,8);
   const upcomingTutkinnot=state.tutkinnot.filter(t=>["Rannikkopäällikkö","Saaristopäällikkö"].includes(t.type)&&(t.date||"")>=today()&&Number(t.enrolled||0)<Number(t.maxPersons||4)).sort((a,b)=>(a.date||"").localeCompare(b.date||"")).slice(0,5);
   return`<div class="card">
     <div class="row-between"><div><div class="card-title">Dashboard</div><div class="card-sub">${CONFIG_READY?"Synkronoitu Firebaseen · data turvassa":"Demo-tila · ei tallennusta"}</div></div>
