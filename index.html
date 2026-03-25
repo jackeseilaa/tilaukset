@@ -9,7 +9,7 @@
 <meta name="theme-color" content="#0a1628"/>
 <link rel="manifest" href="manifest.json"/>
 <link rel="apple-touch-icon" href="icon-512.png"/>
-<title>J Sailing V8.9 — Hallintapaneeli</title>
+<title>J Sailing V9.0 — Hallintapaneeli</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400;1,600&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -188,7 +188,7 @@ import{getAuth,GoogleAuthProvider,signInWithPopup,signOut,onAuthStateChanged}fro
 import{getFirestore,collection,doc,addDoc,setDoc,deleteDoc,onSnapshot,serverTimestamp}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 const FIREBASE_CONFIG={apiKey:"AIzaSyB7Dp5_5fN0Iko-4Jn1D2Dp6NNNih63UO0",authDomain:"jsailing-f716c.firebaseapp.com",projectId:"jsailing-f716c",storageBucket:"jsailing-f716c.firebasestorage.app",messagingSenderId:"543523103696",appId:"1:543523103696:web:439a312efa6aec398a8fd5"};
 const ALLOWED_EMAIL="jacke.seilaa@gmail.com";
-const APP_VERSION="V8.9";const UPDATE_DATE=(()=>{const n=new Date();return n.toLocaleDateString("fi-FI")+' klo '+String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0');})();
+const APP_VERSION="V9.0";const UPDATE_DATE=(()=>{const n=new Date();return n.toLocaleDateString("fi-FI")+' klo '+String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0');})();
 const ISSUER={name:"J Sailing",businessId:"1728993-9"};
 const BANK={iban:"FI62 1132 3000 4277 43",bic:"NDEAFIHH"};
 const SAILING_TYPES=["Iltapurjehdus","Päiväpurjehdus","Charter","Kurssi","Yritystilaisuus","Purjehdusretki","Muu"];
@@ -1203,13 +1203,12 @@ function bind(){
       if(a==="print-calendar"){
         const [yr,mo]=state.calendarMonth.split("-").map(Number);
         const monthNames=["Tammikuu","Helmikuu","Maaliskuu","Huhtikuu","Toukokuu","Kesäkuu","Heinäkuu","Elokuu","Syyskuu","Lokakuu","Marraskuu","Joulukuu"];
-        const dayNames=["Ma","Ti","Ke","To","Pe","La","Su"];
-        const firstDay=new Date(yr,mo-1,1).getDay();
-        const startOffset=firstDay===0?6:firstDay-1;
+        const dayNamesFull=["sunnuntai","maanantai","tiistai","keskiviikko","torstai","perjantai","lauantai"];
+        const dayNamesShort=["su","ma","ti","ke","to","pe","la"];
         const daysInMonth=new Date(yr,mo,0).getDate();
-        const daysInPrev=new Date(yr,mo-1,0).getDate();
-        const todayStr=today();
-        // Build event map (same logic as calendar, no attendee counts)
+        const colors={Kurssi:"#c8e8f8",Charter:"#c0f0dc",Iltapurjehdus:"#e4d0f8",Päiväpurjehdus:"#fde8b0",Purjehdusretki:"#fcc8c8",Yritystilaisuus:"#dce8f4",Teoria:"#fff3cd",Muu:"#e4e4ec"};
+        const borders={Kurssi:"#90c8ec",Charter:"#70d4a0",Iltapurjehdus:"#b888e8",Päiväpurjehdus:"#f0b840",Purjehdusretki:"#e88080",Yritystilaisuus:"#90b4d4",Teoria:"#f59e0b",Muu:"#a8a8c4"};
+        // Build event map
         const evMap={};
         const addEv=(ds,ev)=>{if(!evMap[ds])evMap[ds]=[];evMap[ds].push(ev);};
         for(const s of state.sailings){
@@ -1219,7 +1218,7 @@ function bind(){
           const isMultiDay=s.endDate&&s.endDate>s.date;
           if(isCourse&&s.teoria&&s.teoria.date){
             let tl="";if(s.teoria.start&&s.teoria.end)tl=s.teoria.start+"–"+s.teoria.end;else if(s.teoria.start)tl="klo "+s.teoria.start;
-            addEv(s.teoria.date,{name:s.name+" (teoria)",type:"Teoria",timeLabel:tl,reitti:""});
+            addEv(s.teoria.date,{name:s.name,label:"Teoria",type:"Teoria",timeLabel:tl,reitti:""});
           }
           if(!hasSessions){
             if(isMultiDay){
@@ -1228,62 +1227,91 @@ function bind(){
               while(cur<=endD){
                 const ds=cur.toISOString().slice(0,10);
                 const isF=di===0,isL=di===tot-1;
-                const tl=isF?(s.startTime?"lähtö "+s.startTime:"lähtö"):isL?(s.endTime?"paluu "+s.endTime:"paluu"):`vrk ${di+1}/${tot}`;
-                addEv(ds,{name:s.name,type:s.type,timeLabel:tl,reitti:isF?(s.reitti||""):""});
+                const tl=isF?(s.startTime?"lähtö "+s.startTime:"Lähtö"):isL?(s.endTime?"paluu "+s.endTime:"Paluu"):`vrk ${di+1}/${tot}`;
+                addEv(ds,{name:s.name,label:tl,type:s.type,timeLabel:"",reitti:isF?(s.reitti||""):""});
                 cur.setDate(cur.getDate()+1);di++;
               }
             }else{
               let tl="";if(s.startTime&&s.endTime)tl=s.startTime+"–"+s.endTime;else if(s.startTime)tl="klo "+s.startTime;
-              addEv(s.date,{name:s.name,type:s.type,timeLabel:tl,reitti:s.reitti||""});
+              addEv(s.date,{name:s.name,label:s.type,type:s.type,timeLabel:tl,reitti:s.reitti||""});
             }
           }else{
             for(let i=0;i<s.sessions.length;i++){
               const sess=s.sessions[i];if(!sess.date)continue;
               let tl="";if(sess.start&&sess.end)tl=sess.start+"–"+sess.end;else if(sess.start)tl="klo "+sess.start;
-              addEv(sess.date,{name:s.name,type:s.type,timeLabel:tl,reitti:""});
+              addEv(sess.date,{name:s.name,label:`Päivä ${i+1}`,type:s.type,timeLabel:tl,reitti:""});
             }
           }
         }
-        // Build cells HTML for print
-        const totalCells=Math.ceil((startOffset+daysInMonth)/7)*7;
-        let cellsHtml="";
-        for(let i=0;i<totalCells;i++){
-          let d,m,y,other=false;
-          if(i<startOffset){d=daysInPrev-startOffset+i+1;m=mo===1?12:mo-1;y=mo===1?yr-1:yr;other=true;}
-          else if(i>=startOffset+daysInMonth){d=i-startOffset-daysInMonth+1;m=mo===12?1:mo+1;y=mo===12?yr+1:yr;other=true;}
-          else{d=i-startOffset+1;m=mo;y=yr;}
-          const ds=y+"-"+String(m).padStart(2,"0")+"-"+String(d).padStart(2,"0");
-          const isToday=ds===todayStr;
+        // Build list rows — only days that have events OR all days
+        let rowsHtml="";
+        let prevWeek=-1;
+        for(let d=1;d<=daysInMonth;d++){
+          const ds=yr+"-"+String(mo).padStart(2,"0")+"-"+String(d).padStart(2,"0");
+          const date=new Date(ds+"T12:00:00");
+          const dow=date.getDay(); // 0=sun
+          const weekNum=Math.ceil((d + new Date(yr,mo-1,1).getDay()-1)/7);
           const evs=evMap[ds]||[];
-          const evHtml=evs.map(ev=>{
-            const colors={Kurssi:"#c8e8f8",Charter:"#c0f0dc",Iltapurjehdus:"#e4d0f8",Päiväpurjehdus:"#fde8b0",Purjehdusretki:"#fcc8c8",Yritystilaisuus:"#dce8f4",Teoria:"#fff3cd",Muu:"#e4e4ec"};
-            const bg=colors[ev.type]||"#e4e4ec";
-            return`<div style="background:${bg};border-radius:4px;padding:3px 5px;margin-bottom:2px;font-size:10px;font-weight:700;overflow:hidden">
-              ${ev.name}${ev.timeLabel?`<span style="font-weight:400;opacity:.8"> ${ev.timeLabel}</span>`:""}
-              ${ev.reitti?`<div style="font-size:9px;opacity:.7">📍${ev.reitti}</div>`:""}
-            </div>`;
-          }).join("");
-          cellsHtml+=`<div style="min-height:90px;border:1px solid #d1d5db;border-radius:6px;padding:5px;${other?"opacity:.3":""}${isToday?";border-color:#0a4272;border-width:2px":""}">
-            <div style="font-size:11px;font-weight:800;margin-bottom:3px;${isToday?"background:#0a4272;color:#fff;width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9px":""}">${d}</div>
-            ${evHtml}
-          </div>`;
+          const isWeekend=dow===0||dow===6;
+          // Week separator
+          if(weekNum!==prevWeek){
+            prevWeek=weekNum;
+            rowsHtml+=`<tr><td colspan="4" style="background:#f0f4f8;padding:4px 10px;font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;color:#374151;border-top:2px solid #d1d5db">Viikko ${weekNum}</td></tr>`;
+          }
+          if(evs.length===0){
+            rowsHtml+=`<tr style="${isWeekend?"background:#fafafa":""}">
+              <td style="width:36px;text-align:center;font-size:14px;font-weight:800;color:${isWeekend?"#9ca3af":"#111"};padding:6px 4px;border-top:1px solid #e5e7eb">${d}</td>
+              <td style="font-size:10px;color:#9ca3af;padding:6px 4px;border-top:1px solid #e5e7eb">${dayNamesShort[dow]}</td>
+              <td colspan="2" style="border-top:1px solid #e5e7eb"></td>
+            </tr>`;
+          } else {
+            evs.forEach((ev,ei)=>{
+              const bg=colors[ev.type]||"#e4e4ec";
+              const br=borders[ev.type]||"#ccc";
+              rowsHtml+=`<tr style="${isWeekend?"background:#fafafa":""}">
+                ${ei===0?`<td rowspan="${evs.length}" style="width:36px;text-align:center;font-size:14px;font-weight:800;color:${isWeekend?"#9ca3af":"#0a4272"};padding:6px 4px;border-top:1px solid #d1d5db;vertical-align:top">${d}</td>
+                <td rowspan="${evs.length}" style="font-size:10px;font-weight:600;color:#374151;padding:6px 4px;border-top:1px solid #d1d5db;vertical-align:top;white-space:nowrap">${dayNamesShort[dow]}</td>`:""}
+                <td style="padding:5px 8px;border-top:1px solid #e5e7eb">
+                  <span style="display:inline-block;background:${bg};border:1px solid ${br};border-radius:4px;padding:2px 8px;font-size:10px;font-weight:700;margin-right:6px">${ev.label}</span>
+                  <span style="font-size:12px;font-weight:600">${ev.name}</span>
+                  ${ev.reitti?`<span style="font-size:11px;color:#374151;margin-left:8px">📍 ${ev.reitti}</span>`:""}
+                </td>
+                <td style="padding:5px 8px;border-top:1px solid #e5e7eb;font-size:11px;color:#6b7280;white-space:nowrap">${ev.timeLabel}</td>
+              </tr>`;
+            });
+          }
         }
-        const win=window.open("","_blank","width=1100,height=800");
-        win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>J Sailing — ${monthNames[mo-1]} ${yr}</title><style>
+        const win=window.open("","_blank","width=900,height=800");
+        win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8">
+<title>J Sailing — ${monthNames[mo-1]} ${yr}</title>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:'Outfit',system-ui,sans-serif;padding:20px;max-width:1050px;margin:0 auto}
-.grid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px}
-.dayname{text-align:center;font-size:10px;font-weight:800;color:#374151;padding:6px 2px;text-transform:uppercase;letter-spacing:.5px;border-bottom:2px solid #0a4272;margin-bottom:4px}
-@media print{@page{size:A4 landscape;margin:12mm}}
+body{font-family:'Outfit',system-ui,sans-serif;padding:24px 28px;color:#111;max-width:780px;margin:0 auto}
+table{width:100%;border-collapse:collapse}
+@media print{
+  @page{size:A4 portrait;margin:14mm 12mm}
+  body{padding:0}
+}
 </style></head><body>
-  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;border-bottom:3px solid #0a4272;padding-bottom:10px">
-    <div style="font-size:28px;font-weight:700;color:#0a4272;font-family:Georgia,serif">J <em>Sailing</em> — Absolut 37</div>
-    <div style="font-size:22px;font-weight:700;color:#111">${monthNames[mo-1]} ${yr}</div>
-    <div style="font-size:11px;color:#6b7280">Tulostettu ${new Date().toLocaleDateString("fi-FI")}</div>
+  <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:16px;padding-bottom:10px;border-bottom:3px solid #0a4272">
+    <div>
+      <div style="font-size:24px;font-weight:800;color:#0a4272;letter-spacing:-.5px">J Sailing — Absolut 37</div>
+      <div style="font-size:13px;color:#374151;margin-top:2px">Aikataulut · ${monthNames[mo-1]} ${yr}</div>
+    </div>
+    <div style="font-size:11px;color:#9ca3af">Tulostettu ${new Date().toLocaleDateString("fi-FI")}</div>
   </div>
-  <div class="grid">
-    ${dayNames.map(d=>`<div class="dayname">${d}</div>`).join("")}
-    ${cellsHtml}
+  <table>
+    <thead><tr style="background:#0a4272;color:#fff">
+      <th style="padding:6px 4px;font-size:10px;font-weight:800;text-align:center;width:36px">Pv</th>
+      <th style="padding:6px 4px;font-size:10px;font-weight:800;width:28px"></th>
+      <th style="padding:6px 8px;font-size:10px;font-weight:800;text-align:left">Tapahtuma</th>
+      <th style="padding:6px 8px;font-size:10px;font-weight:800;text-align:left;width:80px">Aika</th>
+    </tr></thead>
+    <tbody>${rowsHtml}</tbody>
+  </table>
+  <div style="margin-top:16px;padding-top:10px;border-top:1px solid #e5e7eb;display:flex;gap:12px;flex-wrap:wrap">
+    ${Object.entries(colors).map(([k,v])=>`<div style="display:flex;align-items:center;gap:4px;font-size:9px"><div style="width:10px;height:10px;background:${v};border:1px solid ${borders[k]||"#ccc"};border-radius:2px"></div>${k}</div>`).join("")}
   </div>
 </body></html>`);
         win.document.close();
