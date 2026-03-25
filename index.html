@@ -9,7 +9,7 @@
 <meta name="theme-color" content="#0a1628"/>
 <link rel="manifest" href="manifest.json"/>
 <link rel="apple-touch-icon" href="icon-512.png"/>
-<title>J Sailing V9.4 — Hallintapaneeli</title>
+<title>J Sailing V9.5 — Hallintapaneeli</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400;1,600&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -30,7 +30,7 @@
 }
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 html{height:100%}
-body{font-family:'Outfit',system-ui,sans-serif;color:#111827;min-height:100vh;min-height:100dvh;overflow-x:hidden;}
+body{font-family:'Outfit',system-ui,sans-serif;color:#111827;min-height:100vh;min-height:100dvh;overflow-x:hidden;width:100%;}
 body::before{content:"";position:fixed;inset:0;background:#f3f4f6;z-index:-1;}
 .auth-screen{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;}
 .auth-card{background:rgba(255,255,255,.95);border:1px solid #d1d5db;border-radius:24px;padding:48px 40px;width:min(420px,100%);text-align:center;backdrop-filter:blur(20px);box-shadow:0 4px 16px rgba(0,0,0,.12);}
@@ -47,8 +47,8 @@ body::before{content:"";position:fixed;inset:0;background:#f3f4f6;z-index:-1;}
 @keyframes spin{to{transform:rotate(360deg)}}
 .loader-text{font-size:13px;color:#374151}
 .app{display:flex;flex-direction:column;min-height:100vh;min-height:100dvh}
-.topbar{background:#ffffff;border-bottom:2px solid #0a4272;box-shadow:0 2px 8px rgba(0,0,0,.08);padding:0 20px;padding-top:var(--safe-top);display:flex;align-items:center;gap:16px;height:calc(60px + var(--safe-top));position:sticky;top:0;z-index:50;}
-.topbar-logo{font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:600;color:#0a4272;letter-spacing:-.3px;white-space:nowrap;}
+.topbar{background:#ffffff;border-bottom:2px solid #0a4272;box-shadow:0 2px 8px rgba(0,0,0,.08);padding:0 12px;padding-top:var(--safe-top);display:flex;align-items:center;gap:8px;height:calc(52px + var(--safe-top));position:sticky;top:0;z-index:50;overflow:hidden;}
+.topbar-logo{font-family:'Cormorant Garamond',serif;font-size:20px;font-weight:600;color:#0a4272;letter-spacing:-.3px;white-space:nowrap;flex-shrink:0;}
 .topbar-logo em{color:#92400e;font-style:italic}
 .topbar-spacer{flex:1}
 .topbar-user{display:flex;align-items:center;gap:8px;font-size:13px;color:#374151;}
@@ -178,7 +178,23 @@ select option{background:#ffffff;color:#111827}
 .tutkinto-Vuokraveneenkuljettaja{background:#fef3c7;color:#92400e;border:1px solid #fcd34d;}
 .tutkinto-Muu{background:#f3f4f6;color:#374151;border:1px solid #d1d5db;}
 @media print{.topbar,.nav-tabs,.noPrint{display:none!important}body{background:#fff}.card{border:none;box-shadow:none}.invoice-box{border:1px solid #ccc}.main-content{padding:0;max-width:none}}
-@media(max-width:600px){.cal-cell{min-height:64px}.cal-event{font-size:9px;padding:2px 4px}.topbar-user .name{display:none}.main-content{padding:12px 10px}}
+@media(max-width:600px){
+  .cal-cell{min-height:64px}
+  .cal-event{font-size:9px;padding:2px 4px}
+  .topbar-user .name{display:none}
+  .main-content{padding:10px 8px}
+  .hide-xs{display:none}
+  .nav-tab{font-size:10px;padding:10px 4px;min-width:52px}
+  .card{padding:14px 12px}
+  .grid2,.grid3{grid-template-columns:1fr}
+  .table{display:block;overflow-x:auto;-webkit-overflow-scrolling:touch}
+  .stats-grid{grid-template-columns:repeat(auto-fit,minmax(100px,1fr));gap:8px}
+  .stat-val{font-size:28px}
+  .btn{padding:8px 12px;font-size:12px}
+  .btn-sm{padding:5px 9px;font-size:11px}
+  .row-between{flex-direction:column;align-items:flex-start}
+  .row-between .row{width:100%}
+}
 </style>
 </head>
 <body>
@@ -189,7 +205,7 @@ import{getAuth,GoogleAuthProvider,signInWithPopup,signOut,onAuthStateChanged}fro
 import{getFirestore,collection,doc,addDoc,setDoc,deleteDoc,onSnapshot,serverTimestamp}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 const FIREBASE_CONFIG={apiKey:"AIzaSyB7Dp5_5fN0Iko-4Jn1D2Dp6NNNih63UO0",authDomain:"jsailing-f716c.firebaseapp.com",projectId:"jsailing-f716c",storageBucket:"jsailing-f716c.firebasestorage.app",messagingSenderId:"543523103696",appId:"1:543523103696:web:439a312efa6aec398a8fd5"};
 const ALLOWED_EMAIL="jacke.seilaa@gmail.com";
-const APP_VERSION="V9.4";const UPDATE_DATE=(()=>{const n=new Date();return n.toLocaleDateString("fi-FI")+' klo '+String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0');})();
+const APP_VERSION="V9.5";const UPDATE_DATE=(()=>{const n=new Date();return n.toLocaleDateString("fi-FI")+' klo '+String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0');})();
 const ISSUER={name:"J Sailing",businessId:"1728993-9"};
 const BANK={iban:"FI62 1132 3000 4277 43",bic:"NDEAFIHH"};
 const SAILING_TYPES=["Iltapurjehdus","Päiväpurjehdus","Charter","Kurssi","Yritystilaisuus","Purjehdusretki","Muu"];
@@ -449,7 +465,17 @@ function render(){
 function renderSetupBanner(){return`<div class="firebase-setup">⚠️ <strong>Firebase ei ole vielä konfiguroitu.</strong></div>`;}
 function renderTopBar(){
   const u=state.user;const syncEl=CONFIG_READY?`<span id="syncDot" class="sync-dot"></span>`:"";
-  return`<div class="topbar"><div class="topbar-logo">J <em>Sailing</em></div><div style="font-size:11px;color:#374151;display:flex;align-items:center;gap:6px">${syncEl}Absolut 37<span style="background:#0a4272;color:#fff;border-radius:4px;padding:1px 7px;font-weight:700;font-size:10px">${APP_VERSION} · ${UPDATE_DATE}</span></div><div class="topbar-spacer"></div><div class="topbar-user">${u?.photoURL?`<img src="${esc(u.photoURL)}" class="topbar-avatar" alt="">`:`<div class="topbar-avatar-placeholder">${(u?.displayName||u?.email||"?")[0].toUpperCase()}</div>`}<span class="name" style="font-size:12px;color:#374151">${esc(u?.displayName||u?.email||"")}</span><button class="btn-signout" data-action="sign-out">Kirjaudu ulos</button></div></div>`;
+  return`<div class="topbar">
+    <div class="topbar-logo">J <em>Sailing</em></div>
+    <span style="background:#0a4272;color:#fff;border-radius:4px;padding:1px 6px;font-weight:700;font-size:10px;white-space:nowrap;flex-shrink:0">${APP_VERSION}</span>
+    <div style="font-size:10px;color:#9ca3af;white-space:nowrap;flex-shrink:0" class="hide-xs">${UPDATE_DATE}</div>
+    <div style="display:flex;align-items:center;gap:4px;flex-shrink:0">${syncEl}</div>
+    <div class="topbar-spacer"></div>
+    <div class="topbar-user">
+      ${u?.photoURL?`<img src="${esc(u.photoURL)}" class="topbar-avatar" alt="">`:`<div class="topbar-avatar-placeholder">${(u?.displayName||u?.email||"?")[0].toUpperCase()}</div>`}
+      <button class="btn-signout" data-action="sign-out">Ulos</button>
+    </div>
+  </div>`;
 }
 function renderNavTabs(){
   const tabs=[["dashboard","🧭 Dashboard"],["calendar","📅 Kalenteri"],["sailings","⛵ Purjehdukset"],["tutkinnot","🎓 Tutkinnot"],["customers","👤 Asiakkaat"],["companies","🏢 Yritykset"],["invoicing","🧾 Laskutus"],["reskontra","📊 Reskontra"]];
