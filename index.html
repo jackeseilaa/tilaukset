@@ -9,7 +9,7 @@
 <meta name="theme-color" content="#0a1628"/>
 <link rel="manifest" href="manifest.json"/>
 <link rel="apple-touch-icon" href="icon-512.png"/>
-<title>J Sailing V8.8 — Hallintapaneeli</title>
+<title>J Sailing V8.9 — Hallintapaneeli</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400;1,600&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -188,7 +188,7 @@ import{getAuth,GoogleAuthProvider,signInWithPopup,signOut,onAuthStateChanged}fro
 import{getFirestore,collection,doc,addDoc,setDoc,deleteDoc,onSnapshot,serverTimestamp}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 const FIREBASE_CONFIG={apiKey:"AIzaSyB7Dp5_5fN0Iko-4Jn1D2Dp6NNNih63UO0",authDomain:"jsailing-f716c.firebaseapp.com",projectId:"jsailing-f716c",storageBucket:"jsailing-f716c.firebasestorage.app",messagingSenderId:"543523103696",appId:"1:543523103696:web:439a312efa6aec398a8fd5"};
 const ALLOWED_EMAIL="jacke.seilaa@gmail.com";
-const APP_VERSION="V8.8";const UPDATE_DATE=(()=>{const n=new Date();return n.toLocaleDateString("fi-FI")+' klo '+String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0');})();
+const APP_VERSION="V8.9";const UPDATE_DATE=(()=>{const n=new Date();return n.toLocaleDateString("fi-FI")+' klo '+String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0');})();
 const ISSUER={name:"J Sailing",businessId:"1728993-9"};
 const BANK={iban:"FI62 1132 3000 4277 43",bic:"NDEAFIHH"};
 const SAILING_TYPES=["Iltapurjehdus","Päiväpurjehdus","Charter","Kurssi","Yritystilaisuus","Purjehdusretki","Muu"];
@@ -534,10 +534,13 @@ function renderCalendar(){
   return`<div class="card">
     <div class="row-between">
       <div class="cal-nav-bar"><button class="btn btn-secondary btn-sm" data-action="cal-nav" data-month="${prev}">‹</button><div class="cal-month-label">${monthNames[month-1]} ${year}</div><button class="btn btn-secondary btn-sm" data-action="cal-nav" data-month="${next}">›</button></div>
-      <button class="btn btn-secondary btn-sm" data-action="cal-today">Tänään</button>
+      <div class="row">
+        <button class="btn btn-secondary btn-sm" data-action="cal-today">Tänään</button>
+        <button class="btn btn-secondary btn-sm" data-action="print-calendar">🖨️ Tulosta</button>
+      </div>
     </div>
     <div class="cal-legend">${TYPES.map(t=>`<div class="cal-legend-item"><div class="cal-legend-dot cal-event type-${t}"></div>${esc(t)}</div>`).join("")}<div class="cal-legend-item"><div style="width:10px;height:10px;border-radius:50%;background:#4285F4;flex-shrink:0"></div>Google Kalenterissa</div></div>
-    <div class="cal-grid">${dayNames.map(d=>`<div class="cal-dayname">${d}</div>`).join("")}${cells}</div>
+    <div class="cal-grid" id="cal-grid-area">${dayNames.map(d=>`<div class="cal-dayname">${d}</div>`).join("")}${cells}</div>
   </div>`;
 }
 
@@ -1197,6 +1200,96 @@ function bind(){
       if(a==="set-group"){state.sailingGroup=itemId;render();return;}
       if(a==="cal-nav"){state.calendarMonth=el.dataset.month;render();return;}
       if(a==="cal-today"){state.calendarMonth=today().slice(0,7);render();return;}
+      if(a==="print-calendar"){
+        const [yr,mo]=state.calendarMonth.split("-").map(Number);
+        const monthNames=["Tammikuu","Helmikuu","Maaliskuu","Huhtikuu","Toukokuu","Kesäkuu","Heinäkuu","Elokuu","Syyskuu","Lokakuu","Marraskuu","Joulukuu"];
+        const dayNames=["Ma","Ti","Ke","To","Pe","La","Su"];
+        const firstDay=new Date(yr,mo-1,1).getDay();
+        const startOffset=firstDay===0?6:firstDay-1;
+        const daysInMonth=new Date(yr,mo,0).getDate();
+        const daysInPrev=new Date(yr,mo-1,0).getDate();
+        const todayStr=today();
+        // Build event map (same logic as calendar, no attendee counts)
+        const evMap={};
+        const addEv=(ds,ev)=>{if(!evMap[ds])evMap[ds]=[];evMap[ds].push(ev);};
+        for(const s of state.sailings){
+          if(!s.date)continue;
+          const isCourse=s.type==="Kurssi";
+          const hasSessions=isCourse&&Array.isArray(s.sessions)&&s.sessions.length>0;
+          const isMultiDay=s.endDate&&s.endDate>s.date;
+          if(isCourse&&s.teoria&&s.teoria.date){
+            let tl="";if(s.teoria.start&&s.teoria.end)tl=s.teoria.start+"–"+s.teoria.end;else if(s.teoria.start)tl="klo "+s.teoria.start;
+            addEv(s.teoria.date,{name:s.name+" (teoria)",type:"Teoria",timeLabel:tl,reitti:""});
+          }
+          if(!hasSessions){
+            if(isMultiDay){
+              let cur=new Date(s.date+"T12:00:00");const endD=new Date(s.endDate+"T12:00:00");
+              let di=0;const tot=Math.round((endD-cur)/86400000)+1;
+              while(cur<=endD){
+                const ds=cur.toISOString().slice(0,10);
+                const isF=di===0,isL=di===tot-1;
+                const tl=isF?(s.startTime?"lähtö "+s.startTime:"lähtö"):isL?(s.endTime?"paluu "+s.endTime:"paluu"):`vrk ${di+1}/${tot}`;
+                addEv(ds,{name:s.name,type:s.type,timeLabel:tl,reitti:isF?(s.reitti||""):""});
+                cur.setDate(cur.getDate()+1);di++;
+              }
+            }else{
+              let tl="";if(s.startTime&&s.endTime)tl=s.startTime+"–"+s.endTime;else if(s.startTime)tl="klo "+s.startTime;
+              addEv(s.date,{name:s.name,type:s.type,timeLabel:tl,reitti:s.reitti||""});
+            }
+          }else{
+            for(let i=0;i<s.sessions.length;i++){
+              const sess=s.sessions[i];if(!sess.date)continue;
+              let tl="";if(sess.start&&sess.end)tl=sess.start+"–"+sess.end;else if(sess.start)tl="klo "+sess.start;
+              addEv(sess.date,{name:s.name,type:s.type,timeLabel:tl,reitti:""});
+            }
+          }
+        }
+        // Build cells HTML for print
+        const totalCells=Math.ceil((startOffset+daysInMonth)/7)*7;
+        let cellsHtml="";
+        for(let i=0;i<totalCells;i++){
+          let d,m,y,other=false;
+          if(i<startOffset){d=daysInPrev-startOffset+i+1;m=mo===1?12:mo-1;y=mo===1?yr-1:yr;other=true;}
+          else if(i>=startOffset+daysInMonth){d=i-startOffset-daysInMonth+1;m=mo===12?1:mo+1;y=mo===12?yr+1:yr;other=true;}
+          else{d=i-startOffset+1;m=mo;y=yr;}
+          const ds=y+"-"+String(m).padStart(2,"0")+"-"+String(d).padStart(2,"0");
+          const isToday=ds===todayStr;
+          const evs=evMap[ds]||[];
+          const evHtml=evs.map(ev=>{
+            const colors={Kurssi:"#c8e8f8",Charter:"#c0f0dc",Iltapurjehdus:"#e4d0f8",Päiväpurjehdus:"#fde8b0",Purjehdusretki:"#fcc8c8",Yritystilaisuus:"#dce8f4",Teoria:"#fff3cd",Muu:"#e4e4ec"};
+            const bg=colors[ev.type]||"#e4e4ec";
+            return`<div style="background:${bg};border-radius:4px;padding:3px 5px;margin-bottom:2px;font-size:10px;font-weight:700;overflow:hidden">
+              ${ev.name}${ev.timeLabel?`<span style="font-weight:400;opacity:.8"> ${ev.timeLabel}</span>`:""}
+              ${ev.reitti?`<div style="font-size:9px;opacity:.7">📍${ev.reitti}</div>`:""}
+            </div>`;
+          }).join("");
+          cellsHtml+=`<div style="min-height:90px;border:1px solid #d1d5db;border-radius:6px;padding:5px;${other?"opacity:.3":""}${isToday?";border-color:#0a4272;border-width:2px":""}">
+            <div style="font-size:11px;font-weight:800;margin-bottom:3px;${isToday?"background:#0a4272;color:#fff;width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9px":""}">${d}</div>
+            ${evHtml}
+          </div>`;
+        }
+        const win=window.open("","_blank","width=1100,height=800");
+        win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>J Sailing — ${monthNames[mo-1]} ${yr}</title><style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Outfit',system-ui,sans-serif;padding:20px;max-width:1050px;margin:0 auto}
+.grid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px}
+.dayname{text-align:center;font-size:10px;font-weight:800;color:#374151;padding:6px 2px;text-transform:uppercase;letter-spacing:.5px;border-bottom:2px solid #0a4272;margin-bottom:4px}
+@media print{@page{size:A4 landscape;margin:12mm}}
+</style></head><body>
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;border-bottom:3px solid #0a4272;padding-bottom:10px">
+    <div style="font-size:28px;font-weight:700;color:#0a4272;font-family:Georgia,serif">J <em>Sailing</em> — Absolut 37</div>
+    <div style="font-size:22px;font-weight:700;color:#111">${monthNames[mo-1]} ${yr}</div>
+    <div style="font-size:11px;color:#6b7280">Tulostettu ${new Date().toLocaleDateString("fi-FI")}</div>
+  </div>
+  <div class="grid">
+    ${dayNames.map(d=>`<div class="dayname">${d}</div>`).join("")}
+    ${cellsHtml}
+  </div>
+</body></html>`);
+        win.document.close();
+        setTimeout(()=>win.print(),600);
+        return;
+      }
       if(a==="toggle-sailing"){state.openSailingId=(state.openSailingId===itemId)?null:itemId;render();return;}
       if(a==="close-modal"){state.modal=null;state.editId=null;state.editSession=null;state.previewInvoiceId=null;state.dashQuickId=null;state.dashQuickType=null;render();return;}
       if(a==="show-pending"){state.modal="pending-list";render();return;}
