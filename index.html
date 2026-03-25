@@ -9,7 +9,7 @@
 <meta name="theme-color" content="#0a1628"/>
 <link rel="manifest" href="manifest.json"/>
 <link rel="apple-touch-icon" href="icon-512.png"/>
-<title>J Sailing V9.0 — Hallintapaneeli</title>
+<title>J Sailing V9.2 — Hallintapaneeli</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400;1,600&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -188,7 +188,7 @@ import{getAuth,GoogleAuthProvider,signInWithPopup,signOut,onAuthStateChanged}fro
 import{getFirestore,collection,doc,addDoc,setDoc,deleteDoc,onSnapshot,serverTimestamp}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 const FIREBASE_CONFIG={apiKey:"AIzaSyB7Dp5_5fN0Iko-4Jn1D2Dp6NNNih63UO0",authDomain:"jsailing-f716c.firebaseapp.com",projectId:"jsailing-f716c",storageBucket:"jsailing-f716c.firebasestorage.app",messagingSenderId:"543523103696",appId:"1:543523103696:web:439a312efa6aec398a8fd5"};
 const ALLOWED_EMAIL="jacke.seilaa@gmail.com";
-const APP_VERSION="V9.0";const UPDATE_DATE=(()=>{const n=new Date();return n.toLocaleDateString("fi-FI")+' klo '+String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0');})();
+const APP_VERSION="V9.2";const UPDATE_DATE=(()=>{const n=new Date();return n.toLocaleDateString("fi-FI")+' klo '+String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0');})();
 const ISSUER={name:"J Sailing",businessId:"1728993-9"};
 const BANK={iban:"FI62 1132 3000 4277 43",bic:"NDEAFIHH"};
 const SAILING_TYPES=["Iltapurjehdus","Päiväpurjehdus","Charter","Kurssi","Yritystilaisuus","Purjehdusretki","Muu"];
@@ -662,7 +662,29 @@ function renderTutkinnot(){
     ${state.tutkinnot.length>0?`<div class="stats-grid" style="margin:16px 0">${TUTKINTO_TYPES.map(t=>`<div class="stat-card"><div class="stat-label" style="font-size:10px">${esc(t)}</div><div class="stat-val" style="font-size:28px;color:#1e40af">${typeCounts[t]||0}</div></div>`).join("")}</div>`:""}
     <div class="hr"></div>
     <div class="field"><label class="lbl">Haku</label><input data-action="search-tutkinnot" value="${esc(state.searchTutkinnot)}" placeholder="Hae nimellä, tutkintotyypillä tai päivällä…"></div>
-    ${list.length===0?`<div class="muted">Ei tutkintoja.</div>`:`<table class="table"><thead><tr><th>Suorituspäivä</th><th>Tutkintotyyppi</th><th>Suorittaja</th><th>Lisätiedot</th><th></th></tr></thead><tbody>${list.map(t=>{const typeKey=(t.type||"").split(" ")[0];return`<tr><td style="font-weight:600;white-space:nowrap">${fmtDate(t.date)}</td><td><span class="tutkinto-type-badge tutkinto-${esc(typeKey)}">${esc(t.type||"")}</span></td><td style="font-weight:600">${esc(t.customerName||"")}</td><td class="small muted">${esc(t.notes||"")}</td><td><div class="row" style="gap:6px"><button class="btn btn-secondary btn-sm" data-action="edit-tutkinto" data-id="${t.id}">Muokkaa</button><button class="btn btn-danger btn-sm" data-action="delete-tutkinto" data-id="${t.id}">Poista</button></div></td></tr>`;}).join("")}</tbody></table>`}
+    ${list.length===0?`<div class="muted">Ei tutkintoja.</div>`:`<table class="table"><thead><tr><th>Päivämäärä</th><th>Tutkintotyyppi</th><th>Osallistujat</th><th>Paikka / Lisätiedot</th><th></th></tr></thead><tbody>${list.map(t=>{
+      const typeKey=(t.type||"").split(" ")[0];
+      const enrolled=state.customers.filter(c=>c.tutkintoId===t.id).length;
+      const max=Number(t.maxPersons||0);
+      const enrolledStr=max>0?`${enrolled}/${max}`:`${enrolled} hlö`;
+      const conf=state.customers.filter(c=>c.tutkintoId===t.id&&c.reservationStatus==="paid").length;
+      const pend=state.customers.filter(c=>c.tutkintoId===t.id&&c.reservationStatus==="pending").length;
+      return`<tr>
+        <td style="font-weight:600;white-space:nowrap">${fmtDate(t.date)}</td>
+        <td><span class="tutkinto-type-badge tutkinto-${esc(typeKey)}">${esc(t.type||"")}</span>${t.boatType?`<div class="small muted">${esc(t.boatType)}</div>`:""}</td>
+        <td>
+          <span style="font-weight:700">${enrolledStr}</span>
+          ${conf>0?`<span class="badge badge-green" style="font-size:10px;margin-left:4px">✓${conf}</span>`:""}
+          ${pend>0?`<span class="badge badge-red" style="font-size:10px;margin-left:2px">●${pend}</span>`:""}
+          ${t.pricePerPerson>0?`<div class="small muted">${Number(t.pricePerPerson).toFixed(0)} €/hlö</div>`:""}
+        </td>
+        <td class="small muted">${t.location?`📍 ${esc(t.location)}<br>`:""}${esc(t.notes||"")}</td>
+        <td><div class="row" style="gap:6px">
+          <button class="btn btn-primary btn-sm" data-action="dash-open" data-id="${t.id}" data-type="tutkinto">Osallistujat</button>
+          <button class="btn btn-secondary btn-sm" data-action="edit-tutkinto" data-id="${t.id}">Muokkaa</button>
+          <button class="btn btn-danger btn-sm" data-action="delete-tutkinto" data-id="${t.id}">Poista</button>
+        </div></td>
+      </tr>`;}).join("")}</tbody></table>`}
   </div>`;
 }
 function renderReskontra(){
@@ -779,9 +801,8 @@ function renderTutkintoModal(){
   const t=editing?state.tutkinnot.find(x=>x.id===state.editId):null;
   const selType=t?.type||TUTKINTO_TYPES[0];
   const isPaikka=["Rannikkopäällikkö","Saaristopäällikkö"].includes(selType);
-  const custOpts=state.customers.slice().sort((a,b)=>(a.name||"").localeCompare(b.name||"")).map(c=>`<option value="${esc(c.name)}" ${c.name===(t?.customerName||"")?"selected":""}>${esc(c.name)}</option>`).join("");
   return`<div class="overlay" data-action="close-modal"><div class="modal" style="max-width:560px" onclick="event.stopPropagation()">
-    <div class="modal-head"><div class="row-between"><div class="modal-title">${editing?"Muokkaa tutkintoa":"Uusi tutkinto"}</div><button class="btn btn-secondary btn-sm" data-action="close-modal">✕</button></div></div>
+    <div class="modal-head"><div class="row-between"><div class="modal-title">${editing?"Muokkaa tutkintoa":"Uusi tutkintotilaisuus"}</div><button class="btn btn-secondary btn-sm" data-action="close-modal">✕</button></div></div>
     <div class="modal-body">
       <div class="grid2">
         <div class="field"><label class="lbl">Tutkintotyyppi *</label>
@@ -789,11 +810,18 @@ function renderTutkintoModal(){
             ${TUTKINTO_TYPES.map(tt=>`<option value="${esc(tt)}" ${tt===selType?"selected":""}>${esc(tt)}</option>`).join("")}
           </select>
         </div>
-        <div class="field"><label class="lbl">Suorituspäivä *</label><input type="date" data-field="tutkinto-date" value="${esc(t?.date||today())}"></div>
+        <div class="field"><label class="lbl">Päivämäärä *</label><input type="date" data-field="tutkinto-date" value="${esc(t?.date||today())}"></div>
       </div>
-      ${isPaikka?`<div class="grid2"><div class="field"><label class="lbl">Venetyyppi *</label><select data-field="tutkinto-boattype"><option value="Purjevene" ${(t?.boatType||"Purjevene")==="Purjevene"?"selected":""}>⛵ Purjevene</option><option value="Moottorivene" ${t?.boatType==="Moottorivene"?"selected":""}> Moottorivene</option></select></div><div class="field"><label class="lbl">Paikkoja (max)</label><input type="number" min="1" step="1" data-field="tutkinto-maxpersons" value="${esc(String(Number(t?.maxPersons||4)))}"></div></div><div class="field" style="max-width:200px"><label class="lbl">Varapaikkoja</label><input type="number" min="0" step="1" data-field="tutkinto-reserveslots" value="${esc(String(Number(t?.reserveSlots||2)))}"></div>`:""}
-      <div class="field"><label class="lbl">Suorittaja *</label><input data-field="tutkinto-customer" value="${esc(t?.customerName||"")}" placeholder="Kirjoita nimi" autocomplete="off" autocorrect="off" spellcheck="false"></div>
-      <div class="field"><label class="lbl">Lisätiedot</label><textarea data-field="tutkinto-notes" rows="3" placeholder="Esim. suorituspaikka, arvosana, huomiot…">${esc(t?.notes||"")}</textarea></div>
+      <div class="grid2">
+        ${isPaikka?`<div class="field"><label class="lbl">Venetyyppi</label><select data-field="tutkinto-boattype"><option value="Purjevene" ${(t?.boatType||"Purjevene")==="Purjevene"?"selected":""}>⛵ Purjevene</option><option value="Moottorivene" ${t?.boatType==="Moottorivene"?"selected":""}> Moottorivene</option></select></div>`:`<div class="field"></div>`}
+        <div class="field"><label class="lbl">Max osallistujia <span style="font-weight:400;text-transform:none;font-size:11px;color:#6b7280">(0 = ei rajoitusta)</span></label><input type="number" min="0" step="1" data-field="tutkinto-maxpersons" value="${esc(String(Number(t?.maxPersons||0)))}"></div>
+      </div>
+      <div class="grid2">
+        <div class="field"><label class="lbl">Hinta/hlö (€)</label><input type="number" min="0" step="0.01" data-field="tutkinto-price" value="${esc(String(Number(t?.pricePerPerson||0)))}"></div>
+        <div class="field"><label class="lbl">Paikka</label><input data-field="tutkinto-location" value="${esc(t?.location||"")}" placeholder="esim. Laivakoulu, Loviisa" autocomplete="off"></div>
+      </div>
+      <div class="field"><label class="lbl">Lisätiedot</label><textarea data-field="tutkinto-notes" rows="2" placeholder="Esim. ohjaaja, vaatimukset, huomiot…">${esc(t?.notes||"")}</textarea></div>
+      ${editing?`<div class="infobox infobox-blue">Osallistujat hallitaan Osallistujat-napin kautta tutkintoluettelossa.</div>`:""}
       <div class="row" style="justify-content:flex-end;margin-top:16px"><button class="btn btn-primary" data-action="save-tutkinto">${editing?"Tallenna muutokset":"Tallenna"}</button></div>
     </div>
   </div></div>`;
@@ -834,16 +862,21 @@ function renderDashQuickModal(){
   const t=!isSailing?state.tutkinnot.find(x=>x.id===state.dashQuickId):null;
   if(!s&&!t)return"";
   const nc=state.dashNewCustomer||{name:"",phone:"",email:"",status:"pending"};
-  const attendees=isSailing?state.customers.filter(c=>c.sailingId===s.id).sort((a,b)=>{const o={pending:0,reserve:1,paid:2};return(o[a.reservationStatus]??1)-(o[b.reservationStatus]??1)||a.name.localeCompare(b.name);}):[];
-  const max=isSailing?Number(s?.maxPersons||0):Number(t?.maxPersons||4);
-  const rsv=isSailing?Number(s?.reserveSlots||0):Number(t?.reserveSlots||2);
-  const conf=isSailing?confirmedCount(s.id):0,pend=isSailing?pendingCount(s.id):0;
-  const enrolled=isSailing?enrolledCount(s.id):Number(t?.enrolled||0);
+  const attendees=isSailing
+    ?state.customers.filter(c=>c.sailingId===s.id).sort((a,b)=>{const o={pending:0,reserve:1,paid:2};return(o[a.reservationStatus]??1)-(o[b.reservationStatus]??1)||a.name.localeCompare(b.name);})
+    :state.customers.filter(c=>c.tutkintoId===t.id).sort((a,b)=>(a.name||"").localeCompare(b.name||""));
+  const max=isSailing?Number(s?.maxPersons||0):Number(t?.maxPersons||0);
+  const rsv=isSailing?Number(s?.reserveSlots||0):Number(t?.reserveSlots||0);
+  const conf=isSailing?confirmedCount(s.id):attendees.filter(c=>c.reservationStatus==="paid").length;
+  const pend=isSailing?pendingCount(s.id):attendees.filter(c=>c.reservationStatus==="pending").length;
+  const enrolled=attendees.length;
   const title=isSailing?s.name:(t.type+(t.boatType?" ("+t.boatType+")":""));
+  const dateStr=isSailing?fmtDate(s.date):fmtDate(t.date);
+  const capacityStr=max>0?`${max-enrolled} vapaata (max ${max}${rsv>0?"+"+rsv+" vara":""})`:(`${enrolled} osallistujaa`);
   return`<div class="overlay" data-action="close-modal"><div class="modal" style="max-width:680px" onclick="event.stopPropagation()">
-    <div class="modal-head"><div class="row-between"><div><div class="modal-title">${esc(title)}</div><div class="card-sub">${isSailing?s.type:t.type}${isSailing?" · "+fmtDate(s.date):""} · <span style="color:#166534;font-weight:700">${max-enrolled} vapaata</span> (max ${max}+${rsv})</div></div><div class="row"><button class="btn btn-secondary btn-sm" data-action="${isSailing?"edit-sailing":"edit-tutkinto"}" data-id="${state.dashQuickId}">✏️ Muokkaa</button><button class="btn btn-secondary btn-sm" data-action="close-modal">✕</button></div></div></div>
+    <div class="modal-head"><div class="row-between"><div><div class="modal-title">${esc(title)}</div><div class="card-sub">${isSailing?s.type:t.type} · ${dateStr} · <span style="color:#166534;font-weight:700">${capacityStr}</span></div></div><div class="row"><button class="btn btn-secondary btn-sm" data-action="${isSailing?"edit-sailing":"edit-tutkinto"}" data-id="${state.dashQuickId}">✏️ Muokkaa</button><button class="btn btn-secondary btn-sm" data-action="close-modal">✕</button></div></div></div>
     <div class="modal-body">
-      ${isSailing&&attendees.length>0?`<div style="font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:#6b7280;margin-bottom:8px">Osallistujat <span class="badge badge-green">✓${conf}</span> <span class="badge badge-red">●${pend}</span></div>${attendees.map(c=>{const st=c.reservationStatus||"pending",dc=st==="paid"?"dot-green":st==="reserve"?"dot-amber":"dot-red";return`<div class="attendee-card ${st}" style="margin-bottom:6px"><div class="row"><span class="dot ${dc}"></span><span style="font-weight:600;font-size:14px">${esc(c.name||"")}</span>${statusBadge(st)}</div><div class="row">${st==="pending"?`<button class="btn btn-teal btn-sm" data-action="confirm-payment" data-id="${c.id}">✓ Maksettu</button>`:""}${st==="reserve"?`<button class="btn btn-secondary btn-sm" data-action="promote-reserve" data-id="${c.id}">↑ Vahvista</button>`:""}<button class="btn btn-danger btn-sm" data-action="delete-customer" data-id="${c.id}">Poista</button></div></div>`;}).join("")}<div class="hr"></div>`:""}
+      ${attendees.length>0?`<div style="font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:#6b7280;margin-bottom:8px">Osallistujat <span class="badge badge-green">✓${conf}</span> <span class="badge badge-red">●${pend}</span></div>${attendees.map(c=>{const st=c.reservationStatus||"pending",dc=st==="paid"?"dot-green":st==="reserve"?"dot-amber":"dot-red";return`<div class="attendee-card ${st}" style="margin-bottom:6px"><div class="row"><span class="dot ${dc}"></span><span style="font-weight:600;font-size:14px">${esc(c.name||"")}</span>${statusBadge(st)}</div><div class="row">${st==="pending"?`<button class="btn btn-teal btn-sm" data-action="confirm-payment" data-id="${c.id}">✓ Maksettu</button>`:""}${st==="reserve"?`<button class="btn btn-secondary btn-sm" data-action="promote-reserve" data-id="${c.id}">↑ Vahvista</button>`:""}<button class="btn btn-danger btn-sm" data-action="delete-customer" data-id="${c.id}">Poista</button></div></div>`;}).join("")}<div class="hr"></div>`:""}
       <div style="font-weight:700;font-size:12px;text-transform:uppercase;letter-spacing:.5px;color:#0a4272;margin-bottom:12px">+ Lisää osallistuja</div>
       <div class="grid2">
         <div class="field">
@@ -1335,7 +1368,12 @@ table{width:100%;border-collapse:collapse}
         const phone=(document.querySelector('[data-field="qnc-phone"]')?.value||"").trim();
         const email=(document.querySelector('[data-field="qnc-email"]')?.value||"").trim();
         const status=document.querySelector('[data-field="qnc-status"]')?.value||"pending";
-        await fsAdd("customers",{name,phone,email,sailingId:state.dashQuickType==="sailing"?state.dashQuickId:"",billTo:"self",companyId:"",reservationStatus:status});
+        await fsAdd("customers",{
+          name,phone,email,
+          sailingId:state.dashQuickType==="sailing"?state.dashQuickId:"",
+          tutkintoId:state.dashQuickType==="tutkinto"?state.dashQuickId:"",
+          billTo:"self",companyId:"",reservationStatus:status
+        });
         state.dashNewCustomer={name:"",phone:"",email:"",status:"pending"};alert(`${name} lisätty!`);render();return;
       }
       if(a==="new-customer"){state.modal="customer";state.editId=null;render();return;}
@@ -1351,15 +1389,16 @@ table{width:100%;border-collapse:collapse}
       if(a==="save-tutkinto"){
         const type=document.querySelector('[data-field="tutkinto-type"]')?.value||"";
         const date=document.querySelector('[data-field="tutkinto-date"]')?.value||"";
-        const customerName=(document.querySelector('[data-field="tutkinto-customer"]')?.value||"").trim();
         const notes=(document.querySelector('[data-field="tutkinto-notes"]')?.value||"").trim();
         const isPaikka=["Rannikkopäällikkö","Saaristopäällikkö"].includes(type);
         const boatType=isPaikka?(document.querySelector('[data-field="tutkinto-boattype"]')?.value||"Purjevene"):"";
-        const maxPersons=isPaikka?parseInt(document.querySelector('[data-field="tutkinto-maxpersons"]')?.value||"4",10):0;
-        const reserveSlots=isPaikka?parseInt(document.querySelector('[data-field="tutkinto-reserveslots"]')?.value||"2",10):0;
-        if(!type||!date||!customerName)return alert("Täytä pakolliset kentät.");
-        const data={type,date,customerName,sailingId:"",notes,boatType,maxPersons,reserveSlots,enrolled:0};
-        if(state.editId){const ex=state.tutkinnot.find(x=>x.id===state.editId);data.enrolled=ex?.enrolled||0;await fsSet("tutkinnot",state.editId,data);}else await fsAdd("tutkinnot",data);
+        const maxPersons=parseInt(document.querySelector('[data-field="tutkinto-maxpersons"]')?.value||"0",10)||0;
+        const pricePerPerson=parseFloat(document.querySelector('[data-field="tutkinto-price"]')?.value)||0;
+        const location=(document.querySelector('[data-field="tutkinto-location"]')?.value||"").trim();
+        if(!type||!date)return alert("Täytä tutkintotyyppi ja päivämäärä.");
+        const data={type,date,notes,boatType,maxPersons,pricePerPerson,location,customerName:""};
+        if(state.editId)await fsSet("tutkinnot",state.editId,data);
+        else await fsAdd("tutkinnot",data);
         state.modal=null;state.editId=null;render();return;
       }
       if(a==="preview-invoice"){state.previewInvoiceId=itemId;state.modal="invoice-preview";render();return;}
