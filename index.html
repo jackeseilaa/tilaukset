@@ -842,7 +842,24 @@ function renderDashQuickModal(){
     <div class="modal-body">
       ${isSailing&&attendees.length>0?`<div style="font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:#6b7280;margin-bottom:8px">Osallistujat <span class="badge badge-green">✓${conf}</span> <span class="badge badge-red">●${pend}</span></div>${attendees.map(c=>{const st=c.reservationStatus||"pending",dc=st==="paid"?"dot-green":st==="reserve"?"dot-amber":"dot-red";return`<div class="attendee-card ${st}" style="margin-bottom:6px"><div class="row"><span class="dot ${dc}"></span><span style="font-weight:600;font-size:14px">${esc(c.name||"")}</span>${statusBadge(st)}</div><div class="row">${st==="pending"?`<button class="btn btn-teal btn-sm" data-action="confirm-payment" data-id="${c.id}">✓ Maksettu</button>`:""}${st==="reserve"?`<button class="btn btn-secondary btn-sm" data-action="promote-reserve" data-id="${c.id}">↑ Vahvista</button>`:""}<button class="btn btn-danger btn-sm" data-action="delete-customer" data-id="${c.id}">Poista</button></div></div>`;}).join("")}<div class="hr"></div>`:""}
       <div style="font-weight:700;font-size:12px;text-transform:uppercase;letter-spacing:.5px;color:#0a4272;margin-bottom:12px">+ Lisää osallistuja</div>
-      <div class="grid2"><div class="field"><label class="lbl">Nimi *</label><input data-field="qnc-name" value="${esc(nc.name||"")}" placeholder="Etunimi Sukunimi" autocomplete="off" autocorrect="off" autocapitalize="words" spellcheck="false"></div><div class="field"><label class="lbl">Puhelin</label><input data-field="qnc-phone" value="${esc(nc.phone||"")}" placeholder="040 1234567"></div></div>
+      <div class="grid2">
+        <div class="field">
+          <label class="lbl">Nimi *</label>
+          <div style="position:relative">
+            <input data-field="qnc-name" value="${esc(nc.name||"")}" placeholder="Kirjoita nimi tai hae olemassa olevista" autocomplete="off" autocorrect="off" autocapitalize="words" spellcheck="false" style="width:100%">
+            ${(()=>{
+              const term=(nc.name||"").toLowerCase().trim();
+              if(!term||term.length<1) return "";
+              const matches=state.customers.filter(c=>(c.name||"").toLowerCase().includes(term)).slice(0,6);
+              if(!matches.length) return "";
+              return `<div style="position:absolute;top:100%;left:0;right:0;background:#fff;border:1.5px solid #0a4272;border-top:none;border-radius:0 0 8px 8px;z-index:50;box-shadow:0 4px 12px rgba(0,0,0,.15)">
+                ${matches.map(c=>`<div data-action="qnc-pick" data-name="${esc(c.name)}" data-phone="${esc(c.phone||"")}" data-email="${esc(c.email||"")}" style="padding:9px 13px;font-size:13px;cursor:pointer;border-top:1px solid #e5e7eb" onmouseover="this.style.background='#f0f4f8'" onmouseout="this.style.background=''">${esc(c.name)}<span style="font-size:11px;color:#6b7280;margin-left:8px">${esc(c.phone||c.email||"")}</span></div>`).join("")}
+              </div>`;
+            })()}
+          </div>
+        </div>
+        <div class="field"><label class="lbl">Puhelin</label><input data-field="qnc-phone" value="${esc(nc.phone||"")}" placeholder="040 1234567"></div>
+      </div>
       <div class="grid2"><div class="field"><label class="lbl">Sähköposti</label><input data-field="qnc-email" value="${esc(nc.email||"")}" placeholder="nimi@example.fi"></div><div class="field"><label class="lbl">Status</label><select data-field="qnc-status"><option value="pending" ${(nc.status||"pending")==="pending"?"selected":""}>● Varausmaksu odottaa</option><option value="paid" ${nc.status==="paid"?"selected":""}>✓ Vahvistettu</option><option value="reserve" ${nc.status==="reserve"?"selected":""}>◎ Varapaikka</option></select></div></div>
       <div class="row" style="justify-content:flex-end;margin-top:12px;gap:10px"><button class="btn btn-secondary btn-sm" data-action="qnc-clear">Tyhjennä</button><button class="btn btn-primary" data-action="qnc-save">+ Tallenna osallistuja</button></div>
     </div>
@@ -1184,6 +1201,13 @@ function bind(){
       if(a==="close-modal"){state.modal=null;state.editId=null;state.editSession=null;state.previewInvoiceId=null;state.dashQuickId=null;state.dashQuickType=null;render();return;}
       if(a==="show-pending"){state.modal="pending-list";render();return;}
       if(a==="dash-open"){state.dashQuickId=itemId;state.dashQuickType=el.dataset.type||"sailing";state.dashNewCustomer={name:"",phone:"",email:"",status:"pending"};state.modal="dash-quick";render();return;}
+      if(a==="qnc-pick"){
+        if(!state.dashNewCustomer)state.dashNewCustomer={};
+        state.dashNewCustomer.name=el.dataset.name||"";
+        state.dashNewCustomer.phone=el.dataset.phone||"";
+        state.dashNewCustomer.email=el.dataset.email||"";
+        render();return;
+      }
       if(a==="qnc-clear"){state.dashNewCustomer={name:"",phone:"",email:"",status:"pending"};render();return;}
       if(a==="qnc-save"){
         const name=(document.querySelector('[data-field="qnc-name"]')?.value||"").trim();if(!name)return alert("Nimi on pakollinen.");
