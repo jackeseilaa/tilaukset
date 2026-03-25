@@ -9,7 +9,7 @@
 <meta name="theme-color" content="#0a1628"/>
 <link rel="manifest" href="manifest.json"/>
 <link rel="apple-touch-icon" href="icon-512.png"/>
-<title>J Sailing V9.3 — Hallintapaneeli</title>
+<title>J Sailing V9.4 — Hallintapaneeli</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400;1,600&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -189,7 +189,7 @@ import{getAuth,GoogleAuthProvider,signInWithPopup,signOut,onAuthStateChanged}fro
 import{getFirestore,collection,doc,addDoc,setDoc,deleteDoc,onSnapshot,serverTimestamp}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 const FIREBASE_CONFIG={apiKey:"AIzaSyB7Dp5_5fN0Iko-4Jn1D2Dp6NNNih63UO0",authDomain:"jsailing-f716c.firebaseapp.com",projectId:"jsailing-f716c",storageBucket:"jsailing-f716c.firebasestorage.app",messagingSenderId:"543523103696",appId:"1:543523103696:web:439a312efa6aec398a8fd5"};
 const ALLOWED_EMAIL="jacke.seilaa@gmail.com";
-const APP_VERSION="V9.3";const UPDATE_DATE=(()=>{const n=new Date();return n.toLocaleDateString("fi-FI")+' klo '+String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0');})();
+const APP_VERSION="V9.4";const UPDATE_DATE=(()=>{const n=new Date();return n.toLocaleDateString("fi-FI")+' klo '+String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0');})();
 const ISSUER={name:"J Sailing",businessId:"1728993-9"};
 const BANK={iban:"FI62 1132 3000 4277 43",bic:"NDEAFIHH"};
 const SAILING_TYPES=["Iltapurjehdus","Päiväpurjehdus","Charter","Kurssi","Yritystilaisuus","Purjehdusretki","Muu"];
@@ -355,6 +355,70 @@ function computeInvoice(overrideState){
   const invNo=nextInvoiceNumber();
   return{sailing:s,tutkinto:t,isTutkinto,rate,ratePct,payerName,payerEmail,payerBusinessId,lines,grossTotal,net,vat,reference:finnishReference(invNo.replace(/\D/g,"")),invNo,eventName,isReservation:isRes,itype,isCredit,isPartial,creditRef};
 }
+// ── KONFLIKTITARKISTUS ──
+// Palauttaa listan konflikteista kun uusi tapahtuma lisätään/muokataan
+// date = alkupäivä, endDate = loppupäivä (tai sama kuin date)
+// skipId = muokattavan oman id (ei vertailla itseensä)
+function checkConflicts(date, endDate, startTime, endTime, skipId){
+  const d1 = date;
+  const d2 = endDate||date;
+  const conflicts = [];
+
+  // Hae kaikki päivät joille uusi tapahtuma osuu
+  const newDays = [];
+  let cur = new Date(d1+"T12:00:00");
+  const end = new Date(d2+"T12:00:00");
+  while(cur<=end){ newDays.push(cur.toISOString().slice(0,10)); cur.setDate(cur.getDate()+1); }
+
+  // Aikaväli minuutteina (jos ei aikoja, koko päivä = 0–1440)
+  const toMin = t => { if(!t) return null; const [h,m]=(t||"00:00").split(":").map(Number); return h*60+(m||0); };
+  const s1=toMin(startTime), e1=toMin(endTime)||( s1!==null ? s1+60 : null);
+
+  const overlapsTime = (s2str, e2str) => {
+    if(s1===null||!s2str) return true; // koko päivä vs koko päivä = konflikti
+    const s2=toMin(s2str), e2=toMin(e2str)||(s2+60);
+    return s1 < e2 && s2 < (e1||s1+60);
+  };
+
+  // Tarkista purjehdukset
+  for(const s of state.sailings){
+    if(s.id===skipId) continue;
+    const sd1=s.date, sd2=s.endDate||s.date;
+    const sDays=[];
+    let c2=new Date(sd1+"T12:00:00");const e2=new Date(sd2+"T12:00:00");
+    while(c2<=e2){sDays.push(c2.toISOString().slice(0,10));c2.setDate(c2.getDate()+1);}
+    const sharedDays=newDays.filter(d=>sDays.includes(d));
+    if(sharedDays.length>0){
+      // Kurssien sessiot
+      if(s.type==="Kurssi"&&Array.isArray(s.sessions)){
+        for(const sess of s.sessions){
+          if(newDays.includes(sess.date)&&overlapsTime(sess.start,sess.end)){
+            conflicts.push(`⛵ ${s.name} — kurssipäivä ${sess.date}${sess.start?" klo "+sess.start:""}`);
+          }
+        }
+        // Teoria
+        if(s.teoria&&newDays.includes(s.teoria.date)&&overlapsTime(s.teoria.start,s.teoria.end)){
+          conflicts.push(`⛵ ${s.name} — teoria ${s.teoria.date}${s.teoria.start?" klo "+s.teoria.start:""}`);
+        }
+      } else {
+        if(overlapsTime(s.startTime,s.endTime)){
+          conflicts.push(`⛵ ${s.name} (${fmtDate(sd1)}${sd2!==sd1?"–"+fmtDate(sd2):""}${s.startTime?" klo "+s.startTime:""})`);
+        }
+      }
+    }
+  }
+
+  // Tarkista tutkinnot
+  for(const t of state.tutkinnot){
+    if(t.id===skipId) continue;
+    if(newDays.includes(t.date)&&overlapsTime(t.startTime,t.endTime)){
+      conflicts.push(`🎓 ${t.type}${t.boatType?" ("+t.boatType+")":""} (${fmtDate(t.date)}${t.startTime?" klo "+t.startTime:""})`);
+    }
+  }
+
+  return conflicts;
+}
+
 function monthSummary(month){
   const rows=state.invoices.filter(x=>String(x.invoiceDate||"").slice(0,7)===month);
   const s={all:{net:0,vat:0,gross:0,count:0},r255:{net:0,vat:0,gross:0,count:0},r135:{net:0,vat:0,gross:0,count:0}};
@@ -1419,6 +1483,12 @@ table{width:100%;border-collapse:collapse}
         const startTime=document.querySelector('[data-field="tutkinto-start"]')?.value||"";
         const endTime=document.querySelector('[data-field="tutkinto-end"]')?.value||"";
         if(!type||!date)return alert("Täytä tutkintotyyppi ja päivämäärä.");
+        // Konfliktitarkistus
+        const conflicts=checkConflicts(date,date,startTime,endTime,state.editId||null);
+        if(conflicts.length>0){
+          const msg=`Päällekkäisyys löytyi:\n\n${conflicts.join("\n")}\n\nHaluatko tallentaa silti?`;
+          if(!confirm(msg))return;
+        }
         const data={type,date,notes,boatType,maxPersons,pricePerPerson,location,startTime,endTime,customerName:""};
         if(state.editId)await fsSet("tutkinnot",state.editId,data);
         else await fsAdd("tutkinnot",data);
@@ -1455,12 +1525,20 @@ table{width:100%;border-collapse:collapse}
         if(!name||!date||!type)return alert("Täytä pakolliset kentät.");
         const endDate=(document.querySelector('[data-field="endDate"]')?.value||"");
         if(endDate&&endDate<date)return alert("Paluupäivä ei voi olla ennen alkamispäivää.");
+        const startTime=document.querySelector('[data-field="startTime"]')?.value||"";
+        const endTime=document.querySelector('[data-field="endTime"]')?.value||"";
+        // Konfliktitarkistus
+        const conflicts=checkConflicts(date,endDate||date,startTime,endTime,state.editId||null);
+        if(conflicts.length>0){
+          const msg=`Päällekkäisyys löytyi:\n\n${conflicts.join("\n")}\n\nHaluatko tallentaa silti?`;
+          if(!confirm(msg))return;
+        }
         const existing=state.editId?state.sailings.find(x=>x.id===state.editId):null;
         const data={name,date,type,
           reitti:(document.querySelector('[data-field="reitti"]')?.value||"").trim(),
           endDate:endDate||"",
-          startTime:document.querySelector('[data-field="startTime"]')?.value||"",
-          endTime:document.querySelector('[data-field="endTime"]')?.value||"",
+          startTime,
+          endTime,
           maxPersons:parseInt(document.querySelector('[data-field="maxPersons"]')?.value,10)||1,
           reserveSlots:Math.max(0,parseInt(document.querySelector('[data-field="reserveSlots"]')?.value,10)||0),
           pricePerPerson:parseFloat(document.querySelector('[data-field="pricePerPerson"]')?.value)||0,
