@@ -9,7 +9,7 @@
 <meta name="theme-color" content="#0a1628"/>
 <link rel="manifest" href="manifest.json"/>
 <link rel="apple-touch-icon" href="icon-512.png"/>
-<title>J Sailing V9.5 — Hallintapaneeli</title>
+<title>J Sailing V9.6 — Hallintapaneeli</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400;1,600&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -205,7 +205,7 @@ import{getAuth,GoogleAuthProvider,signInWithPopup,signOut,onAuthStateChanged}fro
 import{getFirestore,collection,doc,addDoc,setDoc,deleteDoc,onSnapshot,serverTimestamp}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 const FIREBASE_CONFIG={apiKey:"AIzaSyB7Dp5_5fN0Iko-4Jn1D2Dp6NNNih63UO0",authDomain:"jsailing-f716c.firebaseapp.com",projectId:"jsailing-f716c",storageBucket:"jsailing-f716c.firebasestorage.app",messagingSenderId:"543523103696",appId:"1:543523103696:web:439a312efa6aec398a8fd5"};
 const ALLOWED_EMAIL="jacke.seilaa@gmail.com";
-const APP_VERSION="V9.5";const UPDATE_DATE=(()=>{const n=new Date();return n.toLocaleDateString("fi-FI")+' klo '+String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0');})();
+const APP_VERSION="V9.6";const UPDATE_DATE=(()=>{const n=new Date();return n.toLocaleDateString("fi-FI")+' klo '+String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0');})();
 const ISSUER={name:"J Sailing",businessId:"1728993-9"};
 const BANK={iban:"FI62 1132 3000 4277 43",bic:"NDEAFIHH"};
 const SAILING_TYPES=["Iltapurjehdus","Päiväpurjehdus","Charter","Kurssi","Yritystilaisuus","Purjehdusretki","Muu"];
@@ -511,7 +511,12 @@ function renderDashboard(){
     if(!isFuture&&!hasFutureSessions)return false;
     return enrolledCount(s.id)<Number(s.maxPersons||0)&&Number(s.maxPersons||0)>0;
   }).sort((a,b)=>nextDate(a).localeCompare(nextDate(b))).slice(0,8);
-  const upcomingTutkinnot=state.tutkinnot.filter(t=>["Rannikkopäällikkö","Saaristopäällikkö"].includes(t.type)&&(t.date||"")>=today()&&Number(t.enrolled||0)<Number(t.maxPersons||4)).sort((a,b)=>(a.date||"").localeCompare(b.date||"")).slice(0,5);
+  const upcomingTutkinnot=state.tutkinnot.filter(t=>{
+    if((t.date||"")<today())return false;
+    const enrolled=state.customers.filter(c=>c.tutkintoId===t.id).length;
+    const max=Number(t.maxPersons||0);
+    return max===0||enrolled<max;
+  }).sort((a,b)=>(a.date||"").localeCompare(b.date||"")).slice(0,5);
   return`<div class="card">
     <div class="row-between"><div><div class="card-title">Dashboard</div><div class="card-sub">${CONFIG_READY?"Synkronoitu Firebaseen · data turvassa":"Demo-tila · ei tallennusta"}</div></div>
       <div class="row"><button class="btn btn-secondary noPrint" data-action="export-json">💾 Varmuuskopio</button><label class="btn btn-secondary noPrint" style="cursor:pointer">🔄 Palauta<input type="file" accept="application/json" data-action="restore-json" style="display:none"></label></div>
@@ -539,8 +544,11 @@ function renderDashboard(){
       }).join("")}`:`<div class="infobox infobox-blue" style="margin-top:12px">✓ Ei tulevia purjehduksia joissa on tilaa.</div>`}
     ${upcomingTutkinnot.length>0?`<div class="hr"></div>
       <div style="font-weight:700;font-size:12px;text-transform:uppercase;letter-spacing:.6px;color:#6b7280;margin-bottom:10px">🎓 Tulevat tutkinnot — tilaa</div>
-      ${upcomingTutkinnot.map(t=>{const max=Number(t.maxPersons||4),enrolled=Number(t.enrolled||0),typeKey=(t.type||"").split(" ")[0];
-        return`<div class="item"><div><h3><span class="tutkinto-type-badge tutkinto-${esc(typeKey)}">${esc(t.type||"")}</span></h3><div class="meta">${fmtDate(t.date)} · ${enrolled}/${max} · <span style="color:#166534;font-weight:700">${max-enrolled} vapaata</span></div></div><button class="btn btn-primary btn-sm" data-action="dash-open" data-id="${t.id}" data-type="tutkinto">Avaa</button></div>`;
+      ${upcomingTutkinnot.map(t=>{
+        const max=Number(t.maxPersons||0),typeKey=(t.type||"").split(" ")[0];
+        const enrolled=state.customers.filter(c=>c.tutkintoId===t.id).length;
+        const enrolledStr=max>0?`${enrolled}/${max} · ${max-enrolled} vapaata`:`${enrolled} osallistujaa`;
+        return`<div class="item"><div><h3><span class="tutkinto-type-badge tutkinto-${esc(typeKey)}">${esc(t.type||"")}</span></h3><div class="meta">${fmtDate(t.date)}${t.startTime?" klo "+t.startTime:""}${t.location?" · 📍"+esc(t.location):""} · <span style="color:#166534;font-weight:700">${enrolledStr}</span></div></div><button class="btn btn-primary btn-sm" data-action="dash-open" data-id="${t.id}" data-type="tutkinto">Avaa</button></div>`;
       }).join("")}`:""}
   </div>`;
 }
