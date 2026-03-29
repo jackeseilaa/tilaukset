@@ -9,7 +9,7 @@
 <meta name="theme-color" content="#0a1628"/>
 <link rel="manifest" href="manifest.json"/>
 <link rel="apple-touch-icon" href="icon-512.png"/>
-<title>J Sailing V9.6 — Hallintapaneeli</title>
+<title>J Sailing V9.7 — Hallintapaneeli</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400;1,600&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -205,7 +205,7 @@ import{getAuth,GoogleAuthProvider,signInWithPopup,signOut,onAuthStateChanged}fro
 import{getFirestore,collection,doc,addDoc,setDoc,deleteDoc,onSnapshot,serverTimestamp}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 const FIREBASE_CONFIG={apiKey:"AIzaSyB7Dp5_5fN0Iko-4Jn1D2Dp6NNNih63UO0",authDomain:"jsailing-f716c.firebaseapp.com",projectId:"jsailing-f716c",storageBucket:"jsailing-f716c.firebasestorage.app",messagingSenderId:"543523103696",appId:"1:543523103696:web:439a312efa6aec398a8fd5"};
 const ALLOWED_EMAIL="jacke.seilaa@gmail.com";
-const APP_VERSION="V9.6";const UPDATE_DATE=(()=>{const n=new Date();return n.toLocaleDateString("fi-FI")+' klo '+String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0');})();
+const APP_VERSION="V9.7";const UPDATE_DATE=(()=>{const n=new Date();return n.toLocaleDateString("fi-FI")+' klo '+String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0');})();
 const ISSUER={name:"J Sailing",businessId:"1728993-9"};
 const BANK={iban:"FI62 1132 3000 4277 43",bic:"NDEAFIHH"};
 const SAILING_TYPES=["Iltapurjehdus","Päiväpurjehdus","Charter","Kurssi","Yritystilaisuus","Purjehdusretki","Muu"];
@@ -254,6 +254,40 @@ function statusBadge(s){
   if(s==="pending")return`<span class="badge badge-red">● Varausmaksu odottaa</span>`;
   if(s==="reserve")return`<span class="badge badge-amber">◎ Varapaikka</span>`;
   return"";
+}
+
+// Osallistujakortti — yhtenäinen kaikkialla
+function renderAttendeeCard(c){
+  const st=c.reservationStatus||"pending";
+  const dc=st==="paid"?"dot-green":st==="reserve"?"dot-amber":"dot-red";
+  const phoneBtn=c.phone?`<a href="tel:${esc(c.phone.replace(/\s/g,''))}" class="btn btn-secondary btn-sm" title="Soita ${esc(c.name)}">📞</a>`:"";
+  const emailBtn=c.email?`<a href="mailto:${esc(c.email)}" class="btn btn-secondary btn-sm" title="${esc(c.email)}">✉️</a>`:"";
+  return`<div class="attendee-card ${st}" style="margin-bottom:6px">
+    <div style="flex:1;min-width:0">
+      <div class="row" style="gap:6px;flex-wrap:nowrap">
+        <span class="dot ${dc}" style="flex-shrink:0"></span>
+        <span style="font-weight:600;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(c.name||"")}</span>
+        ${statusBadge(st)}
+      </div>
+      ${c.phone||c.email?`<div class="row" style="gap:6px;margin-top:4px;flex-wrap:wrap">
+        ${c.phone?`<a href="tel:${esc(c.phone.replace(/\s/g,''))}" style="font-size:12px;color:#374151;text-decoration:none">📞 ${esc(c.phone)}</a>`:""}
+        ${c.email?`<a href="mailto:${esc(c.email)}" style="font-size:12px;color:#1e40af;text-decoration:none">✉️ ${esc(c.email)}</a>`:""}
+      </div>`:""}
+    </div>
+    <div class="row" style="flex-shrink:0;gap:4px">
+      ${st==="pending"?`<button class="btn btn-teal btn-sm" data-action="confirm-payment" data-id="${c.id}">✓</button>`:""}
+      ${st==="reserve"?`<button class="btn btn-secondary btn-sm" data-action="promote-reserve" data-id="${c.id}">↑</button>`:""}
+      <button class="btn btn-danger btn-sm" data-action="delete-customer" data-id="${c.id}">✕</button>
+    </div>
+  </div>`;
+}
+
+// Lähetä sähköposti kaikille osallistujille
+function emailAllAttendees(attendees, eventName){
+  const withEmail=attendees.filter(c=>c.email);
+  if(!withEmail.length){alert("Yhdelläkään osallistujalla ei ole sähköpostiosoitetta.");return;}
+  const to=withEmail.map(c=>c.email).join(",");
+  window.location.href=`mailto:${encodeURIComponent(to)}?subject=${encodeURIComponent(eventName+" — J Sailing")}`;
 }
 function fillUI(sid,maxPersons,reserveSlots){
   const max=Math.max(1,Number(maxPersons||0)||1),rsv=Math.max(0,Number(reserveSlots||0)||0);
@@ -684,7 +718,16 @@ function renderSailings(){
         const teoriaUI=isCourse?`<div class="teoria-box"><div><span class="teoria-badge">📚 Teoriapäivä</span>${teoria&&teoria.date?`<span style="font-weight:600;font-size:13px;margin-left:8px">${fmtDate(teoria.date)}${teoria.start?" klo "+esc(teoria.start):""}${teoria.end?"–"+esc(teoria.end):""}</span>${teoria.place?`<span class="small muted" style="margin-left:6px">📍 ${esc(teoria.place)}</span>`:""}${teoria.note?`<div class="small muted" style="margin-top:2px">${esc(teoria.note)}</div>`:""}`:` <span class="small muted" style="margin-left:8px">Ei teoriapäivää lisätty</span>`}</div><button class="btn btn-secondary btn-sm" data-action="edit-teoria" data-id="${s.id}">${teoria&&teoria.date?"Muokkaa":"+ Lisää teoriapäivä"}</button></div>`:"";
         const sessUI=isCourse?`<div class="session-box"><div class="row-between" style="margin-bottom:10px"><div style="font-size:12px;font-weight:700">Kurssipäivät</div><button class="btn btn-secondary btn-sm" data-action="add-session" data-id="${s.id}">+ Lisää päivä</button></div>${sessions.length===0?`<div class="muted small">Ei päiviä lisätty.</div>`:`${sessions.map((x,idx)=>`<div class="session-item"><div><div style="font-weight:600;font-size:13px">${esc(x.date||"")}${x.start?" klo "+esc(x.start):""}${x.end?"–"+esc(x.end):""}</div>${x.note?`<div class="small muted">${esc(x.note)}</div>`:""}</div><div class="row" style="flex-wrap:wrap;gap:6px">${gcalButton(s,idx)}<button class="btn btn-secondary btn-sm" data-action="edit-session-direct" data-id="${s.id}" data-idx="${idx}">Muokkaa</button><button class="btn btn-danger btn-sm" data-action="delete-session" data-id="${s.id}" data-idx="${idx}">Poista</button></div></div>`).join("")}`}</div>`:"";
         const gcalUI=`<div class="row" style="margin-top:8px">${gcalButton(s,null)}</div>`;
-        const attendeesUI=state.openSailingId===s.id?`<div style="margin:6px 0 14px;padding:14px;background:rgba(232,244,253,.5);border-radius:10px;border:1px solid #d1d5db"><div class="row-between" style="margin-bottom:10px"><div style="font-size:12px;font-weight:700">Osallistujat</div><div class="row"><span class="badge badge-green">✓${confirmedCount(s.id)}</span><span class="badge badge-red">●${pendingCount(s.id)}</span><span class="badge badge-amber">◎${reserveCount(s.id)}</span></div></div>${state.customers.filter(c=>c.sailingId===s.id).length===0?`<div class="muted small">Ei ilmoittautuneita</div>`:state.customers.filter(c=>c.sailingId===s.id).sort((a,b)=>{const o={pending:0,reserve:1,paid:2};return(o[a.reservationStatus]??1)-(o[b.reservationStatus]??1)||a.name.localeCompare(b.name);}).map(c=>{const st=c.reservationStatus||"pending",dc=st==="paid"?"dot-green":st==="reserve"?"dot-amber":"dot-red";return`<div class="attendee-card ${st}"><div class="row"><span class="dot ${dc}"></span><span style="font-weight:600;font-size:14px">${esc(c.name||"")}</span>${statusBadge(st)}</div><div class="row">${st==="pending"?`<button class="btn btn-teal btn-sm" data-action="confirm-payment" data-id="${c.id}">✓ Maksettu</button>`:""}${st==="reserve"?`<button class="btn btn-secondary btn-sm" data-action="promote-reserve" data-id="${c.id}">↑ Vahvista</button>`:""}<button class="btn btn-danger btn-sm" data-action="delete-customer" data-id="${c.id}">Poista</button></div></div>`;}).join("")}</div>`:"";
+        const attendeesUI=state.openSailingId===s.id?`<div style="margin:6px 0 14px;padding:14px;background:rgba(232,244,253,.5);border-radius:10px;border:1px solid #d1d5db">
+          <div class="row-between" style="margin-bottom:10px">
+            <div style="font-size:12px;font-weight:700">Osallistujat <span class="badge badge-green">✓${confirmedCount(s.id)}</span> <span class="badge badge-red">●${pendingCount(s.id)}</span> <span class="badge badge-amber">◎${reserveCount(s.id)}</span></div>
+            ${state.customers.filter(c=>c.sailingId===s.id&&c.email).length>0?`<button class="btn btn-secondary btn-sm" data-action="email-all" data-event-name="${esc(s.name)}">✉️ Kaikille</button>`:""}
+          </div>
+          ${state.customers.filter(c=>c.sailingId===s.id).length===0
+            ?`<div class="muted small">Ei ilmoittautuneita</div>`
+            :state.customers.filter(c=>c.sailingId===s.id).sort((a,b)=>{const o={pending:0,reserve:1,paid:2};return(o[a.reservationStatus]??1)-(o[b.reservationStatus]??1)||a.name.localeCompare(b.name);}).map(c=>renderAttendeeCard(c)).join("")
+          }
+        </div>`:"";
         // REITTI: näytetään meta-rivillä
         const reittiMeta=s.reitti?` · 📍 ${esc(s.reitti)}`:"";
         return`<div class="item"><div style="flex:1"><h3>${esc(s.name||"")} <span class="pill">${esc(s.type||"")}</span>${isMultiDay?`<span class="badge badge-navy" style="margin-left:6px;font-size:10px">⚓ Merimatka</span>`:""}</h3><div class="meta">${dateLabel}${reittiMeta} · Max ${max}+${rsv} vara · ${Number(s.pricePerPerson||0).toFixed(0)} €/hlö${resFee>0?` · varausmaksu ${resFee} €`:""}</div>${fillUI(s.id,max,rsv)}${gcalUI}${teoriaUI}${sessUI}${attendeesUI}</div><div class="row" style="align-items:flex-start;flex-shrink:0"><button class="btn btn-secondary btn-sm" data-action="toggle-sailing" data-id="${s.id}">${state.openSailingId===s.id?"Piilota":"Osallistujat"}</button><button class="btn btn-secondary btn-sm" data-action="edit-sailing" data-id="${s.id}">Muokkaa</button><button class="btn btn-danger btn-sm" data-action="delete-sailing" data-id="${s.id}">Poista</button></div></div>`;
@@ -948,24 +991,16 @@ function renderPendingListModal(){
       <button class="btn btn-secondary btn-sm" data-action="close-modal">✕</button>
     </div></div>
     <div class="modal-body">
-      ${pending.length===0?`<div class="infobox infobox-green">✓ Kaikki varausmaksut maksettu!</div>`:`
-        ${pending.map(c=>{
+      ${pending.length===0?`<div class="infobox infobox-green">✓ Kaikki varausmaksut maksettu!</div>`:
+        pending.map(c=>{
           const s=state.sailings.find(x=>x.id===c.sailingId);
           const resFee=s?Number(s.reservationFee||0):0;
-          return`<div class="attendee-card pending" style="margin-bottom:8px">
-            <div>
-              <div style="font-weight:600;font-size:14px">${esc(c.name||"")}</div>
-              <div class="small muted">${s?esc(s.name):""} ${resFee>0?`· varausmaksu ${resFee} €`:""}</div>
-              ${c.email?`<div class="small"><a href="mailto:${esc(c.email)}" style="color:#1e40af">${esc(c.email)}</a></div>`:""}
-              ${c.phone?`<div class="small muted">${esc(c.phone)}</div>`:""}
-            </div>
-            <div class="row">
-              <button class="btn btn-teal btn-sm" data-action="confirm-payment" data-id="${c.id}">✓ Maksettu</button>
-              <button class="btn btn-secondary btn-sm" data-action="edit-customer" data-id="${c.id}">Muokkaa</button>
-            </div>
+          return`<div style="margin-bottom:4px">
+            ${resFee>0?`<div class="small muted" style="padding:0 4px 2px">${s?esc(s.name):""} · varausmaksu ${resFee} €</div>`:""}
+            ${renderAttendeeCard(c)}
           </div>`;
-        }).join("")}
-      `}
+        }).join("")
+      }
     </div>
   </div></div>`;
 }
@@ -989,7 +1024,14 @@ function renderDashQuickModal(){
   return`<div class="overlay" data-action="close-modal"><div class="modal" style="max-width:680px" onclick="event.stopPropagation()">
     <div class="modal-head"><div class="row-between"><div><div class="modal-title">${esc(title)}</div><div class="card-sub">${isSailing?s.type:t.type} · ${dateStr} · <span style="color:#166534;font-weight:700">${capacityStr}</span></div></div><div class="row"><button class="btn btn-secondary btn-sm" data-action="${isSailing?"edit-sailing":"edit-tutkinto"}" data-id="${state.dashQuickId}">✏️ Muokkaa</button><button class="btn btn-secondary btn-sm" data-action="close-modal">✕</button></div></div></div>
     <div class="modal-body">
-      ${attendees.length>0?`<div style="font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:#6b7280;margin-bottom:8px">Osallistujat <span class="badge badge-green">✓${conf}</span> <span class="badge badge-red">●${pend}</span></div>${attendees.map(c=>{const st=c.reservationStatus||"pending",dc=st==="paid"?"dot-green":st==="reserve"?"dot-amber":"dot-red";return`<div class="attendee-card ${st}" style="margin-bottom:6px"><div class="row"><span class="dot ${dc}"></span><span style="font-weight:600;font-size:14px">${esc(c.name||"")}</span>${statusBadge(st)}</div><div class="row">${st==="pending"?`<button class="btn btn-teal btn-sm" data-action="confirm-payment" data-id="${c.id}">✓ Maksettu</button>`:""}${st==="reserve"?`<button class="btn btn-secondary btn-sm" data-action="promote-reserve" data-id="${c.id}">↑ Vahvista</button>`:""}<button class="btn btn-danger btn-sm" data-action="delete-customer" data-id="${c.id}">Poista</button></div></div>`;}).join("")}<div class="hr"></div>`:""}
+      ${attendees.length>0?`
+        <div class="row-between" style="margin-bottom:8px">
+          <div style="font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:#6b7280">Osallistujat <span class="badge badge-green">✓${conf}</span> <span class="badge badge-red">●${pend}</span></div>
+          ${attendees.filter(c=>c.email).length>0?`<button class="btn btn-secondary btn-sm" data-action="email-all" data-event-name="${esc(title)}">✉️ Sähköposti kaikille</button>`:""}
+        </div>
+        ${attendees.map(c=>renderAttendeeCard(c)).join("")}
+        <div class="hr"></div>
+      `:""}
       <div style="font-weight:700;font-size:12px;text-transform:uppercase;letter-spacing:.5px;color:#0a4272;margin-bottom:12px">+ Lisää osallistuja</div>
       <div class="grid2">
         <div class="field">
@@ -1473,6 +1515,19 @@ table{width:100%;border-collapse:collapse}
       if(a==="toggle-sailing"){state.openSailingId=(state.openSailingId===itemId)?null:itemId;render();return;}
       if(a==="close-modal"){state.modal=null;state.editId=null;state.editSession=null;state.previewInvoiceId=null;state.dashQuickId=null;state.dashQuickType=null;render();return;}
       if(a==="show-pending"){state.modal="pending-list";render();return;}
+      if(a==="email-all"){
+        const eventName=el.dataset.eventName||"";
+        // Kerää osallistujat joko purjehduksesta tai tutkinnosta
+        let attendees=[];
+        if(state.dashQuickId&&state.dashQuickType==="sailing")
+          attendees=state.customers.filter(c=>c.sailingId===state.dashQuickId);
+        else if(state.dashQuickId&&state.dashQuickType==="tutkinto")
+          attendees=state.customers.filter(c=>c.tutkintoId===state.dashQuickId);
+        else if(state.openSailingId)
+          attendees=state.customers.filter(c=>c.sailingId===state.openSailingId);
+        emailAllAttendees(attendees,eventName);
+        return;
+      }
       if(a==="dash-open"){state.dashQuickId=itemId;state.dashQuickType=el.dataset.type||"sailing";state.dashNewCustomer={name:"",phone:"",email:"",status:"pending"};state.modal="dash-quick";render();return;}
       if(a==="qnc-pick"){
         if(!state.dashNewCustomer)state.dashNewCustomer={};
