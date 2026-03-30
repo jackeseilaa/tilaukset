@@ -9,7 +9,7 @@
 <meta name="theme-color" content="#0a1628"/>
 <link rel="manifest" href="manifest.json"/>
 <link rel="apple-touch-icon" href="icon-512.png"/>
-<title>J Sailing V9.10 — Hallintapaneeli</title>
+<title>J Sailing V9.11 — Hallintapaneeli</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400;1,600&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -205,7 +205,7 @@ import{getAuth,GoogleAuthProvider,signInWithPopup,signOut,onAuthStateChanged}fro
 import{getFirestore,collection,doc,addDoc,setDoc,deleteDoc,onSnapshot,serverTimestamp}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 const FIREBASE_CONFIG={apiKey:"AIzaSyB7Dp5_5fN0Iko-4Jn1D2Dp6NNNih63UO0",authDomain:"jsailing-f716c.firebaseapp.com",projectId:"jsailing-f716c",storageBucket:"jsailing-f716c.firebasestorage.app",messagingSenderId:"543523103696",appId:"1:543523103696:web:439a312efa6aec398a8fd5"};
 const ALLOWED_EMAIL="jacke.seilaa@gmail.com";
-const APP_VERSION="V9.10";const UPDATE_DATE=(()=>{const n=new Date();return n.toLocaleDateString("fi-FI")+' klo '+String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0');})();
+const APP_VERSION="V9.11";const UPDATE_DATE=(()=>{const n=new Date();return n.toLocaleDateString("fi-FI")+' klo '+String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0');})();
 const ISSUER={name:"J Sailing",businessId:"1728993-9"};
 const BANK={iban:"FI62 1132 3000 4277 43",bic:"NDEAFIHH"};
 const SAILING_TYPES=["Iltapurjehdus","Päiväpurjehdus","Charter","Kurssi","Yritystilaisuus","Purjehdusretki","Muu"];
@@ -992,9 +992,16 @@ function renderTransferModal(){
   const c=state.transferCustomerId?state.customers.find(x=>x.id===state.transferCustomerId):null;
   if(!c)return"";
   const currentSailing=state.sailings.find(x=>x.id===c.sailingId);
-  // Näytä muut purjehdukset — ei nykyistä, ei menneitä
+  // Näytä muut purjehdukset — ei nykyistä, ei kokonaan menneitä
   const options=state.sailings
-    .filter(s=>s.id!==c.sailingId&&(s.date||"")>=today())
+    .filter(s=>{
+      if(s.id===c.sailingId)return false;
+      // Tulevia sessioita?
+      const hasFutureSess=Array.isArray(s.sessions)&&s.sessions.some(sess=>(sess.date||"")>=today());
+      // Alkupäivä tulevaisuudessa tai loppupäivä ei mennyt?
+      const isFuture=(s.date||"")>=today()||(s.endDate&&s.endDate>=today());
+      return isFuture||hasFutureSess;
+    })
     .sort((a,b)=>(a.date||"").localeCompare(b.date||""));
   return`<div class="overlay" data-action="close-modal"><div class="modal" style="max-width:520px" onclick="event.stopPropagation()">
     <div class="modal-head"><div class="row-between">
