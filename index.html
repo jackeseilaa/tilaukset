@@ -9,7 +9,7 @@
 <meta name="theme-color" content="#0a1628"/>
 <link rel="manifest" href="manifest.json"/>
 <link rel="apple-touch-icon" href="icon-512.png"/>
-<title>J Sailing V9.7 — Hallintapaneeli</title>
+<title>J Sailing V9.8 — Hallintapaneeli</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400;1,600&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -205,7 +205,7 @@ import{getAuth,GoogleAuthProvider,signInWithPopup,signOut,onAuthStateChanged}fro
 import{getFirestore,collection,doc,addDoc,setDoc,deleteDoc,onSnapshot,serverTimestamp}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 const FIREBASE_CONFIG={apiKey:"AIzaSyB7Dp5_5fN0Iko-4Jn1D2Dp6NNNih63UO0",authDomain:"jsailing-f716c.firebaseapp.com",projectId:"jsailing-f716c",storageBucket:"jsailing-f716c.firebasestorage.app",messagingSenderId:"543523103696",appId:"1:543523103696:web:439a312efa6aec398a8fd5"};
 const ALLOWED_EMAIL="jacke.seilaa@gmail.com";
-const APP_VERSION="V9.7";const UPDATE_DATE=(()=>{const n=new Date();return n.toLocaleDateString("fi-FI")+' klo '+String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0');})();
+const APP_VERSION="V9.8";const UPDATE_DATE=(()=>{const n=new Date();return n.toLocaleDateString("fi-FI")+' klo '+String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0');})();
 const ISSUER={name:"J Sailing",businessId:"1728993-9"};
 const BANK={iban:"FI62 1132 3000 4277 43",bic:"NDEAFIHH"};
 const SAILING_TYPES=["Iltapurjehdus","Päiväpurjehdus","Charter","Kurssi","Yritystilaisuus","Purjehdusretki","Muu"];
@@ -655,8 +655,8 @@ function renderCalendar(){
     const evHTML=evs.slice(0,3).map(ev=>{
       const tc="type-"+ev.type+(ev._mdClass?" "+ev._mdClass:"");
       const isTutkinto=!!ev._isTutkinto;
-      const action=isTutkinto?"dash-open":ev._isSession?"edit-session-cal":"edit-sailing";
-      const dtype=isTutkinto?"tutkinto":"";
+      const action=isTutkinto?"dash-open":ev._isSession?"edit-session-cal":"dash-open";
+      const dtype=isTutkinto?"tutkinto":"sailing";
       const sidx=ev._isSession?String(ev._sessIdx):"";
       const booked=isTutkinto
         ?(ev.maxPersons>0?` (${ev.enrolled}/${ev.maxPersons})`:`(${ev.enrolled} hlö)`)
