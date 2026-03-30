@@ -9,7 +9,7 @@
 <meta name="theme-color" content="#0a1628"/>
 <link rel="manifest" href="manifest.json"/>
 <link rel="apple-touch-icon" href="icon-512.png"/>
-<title>J Sailing V9.8 — Hallintapaneeli</title>
+<title>J Sailing V9.9 — Hallintapaneeli</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400;1,600&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -205,7 +205,7 @@ import{getAuth,GoogleAuthProvider,signInWithPopup,signOut,onAuthStateChanged}fro
 import{getFirestore,collection,doc,addDoc,setDoc,deleteDoc,onSnapshot,serverTimestamp}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 const FIREBASE_CONFIG={apiKey:"AIzaSyB7Dp5_5fN0Iko-4Jn1D2Dp6NNNih63UO0",authDomain:"jsailing-f716c.firebaseapp.com",projectId:"jsailing-f716c",storageBucket:"jsailing-f716c.firebasestorage.app",messagingSenderId:"543523103696",appId:"1:543523103696:web:439a312efa6aec398a8fd5"};
 const ALLOWED_EMAIL="jacke.seilaa@gmail.com";
-const APP_VERSION="V9.8";const UPDATE_DATE=(()=>{const n=new Date();return n.toLocaleDateString("fi-FI")+' klo '+String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0');})();
+const APP_VERSION="V9.9";const UPDATE_DATE=(()=>{const n=new Date();return n.toLocaleDateString("fi-FI")+' klo '+String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0');})();
 const ISSUER={name:"J Sailing",businessId:"1728993-9"};
 const BANK={iban:"FI62 1132 3000 4277 43",bic:"NDEAFIHH"};
 const SAILING_TYPES=["Iltapurjehdus","Päiväpurjehdus","Charter","Kurssi","Yritystilaisuus","Purjehdusretki","Muu"];
@@ -655,8 +655,8 @@ function renderCalendar(){
     const evHTML=evs.slice(0,3).map(ev=>{
       const tc="type-"+ev.type+(ev._mdClass?" "+ev._mdClass:"");
       const isTutkinto=!!ev._isTutkinto;
-      const action=isTutkinto?"dash-open":ev._isSession?"edit-session-cal":"dash-open";
-      const dtype=isTutkinto?"tutkinto":"sailing";
+      const action=isTutkinto?"dash-open":ev._isSession?"edit-session-cal":"edit-sailing";
+      const dtype=isTutkinto?"tutkinto":"";
       const sidx=ev._isSession?String(ev._sessIdx):"";
       const booked=isTutkinto
         ?(ev.maxPersons>0?` (${ev.enrolled}/${ev.maxPersons})`:`(${ev.enrolled} hlö)`)
@@ -914,7 +914,13 @@ function renderSailingModal(){
   const d2=draft.endDate!==undefined?draft.endDate:(s?.endDate||"");
   if(d1&&d2&&d2>d1){const days=Math.round((new Date(d2+"T12:00:00")-new Date(d1+"T12:00:00"))/86400000)+1;durationInfo=`<div class="infobox infobox-blue" style="margin-top:4px">📅 Kesto: ${days} vrk (${fmtDate(d1)} – ${fmtDate(d2)})</div>`;}
   return`<div class="overlay" data-action="close-modal"><div class="modal" onclick="event.stopPropagation()">
-    <div class="modal-head"><div class="row-between"><div class="modal-title">${editing?"Muokkaa purjehdusta":"Uusi purjehdus"}</div><button class="btn btn-secondary btn-sm" data-action="close-modal">✕</button></div></div>
+    <div class="modal-head"><div class="row-between">
+      <div class="modal-title">${editing?"Muokkaa purjehdusta":"Uusi purjehdus"}</div>
+      <div class="row">
+        ${editing&&s?`<button class="btn btn-primary btn-sm" data-action="dash-open" data-id="${s.id}" data-type="sailing">👥 Osallistujat</button>`:""}
+        <button class="btn btn-secondary btn-sm" data-action="close-modal">✕</button>
+      </div>
+    </div></div>
     <div class="modal-body">
       <div class="field"><label class="lbl">Nimi *</label><input data-field="name" value="${esc(draft.name||s?.name||"")}"></div>
       <div class="field"><label class="lbl">Reitti <span style="font-weight:400;text-transform:none;font-size:11px;color:#6b7280">(esim. Hanko–Tallinna–Helsinki)</span></label><input data-field="reitti" value="${esc(draft.reitti!==undefined?draft.reitti:(s?.reitti||""))}" placeholder="Valinnainen — näkyy kalenterissa ja Google Calendarissa"></div>
@@ -1074,7 +1080,14 @@ function renderSessionModal(){
   const s=state.sailings.find(x=>x.id===sailingId);if(!s||!s.sessions?.[idx])return"";
   const sess=s.sessions[idx];
   return`<div class="overlay" data-action="close-modal"><div class="modal" style="max-width:460px" onclick="event.stopPropagation()">
-    <div class="modal-head"><div class="row-between"><div><div class="modal-title">Kurssipäivä ${idx+1}</div><div class="card-sub">${esc(s.name)}</div></div><button class="btn btn-secondary btn-sm" data-action="close-modal">✕</button></div></div>
+    <div class="modal-head"><div class="row-between">
+      <div><div class="modal-title">Kurssipäivä ${idx+1}</div><div class="card-sub">${esc(s.name)}</div></div>
+      <div class="row">
+        <button class="btn btn-primary btn-sm" data-action="dash-open" data-id="${sailingId}" data-type="sailing">👥 Osallistujat</button>
+        <button class="btn btn-secondary btn-sm" data-action="edit-sailing" data-id="${sailingId}">✏️ Kurssi</button>
+        <button class="btn btn-secondary btn-sm" data-action="close-modal">✕</button>
+      </div>
+    </div></div>
     <div class="modal-body">
       <div class="field"><label class="lbl">Päivämäärä</label><input type="date" data-field="sess-date" value="${esc(sess.date||"")}"></div>
       <div class="grid2"><div class="field"><label class="lbl">Aloitusaika</label><input type="time" data-field="sess-start" value="${esc(sess.start||"")}"></div><div class="field"><label class="lbl">Lopetusaika</label><input type="time" data-field="sess-end" value="${esc(sess.end||"")}"></div></div>
