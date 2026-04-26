@@ -9,7 +9,7 @@
 <meta name="theme-color" content="#0a1628"/>
 <link rel="manifest" href="manifest.json"/>
 <link rel="apple-touch-icon" href="icon-512.png"/>
-<title>J Sailing V9.11 — Hallintapaneeli</title>
+<title>J Sailing V9.12 — Hallintapaneeli</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400;1,600&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -139,6 +139,8 @@ select option{background:#ffffff;color:#111827}
 .cal-cell:hover{border-color:#9ca3af}
 .cal-cell.other-month{opacity:.3}
 .cal-cell.today{border-color:#0a4272;border-width:2px}
+.cal-cell.blocked{background:#f3f4f6;border-color:#d1d5db;}
+.cal-cell.blocked .cal-date{color:#9ca3af}
 .cal-date{font-size:12px;font-weight:800;color:#111827;margin-bottom:4px;}
 .cal-cell.today .cal-date{background:#0a4272;color:#fff;width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;}
 .cal-event{display:block;width:100%;padding:4px 6px;border-radius:5px;font-size:11px;font-weight:700;margin-bottom:3px;cursor:pointer;border:none;text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-family:'Outfit',sans-serif;transition:opacity .1s;}
@@ -205,7 +207,7 @@ import{getAuth,GoogleAuthProvider,signInWithPopup,signOut,onAuthStateChanged}fro
 import{getFirestore,collection,doc,addDoc,setDoc,deleteDoc,onSnapshot,serverTimestamp}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 const FIREBASE_CONFIG={apiKey:"AIzaSyB7Dp5_5fN0Iko-4Jn1D2Dp6NNNih63UO0",authDomain:"jsailing-f716c.firebaseapp.com",projectId:"jsailing-f716c",storageBucket:"jsailing-f716c.firebasestorage.app",messagingSenderId:"543523103696",appId:"1:543523103696:web:439a312efa6aec398a8fd5"};
 const ALLOWED_EMAIL="jacke.seilaa@gmail.com";
-const APP_VERSION="V9.11";const UPDATE_DATE=(()=>{const n=new Date();return n.toLocaleDateString("fi-FI")+' klo '+String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0');})();
+const APP_VERSION="V9.12";const UPDATE_DATE=(()=>{const n=new Date();return n.toLocaleDateString("fi-FI")+' klo '+String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0');})();
 const ISSUER={name:"J Sailing",businessId:"1728993-9"};
 const BANK={iban:"FI62 1132 3000 4277 43",bic:"NDEAFIHH"};
 const SAILING_TYPES=["Iltapurjehdus","Päiväpurjehdus","Charter","Kurssi","Yritystilaisuus","Purjehdusretki","Muu"];
@@ -218,7 +220,7 @@ if(CONFIG_READY){app=initializeApp(FIREBASE_CONFIG);auth=getAuth(app);db=getFire
 
 const state={
   tab:"dashboard",user:null,
-  customers:[],sailings:[],companies:[],invoices:[],tutkinnot:[],
+  customers:[],sailings:[],companies:[],invoices:[],tutkinnot:[],blockedDays:[],
   modal:null,editId:null,editSession:null,previewInvoiceId:null,
   searchCustomers:"",searchSailings:"",searchTutkinnot:"",
   openSailingId:null,dashQuickId:null,dashQuickType:null,transferCustomerId:null,
@@ -321,7 +323,7 @@ function gcalButton(sailing,sessionIdx){
     const gcKey=`gcal_${sailing.id}_${sessionIdx}`;
     const added=sailing[gcKey],addedDate=sailing[gcKey+"_date"]||"";
     const url=gcalUrl(`${sailing.name} — päivä ${sessionIdx+1}${sess.note?" ("+sess.note+")":""}`,sess.date,sess.start,sess.end,`${sailing.name} · J Sailing · Absolut 37`);
-    if(added)return`<span class="badge badge-gcal" style="font-size:11px">✅ Kalenterissa ${addedDate?fmtDate(addedDate):""}</span><a href="${esc(url)}" target="_blank" class="btn btn-secondary btn-sm" data-action="gcal-mark" data-id="${sailing.id}" data-idx="${sessionIdx}" style="font-size:11px">🔄 Päivitä</a>`;
+    if(added)return`<span class="badge badge-gcal" style="font-size:11px">✅ Kalenterissa ${addedDate?fmtDate(addedDate):""}</span><a href="${esc(url)}" target="_blank" class="btn btn-secondary btn-sm" data-action="gcal-mark" data-id="${sailing.id}" data-idx="${sessionIdx}" style="font-size:11px">🔄 Päivitä</a><button class="btn btn-danger btn-sm" data-action="gcal-unmark" data-id="${sailing.id}" data-idx="${sessionIdx}" style="font-size:11px">🗑️</button>`;
     return`<a href="${esc(url)}" target="_blank" class="btn btn-gcal btn-sm" data-action="gcal-mark" data-id="${sailing.id}" data-idx="${sessionIdx}"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" style="flex-shrink:0"><rect x="3" y="4" width="18" height="18" rx="2" stroke="#4285F4" stroke-width="2"/><line x1="16" y1="2" x2="16" y2="6" stroke="#4285F4" stroke-width="2"/><line x1="8" y1="2" x2="8" y2="6" stroke="#4285F4" stroke-width="2"/><line x1="3" y1="10" x2="21" y2="10" stroke="#4285F4" stroke-width="2"/></svg>Lisää kalenteriin</a>`;
   }else{
     const gcKey=`gcal_${sailing.id}`;
@@ -329,7 +331,7 @@ function gcalButton(sailing,sessionIdx){
     // REITTI: lisätään Google Calendar descriptioniin
     const desc=`${sailing.name}${sailing.reitti?" · Reitti: "+sailing.reitti:""} · ${sailing.type} · J Sailing · Absolut 37`;
     const url=gcalUrl(sailing.name,sailing.date,sailing.startTime||null,sailing.endTime||null,desc,sailing.endDate||null);
-    if(added)return`<span class="badge badge-gcal" style="font-size:11px">✅ Kalenterissa ${addedDate?fmtDate(addedDate):""}</span><a href="${esc(url)}" target="_blank" class="btn btn-secondary btn-sm" data-action="gcal-mark" data-id="${sailing.id}" data-idx="" style="font-size:11px">🔄 Päivitä</a>`;
+    if(added)return`<span class="badge badge-gcal" style="font-size:11px">✅ Kalenterissa ${addedDate?fmtDate(addedDate):""}</span><a href="${esc(url)}" target="_blank" class="btn btn-secondary btn-sm" data-action="gcal-mark" data-id="${sailing.id}" data-idx="" style="font-size:11px">🔄 Päivitä</a><button class="btn btn-danger btn-sm" data-action="gcal-unmark" data-id="${sailing.id}" data-idx="" style="font-size:11px">🗑️</button>`;
     return`<a href="${esc(url)}" target="_blank" class="btn btn-gcal btn-sm" data-action="gcal-mark" data-id="${sailing.id}" data-idx=""><svg width="12" height="12" viewBox="0 0 24 24" fill="none" style="flex-shrink:0"><rect x="3" y="4" width="18" height="18" rx="2" stroke="#4285F4" stroke-width="2"/><line x1="16" y1="2" x2="16" y2="6" stroke="#4285F4" stroke-width="2"/><line x1="8" y1="2" x2="8" y2="6" stroke="#4285F4" stroke-width="2"/><line x1="3" y1="10" x2="21" y2="10" stroke="#4285F4" stroke-width="2"/></svg>Lisää kalenteriin</a>`;
   }
 }
@@ -482,6 +484,9 @@ const unsubscribers=[];
 function startListeners(uid){
   const cols=["sailings","customers","companies","invoices","tutkinnot"];
   for(const col of cols){const unsub=onSnapshot(collection(db,col),snap=>{state[col]=snap.docs.map(d=>({id:d.id,...d.data()}));if(!state.invoice.sailingId&&state.sailings.length>0)state.invoice.sailingId=state.sailings[0].id;render();});unsubscribers.push(unsub);}
+  // blockedDays erillinen kokoelma
+  const unsubBlocked=onSnapshot(collection(db,"blockedDays"),snap=>{state.blockedDays=snap.docs.map(d=>({id:d.id,...d.data()}));render();});
+  unsubscribers.push(unsubBlocked);
 }
 function stopListeners(){unsubscribers.forEach(u=>u());unsubscribers.length=0;}
 
@@ -651,6 +656,8 @@ function renderCalendar(){
     const ds=y+"-"+String(m).padStart(2,"0")+"-"+String(d).padStart(2,"0");
     const isToday=ds===todayStr;
     const evs=eventMap[ds]||[];
+    const blocked=!other&&state.blockedDays.find(b=>b.date===ds);
+    const blockedNote=blocked&&blocked.note?blocked.note:"";
     const evHTML=evs.slice(0,3).map(ev=>{
       const tc="type-"+ev.type+(ev._mdClass?" "+ev._mdClass:"");
       const isTutkinto=!!ev._isTutkinto;
@@ -668,7 +675,9 @@ function renderCalendar(){
       return`<button class="cal-event ${tc}" data-action="${action}" data-id="${ev.id}" data-idx="${sidx}" data-type="${dtype}" style="padding:3px 5px;position:relative">${gcDot}<span style="display:block">${esc(ev.name)}${booked}</span>${tl}${rl}</button>`;
     }).join("");
     const more=evs.length>3?`<div style="font-size:9px;color:#6b7280;padding:1px 4px">+${evs.length-3}</div>`:"";
-    cells+=`<div class="cal-cell${other?" other-month":""}${isToday?" today":""}"><div class="cal-date">${d}</div>${evHTML}${more}</div>`;
+    const blockedHTML=blocked?`<div style="font-size:9px;color:#9ca3af;font-style:italic;padding:2px 4px">🚫 Varattu${blockedNote?" · "+esc(blockedNote):""}</div>`:"";
+    const toggleBtn=!other?`<button data-action="toggle-block" data-date="${ds}" style="position:absolute;bottom:3px;right:3px;background:none;border:none;cursor:pointer;font-size:10px;opacity:.4;padding:1px" title="${blocked?"Poista varaus":"Merkitse varatuksi"}">${blocked?"🔓":"🔒"}</button>`:"";
+    cells+=`<div class="cal-cell${other?" other-month":""}${isToday?" today":""}${blocked?" blocked":""}" style="position:relative"><div class="cal-date">${d}</div>${evHTML}${more}${blockedHTML}${toggleBtn}</div>`;
   }
   const TYPES=["Kurssi","Charter","Iltapurjehdus","Päiväpurjehdus","Purjehdusretki","Yritystilaisuus","Muu","Teoria","Tutkinto"];
   const prev=month===1?`${year-1}-12`:`${year}-${String(month-1).padStart(2,"0")}`;
@@ -729,7 +738,7 @@ function renderSailings(){
         </div>`:"";
         // REITTI: näytetään meta-rivillä
         const reittiMeta=s.reitti?` · 📍 ${esc(s.reitti)}`:"";
-        return`<div class="item"><div style="flex:1"><h3>${esc(s.name||"")} <span class="pill">${esc(s.type||"")}</span>${isMultiDay?`<span class="badge badge-navy" style="margin-left:6px;font-size:10px">⚓ Merimatka</span>`:""}</h3><div class="meta">${dateLabel}${reittiMeta} · Max ${max}+${rsv} vara · ${Number(s.pricePerPerson||0).toFixed(0)} €/hlö${resFee>0?` · varausmaksu ${resFee} €`:""}</div>${fillUI(s.id,max,rsv)}${gcalUI}${teoriaUI}${sessUI}${attendeesUI}</div><div class="row" style="align-items:flex-start;flex-shrink:0"><button class="btn btn-secondary btn-sm" data-action="toggle-sailing" data-id="${s.id}">${state.openSailingId===s.id?"Piilota":"Osallistujat"}</button><button class="btn btn-secondary btn-sm" data-action="edit-sailing" data-id="${s.id}">Muokkaa</button><button class="btn btn-danger btn-sm" data-action="delete-sailing" data-id="${s.id}">Poista</button></div></div>`;
+        return`<div class="item"><div style="flex:1"><h3>${esc(s.name||"")} <span class="pill">${esc(s.type||"")}</span>${isMultiDay?`<span class="badge badge-navy" style="margin-left:6px;font-size:10px">⚓ Merimatka</span>`:""}</h3><div class="meta">${dateLabel}${reittiMeta} · Max ${max}+${rsv} vara · ${Number(s.pricePerPerson||0).toFixed(0)} €/hlö${resFee>0?` · varausmaksu ${resFee} €`:""}</div>${fillUI(s.id,max,rsv)}${gcalUI}${teoriaUI}${sessUI}${attendeesUI}</div><div class="row" style="align-items:flex-start;flex-shrink:0"><button class="btn btn-secondary btn-sm" data-action="toggle-sailing" data-id="${s.id}">${state.openSailingId===s.id?"Piilota":"Osallistujat"}</button><button class="btn btn-secondary btn-sm" data-action="copy-sailing" data-id="${s.id}" title="Kopioi pohjaksi uudelle">📋</button><button class="btn btn-secondary btn-sm" data-action="edit-sailing" data-id="${s.id}">Muokkaa</button><button class="btn btn-danger btn-sm" data-action="delete-sailing" data-id="${s.id}">Poista</button></div></div>`;
       }).join("")}
     `}
   </div>`;
@@ -942,12 +951,12 @@ function renderSailingModal(){
       </div>
       <div class="hr"></div>
       <div class="grid2">
-        <div class="field"><label class="lbl">Max hlö *</label><input type="number" min="1" step="1" data-field="maxPersons" value="${esc(String(Number(s?.maxPersons??6)))}"></div>
-        <div class="field"><label class="lbl">Varapaikkoja</label><input type="number" min="0" step="1" data-field="reserveSlots" value="${esc(String(Number(s?.reserveSlots??2)))}"><div class="small muted" style="margin-top:4px">Suositus: vähintään 2</div></div>
+        <div class="field"><label class="lbl">Max hlö *</label><input type="number" min="1" step="1" data-field="maxPersons" value="${esc(String(Number(draft.maxPersons??s?.maxPersons??6)))}"></div>
+        <div class="field"><label class="lbl">Varapaikkoja</label><input type="number" min="0" step="1" data-field="reserveSlots" value="${esc(String(Number(draft.reserveSlots??s?.reserveSlots??2)))}"><div class="small muted" style="margin-top:4px">Suositus: vähintään 2</div></div>
       </div>
       <div class="grid2">
-        <div class="field"><label class="lbl">Hinta/hlö (€)</label><input type="number" min="0" step="0.01" data-field="pricePerPerson" value="${esc(String(Number(s?.pricePerPerson??0)))}"></div>
-        <div class="field"><label class="lbl">Varausmaksu (€)</label><input type="number" min="0" step="0.01" data-field="reservationFee" value="${esc(String(Number(s?.reservationFee??0)))}"><div class="small muted" style="margin-top:4px">0 = ei varausmaksua</div></div>
+        <div class="field"><label class="lbl">Hinta/hlö (€)</label><input type="number" min="0" step="0.01" data-field="pricePerPerson" value="${esc(String(Number(draft.pricePerPerson??s?.pricePerPerson??0)))}"></div>
+        <div class="field"><label class="lbl">Varausmaksu (€)</label><input type="number" min="0" step="0.01" data-field="reservationFee" value="${esc(String(Number(draft.reservationFee??s?.reservationFee??0)))}"><div class="small muted" style="margin-top:4px">0 = ei varausmaksua</div></div>
       </div>
       <div class="row" style="justify-content:flex-end;margin-top:16px"><button class="btn btn-primary" data-action="save-sailing">${editing?"Tallenna muutokset":"Tallenna"}</button></div>
     </div>
@@ -964,7 +973,7 @@ function renderTutkintoModal(){
     <div class="modal-body">
       <div class="grid2">
         <div class="field"><label class="lbl">Tutkintotyyppi *</label>
-          <select data-field="tutkinto-type">
+          <select data-field="tutkinto-type" data-action="sailing-type-changed">
             ${TUTKINTO_TYPES.map(tt=>`<option value="${esc(tt)}" ${tt===selType?"selected":""}>${esc(tt)}</option>`).join("")}
           </select>
         </div>
@@ -1437,6 +1446,13 @@ function bind(){
   document.querySelectorAll("[data-action]").forEach(el=>{
     if(el.tagName==="INPUT"&&el.type==="checkbox")return;
     if(el.tagName==="A"&&el.dataset.action==="gcal-mark"){el.onclick=async()=>{const sailingId=el.dataset.id,idxRaw=el.dataset.idx;const idx=(idxRaw!==""&&idxRaw!=null)?Number(idxRaw):null;setTimeout(()=>markGcalAdded(sailingId,idx),300);};return;}
+    if(el.dataset.action==="gcal-unmark"){el.onclick=async()=>{
+      const sailingId=el.dataset.id,idxRaw=el.dataset.idx;
+      const s=state.sailings.find(x=>x.id===sailingId);if(!s)return;
+      const gcKey=idxRaw!==""?`gcal_${sailingId}_${idxRaw}`:`gcal_${sailingId}`;
+      delete s[gcKey];delete s[gcKey+"_date"];
+      await fsSet("sailings",sailingId,s);render();
+    };return;}
     el.onclick=async(e)=>{
       e.stopPropagation();
       const a=el.dataset.action,itemId=el.dataset.id;
@@ -1445,6 +1461,17 @@ function bind(){
       if(a==="set-group"){state.sailingGroup=itemId;render();return;}
       if(a==="cal-nav"){state.calendarMonth=el.dataset.month;render();return;}
       if(a==="cal-today"){state.calendarMonth=today().slice(0,7);render();return;}
+      if(a==="toggle-block"){
+        const date=el.dataset.date;
+        const existing=state.blockedDays.find(b=>b.date===date);
+        if(existing){
+          await fsDel("blockedDays",existing.id);
+        }else{
+          const note=prompt("Varauksen syy (valinnainen):","")||"";
+          await fsAdd("blockedDays",{date,note});
+        }
+        return;
+      }
       if(a==="print-calendar"){
         const [yr,mo]=state.calendarMonth.split("-").map(Number);
         const monthNames=["Tammikuu","Helmikuu","Maaliskuu","Huhtikuu","Toukokuu","Kesäkuu","Heinäkuu","Elokuu","Syyskuu","Lokakuu","Marraskuu","Joulukuu"];
@@ -1631,6 +1658,24 @@ table{width:100%;border-collapse:collapse}
       if(a==="new-customer"){state.modal="customer";state.editId=null;render();return;}
       if(a==="edit-customer"){state.modal="customer";state.editId=itemId;render();return;}
       if(a==="new-sailing"){state.modal="sailing";state.editId=null;state.sailingDraft={};render();return;}
+      if(a==="copy-sailing"){
+        const s=state.sailings.find(x=>x.id===itemId);if(!s)return;
+        // Kopioi kaikki kentät paitsi osallistujat ja gcal-merkinnät — avaa modal täytettynä
+        state.sailingDraft={
+          name:s.name+" (kopio)",
+          type:s.type,
+          reitti:s.reitti||"",
+          date:today(), // päivä tyhjennetään — käyttäjä asettaa uuden
+          endDate:"",
+          startTime:s.startTime||"",
+          endTime:s.endTime||"",
+          maxPersons:s.maxPersons,
+          reserveSlots:s.reserveSlots,
+          pricePerPerson:s.pricePerPerson,
+          reservationFee:s.reservationFee,
+        };
+        state.modal="sailing";state.editId=null;render();return;
+      }
       if(a==="edit-sailing"){state.modal="sailing";state.editId=itemId;state.sailingDraft={};render();return;}
       if(a==="new-company"){state.modal="company";state.editId=null;render();return;}
       if(a==="edit-company"){state.modal="company";state.editId=itemId;render();return;}
