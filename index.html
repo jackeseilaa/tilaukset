@@ -9,7 +9,7 @@
 <meta name="theme-color" content="#0a1628"/>
 <link rel="manifest" href="manifest.json"/>
 <link rel="apple-touch-icon" href="icon-512.png"/>
-<title>J Sailing V9.13 — Hallintapaneeli</title>
+<title>J Sailing V9.14 — Hallintapaneeli</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400;1,600&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -207,7 +207,7 @@ import{getAuth,GoogleAuthProvider,signInWithPopup,signOut,onAuthStateChanged}fro
 import{getFirestore,collection,doc,addDoc,setDoc,deleteDoc,onSnapshot,serverTimestamp}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 const FIREBASE_CONFIG={apiKey:"AIzaSyB7Dp5_5fN0Iko-4Jn1D2Dp6NNNih63UO0",authDomain:"jsailing-f716c.firebaseapp.com",projectId:"jsailing-f716c",storageBucket:"jsailing-f716c.firebasestorage.app",messagingSenderId:"543523103696",appId:"1:543523103696:web:439a312efa6aec398a8fd5"};
 const ALLOWED_EMAIL="jacke.seilaa@gmail.com";
-const APP_VERSION="V9.13";const UPDATE_DATE=(()=>{const n=new Date();return n.toLocaleDateString("fi-FI")+' klo '+String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0');})();
+const APP_VERSION="V9.14";const UPDATE_DATE=(()=>{const n=new Date();return n.toLocaleDateString("fi-FI")+' klo '+String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0');})();
 const ISSUER={name:"J Sailing",businessId:"1728993-9"};
 const BANK={iban:"FI62 1132 3000 4277 43",bic:"NDEAFIHH"};
 const SAILING_TYPES=["Iltapurjehdus","Päiväpurjehdus","Charter","Kurssi","Yritystilaisuus","Purjehdusretki","Muu"];
@@ -1478,8 +1478,8 @@ function bind(){
         const dayNamesFull=["sunnuntai","maanantai","tiistai","keskiviikko","torstai","perjantai","lauantai"];
         const dayNamesShort=["su","ma","ti","ke","to","pe","la"];
         const daysInMonth=new Date(yr,mo,0).getDate();
-        const colors={Kurssi:"#c8e8f8",Charter:"#c0f0dc",Iltapurjehdus:"#e4d0f8",Päiväpurjehdus:"#fde8b0",Purjehdusretki:"#fcc8c8",Yritystilaisuus:"#dce8f4",Teoria:"#fff3cd",Tutkinto:"#ede9fe",Muu:"#e4e4ec"};
-        const borders={Kurssi:"#90c8ec",Charter:"#70d4a0",Iltapurjehdus:"#b888e8",Päiväpurjehdus:"#f0b840",Purjehdusretki:"#e88080",Yritystilaisuus:"#90b4d4",Teoria:"#f59e0b",Tutkinto:"#c4b5fd",Muu:"#a8a8c4"};
+        const colors={Kurssi:"#c8e8f8",Charter:"#c0f0dc",Iltapurjehdus:"#e4d0f8",Päiväpurjehdus:"#fde8b0",Purjehdusretki:"#fcc8c8",Yritystilaisuus:"#dce8f4",Teoria:"#fff3cd",Tutkinto:"#ede9fe",Muu:"#e4e4ec",Varattu:"#f3f4f6"};
+        const borders={Kurssi:"#90c8ec",Charter:"#70d4a0",Iltapurjehdus:"#b888e8",Päiväpurjehdus:"#f0b840",Purjehdusretki:"#e88080",Yritystilaisuus:"#90b4d4",Teoria:"#f59e0b",Tutkinto:"#c4b5fd",Muu:"#a8a8c4",Varattu:"#d1d5db"};
         // Build event map
         const evMap={};
         const addEv=(ds,ev)=>{if(!evMap[ds])evMap[ds]=[];evMap[ds].push(ev);};
@@ -1520,6 +1520,11 @@ function bind(){
           if(!t.date)continue;
           let tl="";if(t.startTime&&t.endTime)tl=t.startTime+"–"+t.endTime;else if(t.startTime)tl="klo "+t.startTime;
           addEv(t.date,{name:t.type+(t.boatType?" ("+t.boatType+")":""),label:"Tutkinto",type:"Tutkinto",timeLabel:tl,reitti:t.location||""});
+        }
+        // Varatut päivät tulostukseen
+        for(const b of state.blockedDays){
+          if(!b.date)continue;
+          addEv(b.date,{name:b.note?"Varattu: "+b.note:"Varattu",label:"Varattu",type:"Varattu",timeLabel:"",reitti:""});
         }
         // Build list rows — only days that have events OR all days
         let rowsHtml="";
