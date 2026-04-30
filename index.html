@@ -9,7 +9,7 @@
 <meta name="theme-color" content="#0a1628"/>
 <link rel="manifest" href="manifest.json"/>
 <link rel="apple-touch-icon" href="icon-512.png"/>
-<title>J Sailing V9.14 — Hallintapaneeli</title>
+<title>J Sailing V9.16 — Hallintapaneeli</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400;1,600&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -207,7 +207,7 @@ import{getAuth,GoogleAuthProvider,signInWithPopup,signOut,onAuthStateChanged}fro
 import{getFirestore,collection,doc,addDoc,setDoc,deleteDoc,onSnapshot,serverTimestamp}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 const FIREBASE_CONFIG={apiKey:"AIzaSyB7Dp5_5fN0Iko-4Jn1D2Dp6NNNih63UO0",authDomain:"jsailing-f716c.firebaseapp.com",projectId:"jsailing-f716c",storageBucket:"jsailing-f716c.firebasestorage.app",messagingSenderId:"543523103696",appId:"1:543523103696:web:439a312efa6aec398a8fd5"};
 const ALLOWED_EMAIL="jacke.seilaa@gmail.com";
-const APP_VERSION="V9.15";const UPDATE_DATE=(()=>{const n=new Date();return n.toLocaleDateString("fi-FI")+' klo '+String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0');})();
+const APP_VERSION="V9.16";const UPDATE_DATE=(()=>{const n=new Date();return n.toLocaleDateString("fi-FI")+' klo '+String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0');})();
 const ISSUER={name:"J Sailing",businessId:"1728993-9"};
 const BANK={iban:"FI62 1132 3000 4277 43",bic:"NDEAFIHH"};
 const SAILING_TYPES=["Iltapurjehdus","Päiväpurjehdus","Charter","Kurssi","Yritystilaisuus","Purjehdusretki","Muu"];
@@ -269,6 +269,7 @@ function renderAttendeeCard(c){
         <span style="font-weight:600;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(c.name||"")}</span>
         ${statusBadge(st)}
       </div>
+      ${c.tutkintoTypeOverride?"<div style='margin-top:3px'><span class='badge badge-blue' style='font-size:10px'>🎓 "+c.tutkintoTypeOverride+"</span></div>":""}
       ${c.priceOverride!=null&&c.priceOverride!==""?"<div style='margin-top:3px'><span class='badge badge-amber' style='font-size:10px'>Yksilollinen hinta: "+Number(c.priceOverride).toFixed(0)+" EUR</span></div>":""}
       ${c.phone||c.email?`<div class="row" style="gap:6px;margin-top:4px;flex-wrap:wrap">
         ${c.phone?`<a href="tel:${esc(c.phone.replace(/\s/g,''))}" style="font-size:12px;color:#374151;text-decoration:none">📞 ${esc(c.phone)}</a>`:""}
@@ -361,7 +362,9 @@ function computeInvoice(overrideState){
   const itype=inv.type||"full",isRes=itype==="reservation",isPartial=itype==="partial",isCredit=itype==="credit";
   let payerName="",payerEmail="",payerBusinessId="",lines=[],grossTotal=0,eventName="";
   if(isTutkinto&&t){
-    eventName=t.type+(t.boatType?" ("+t.boatType+")":"");
+    const invCust=state.customers.find(x=>x.id===inv.customerId);
+    const custType=invCust?.tutkintoTypeOverride||"";
+    eventName=(custType||t.type)+(t.boatType&&!custType?" ("+t.boatType+")":"");
     let price=parseFloat(inv.partialAmount||0)||0;
     const c=state.customers.find(x=>x.id===inv.customerId);
     if(c){payerName=c.name||"";payerEmail=c.email||"";let amt=isCredit?-Math.abs(price):price;lines.push({title:`${eventName} — ${invTypeLabel(itype)} — ${c.name}`,qty:1,unit:amt,total:amt});grossTotal=amt;}
@@ -1175,6 +1178,7 @@ function renderCustomerModal(){
         <label class="lbl">Yksilollinen hinta (EUR) <span style="font-weight:400;text-transform:none;font-size:11px;color:#6b7280">-- tyhja = tapahtuman hinta</span></label>
         <input type="number" min="0" step="0.01" data-field="priceOverride" value="${esc(String(c?.priceOverride!=null&&c?.priceOverride!==""?c.priceOverride:""))}" placeholder="Ylikirjoittaa tapahtuman hinnan">
       </div>
+      ${c?.tutkintoId?`<div class="field" style="margin-top:12px"><label class="lbl">Tutkintotyyppi (yksilollinen) <span style="font-weight:400;text-transform:none;font-size:11px;color:#6b7280">-- tyhja = tilaisuuden tyyppi</span></label><select data-field="tutkintoTypeOverride"><option value="">-- Tilaisuuden tyyppi (oletus) --</option>${["Rannikkopäällikkö","Saaristopäällikkö","KVVK näyttökoe","Vuokraveneenkuljettaja näyttökoe","Muu"].map(t=>`<option value="${esc(t)}" ${(c?.tutkintoTypeOverride||"")===t?"selected":""}>${esc(t)}</option>`).join("")}</select></div>`:""}
       <div class="row" style="justify-content:flex-end;margin-top:16px"><button class="btn btn-primary" data-action="save-customer">${editing?"Tallenna muutokset":"Tallenna"}</button></div>
     </div>
   </div></div>`;
@@ -1746,7 +1750,8 @@ table{width:100%;border-collapse:collapse}
         if(billTo==="company"&&!companyId)return alert("Valitse tilaajayritys.");
         const priceOverrideRaw=document.querySelector('[data-field="priceOverride"]')?.value||"";
         const priceOverride=priceOverrideRaw!==""?parseFloat(priceOverrideRaw):null;
-        const data={name,phone,email,sailingId,billTo,companyId:(billTo==="company")?companyId:"",reservationStatus,...(priceOverride!=null?{priceOverride}:{priceOverride:null})};
+        const tutkintoTypeOverride=document.querySelector('[data-field="tutkintoTypeOverride"]')?.value||"";
+        const data={name,phone,email,sailingId,billTo,companyId:(billTo==="company")?companyId:"",reservationStatus,...(priceOverride!=null?{priceOverride}:{priceOverride:null}),tutkintoTypeOverride};
         if(state.editId)await fsSet("customers",state.editId,data);else await fsAdd("customers",data);
         state.modal=null;state.editId=null;render();return;
       }
