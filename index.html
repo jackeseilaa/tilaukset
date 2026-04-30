@@ -207,7 +207,7 @@ import{getAuth,GoogleAuthProvider,signInWithPopup,signOut,onAuthStateChanged}fro
 import{getFirestore,collection,doc,addDoc,setDoc,deleteDoc,onSnapshot,serverTimestamp}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 const FIREBASE_CONFIG={apiKey:"AIzaSyB7Dp5_5fN0Iko-4Jn1D2Dp6NNNih63UO0",authDomain:"jsailing-f716c.firebaseapp.com",projectId:"jsailing-f716c",storageBucket:"jsailing-f716c.firebasestorage.app",messagingSenderId:"543523103696",appId:"1:543523103696:web:439a312efa6aec398a8fd5"};
 const ALLOWED_EMAIL="jacke.seilaa@gmail.com";
-const APP_VERSION="V9.14";const UPDATE_DATE=(()=>{const n=new Date();return n.toLocaleDateString("fi-FI")+' klo '+String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0');})();
+const APP_VERSION="V9.15";const UPDATE_DATE=(()=>{const n=new Date();return n.toLocaleDateString("fi-FI")+' klo '+String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0');})();
 const ISSUER={name:"J Sailing",businessId:"1728993-9"};
 const BANK={iban:"FI62 1132 3000 4277 43",bic:"NDEAFIHH"};
 const SAILING_TYPES=["Iltapurjehdus","Päiväpurjehdus","Charter","Kurssi","Yritystilaisuus","Purjehdusretki","Muu"];
@@ -269,6 +269,7 @@ function renderAttendeeCard(c){
         <span style="font-weight:600;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(c.name||"")}</span>
         ${statusBadge(st)}
       </div>
+      ${c.priceOverride!=null&&c.priceOverride!==""?`<div style="margin-top:3px"><span class="badge badge-amber" style="font-size:10px">Yksilollinen hinta: ${Number(c.priceOverride).toFixed(0)} EUR</span></div>":""}
       ${c.phone||c.email?`<div class="row" style="gap:6px;margin-top:4px;flex-wrap:wrap">
         ${c.phone?`<a href="tel:${esc(c.phone.replace(/\s/g,''))}" style="font-size:12px;color:#374151;text-decoration:none">📞 ${esc(c.phone)}</a>`:""}
         ${c.email?`<a href="mailto:${esc(c.email)}" style="font-size:12px;color:#1e40af;text-decoration:none">✉️ ${esc(c.email)}</a>`:""}
@@ -380,8 +381,10 @@ function computeInvoice(overrideState){
       const c=state.customers.find(x=>x.id===inv.customerId);
       if(c){
         payerName=c.name||"";payerEmail=c.email||"";
-        let amt=isCredit?-Math.abs(price):price;
-        lines.push({title:`${s.name} — ${invTypeLabel(itype)} — ${c.name}`,qty:1,unit:amt,total:amt});
+        const effectivePrice=(c.priceOverride!=null&&c.priceOverride!=="")?Number(c.priceOverride):price;
+        let amt=isCredit?-Math.abs(effectivePrice):effectivePrice;
+        const priceNote=(c.priceOverride!=null&&c.priceOverride!=="")?" (yksilollinen hinta)":"";
+        lines.push({title:`${s.name} — ${invTypeLabel(itype)} — ${c.name}${priceNote}`,qty:1,unit:amt,total:amt});
         if(alreadyInvoicedResFee>0){
           lines.push({title:`Aiemmin laskutettu varausmaksu`,qty:1,unit:-alreadyInvoicedResFee,total:-alreadyInvoicedResFee});
         }
@@ -1002,16 +1005,19 @@ function renderTransferModal(){
   if(!c)return"";
   const currentSailing=state.sailings.find(x=>x.id===c.sailingId);
   // Näytä muut purjehdukset — ei nykyistä, ei kokonaan menneitä
-  const options=state.sailings
-    .filter(s=>{
-      if(s.id===c.sailingId)return false;
-      // Tulevia sessioita?
-      const hasFutureSess=Array.isArray(s.sessions)&&s.sessions.some(sess=>(sess.date||"")>=today());
-      // Alkupäivä tulevaisuudessa tai loppupäivä ei mennyt?
-      const isFuture=(s.date||"")>=today()||(s.endDate&&s.endDate>=today());
-      return isFuture||hasFutureSess;
-    })
+  const sailingOpts=state.sailings.filter(s=>{
+    if(s.id===c.sailingId)return false;
+    const hasFutureSess=Array.isArray(s.sessions)&&s.sessions.some(sess=>(sess.date||"")>=today());
+    const isFuture=(s.date||"")>=today()||(s.endDate&&s.endDate>=today());
+    return isFuture||hasFutureSess;
+  }).sort((a,b)=>(a.date||"").localeCompare(b.date||""));
+  const tutkintoOpts=state.tutkinnot
+    .filter(t=>t.id!==c.tutkintoId&&(t.date||"")>=today())
     .sort((a,b)=>(a.date||"").localeCompare(b.date||""));
+  const options=[
+    ...sailingOpts.map(s=>({...s,_isTutkinto:false})),
+    ...tutkintoOpts.map(t=>({...t,_isTutkinto:true,name:t.type+(t.boatType?" ("+t.boatType+")":"")}))
+  ];
   return`<div class="overlay" data-action="close-modal"><div class="modal" style="max-width:520px" onclick="event.stopPropagation()">
     <div class="modal-head"><div class="row-between">
       <div>
@@ -1034,7 +1040,7 @@ function renderTransferModal(){
               <div style="font-weight:600">${esc(s.name||"")} <span class="pill">${esc(s.type||"")}</span></div>
               <div class="small muted">${fmtDate(s.date)} · ${enrolled}/${max>0?max:"∞"} · ${full?`<span style="color:#991b1b">Täynnä</span>`:`<span style="color:#166534">${max>0?max-enrolled:"∞"} vapaata</span>`}</div>
             </div>
-            <button class="btn btn-primary btn-sm" data-action="do-transfer" data-id="${c.id}" data-target="${s.id}" ${full?"disabled style='opacity:.4'":""}>Siirrä →</button>
+            <button class="btn btn-primary btn-sm" data-action="do-transfer" data-id="${c.id}" data-target="${s.id}" data-targettype="${s._isTutkinto?'tutkinto':'sailing'}" ${full?"disabled style='opacity:.4'":""}>Siirrä →</button>
           </div>`;
         }).join("")}
       `}
@@ -1164,7 +1170,11 @@ function renderCustomerModal(){
       <div class="grid2"><div class="field"><label class="lbl">Sähköposti</label><input data-field="email" value="${esc(email)}"></div><div class="field"><label class="lbl">Purjehdus / kurssi</label><select data-field="sailingId"><option value="">-- Ei valittu --</option>${state.sailings.slice().sort((a,b)=>(a.date||"").localeCompare(b.date||"")).map(s=>`<option value="${s.id}" ${s.id===sailingId?"selected":""}>${esc(s.name)} (${fmtDate(s.date)})</option>`).join("")}</select></div></div>
       <div class="grid2"><div class="field"><label class="lbl">Varausmaksustatus</label><select data-field="reservationStatus"><option value="pending" ${status==="pending"?"selected":""}>● Varausmaksu odottaa</option><option value="paid" ${status==="paid"?"selected":""}>✓ Vahvistettu</option><option value="reserve" ${status==="reserve"?"selected":""}>◎ Varapaikka</option></select></div><div class="field"><label class="lbl">Laskutus</label><select data-field="billTo"><option value="self" ${billTo==="self"?"selected":""}>Asiakas maksaa itse</option><option value="company" ${billTo==="company"?"selected":""}>Yritys maksaa</option></select></div></div>
       <div class="field"><label class="lbl">Tilaajayritys</label><select data-field="companyId"><option value="">-- Ei valittu --</option>${state.companies.slice().sort((a,b)=>(a.name||"").localeCompare(b.name||"")).map(co=>`<option value="${co.id}" ${co.id===companyId?"selected":""}>${esc(co.name)}</option>`).join("")}</select></div>
-      ${status==="pending"&&hasFee?`<div class="infobox infobox-amber">⚠️ Varausmaksu ${Number(selS.reservationFee)} € odottaa.</div>`:""}${status==="paid"?`<div class="infobox infobox-green">✓ Paikka vahvistettu.</div>`:""}${status==="reserve"?`<div class="infobox infobox-amber">◎ Varapaikalla.</div>`:""}
+      ${status==="pending"&&hasFee?`<div class="infobox infobox-amber">⚠️ Varausmaksu ${Number(selS.reservationFee)} € odottaa.</div>`:""}${status==="paid"?`<div class="infobox infobox-green">✓ Paikka vahvistettu.</div>`:""}${status==="reserve"?`<div class="infobox infobox-amber">◎ Varapaikalla.</div>":""}
+      <div class="field" style="margin-top:12px">
+        <label class="lbl">Yksilollinen hinta (EUR) <span style="font-weight:400;text-transform:none;font-size:11px;color:#6b7280">-- tyhja = tapahtuman hinta</span></label>
+        <input type="number" min="0" step="0.01" data-field="priceOverride" value="${esc(String(c?.priceOverride!=null&&c?.priceOverride!==""?c.priceOverride:""))}" placeholder="Ylikirjoittaa tapahtuman hinnan">
+      </div>
       <div class="row" style="justify-content:flex-end;margin-top:16px"><button class="btn btn-primary" data-action="save-customer">${editing?"Tallenna muutokset":"Tallenna"}</button></div>
     </div>
   </div></div>`;
@@ -1610,19 +1620,22 @@ table{width:100%;border-collapse:collapse}
         render();return;
       }
       if(a==="do-transfer"){
-        const c=state.customers.find(x=>x.id===itemId);
-        if(!c)return;
+        const c=state.customers.find(x=>x.id===itemId);if(!c)return;
         const targetId=el.dataset.target;
-        const target=state.sailings.find(x=>x.id===targetId);
+        const isTutkintoTarget=el.dataset.targettype==="tutkinto";
+        const target=isTutkintoTarget
+          ?state.tutkinnot.find(x=>x.id===targetId)
+          :state.sailings.find(x=>x.id===targetId);
         if(!target)return;
-        if(!confirm(`Siirretäänkö ${c.name}\nkurssille: ${target.name}?`))return;
-        c.sailingId=targetId;
-        c.tutkintoId="";
+        const targetName=isTutkintoTarget
+          ?(target.type+(target.boatType?" ("+target.boatType+")":""))
+          :target.name;
+        if(!confirm(`Siirretäänkö ${c.name}\nkohteeseen: ${targetName}?`))return;
+        if(isTutkintoTarget){c.tutkintoId=targetId;c.sailingId="";}
+        else{c.sailingId=targetId;c.tutkintoId="";}
         await fsSet("customers",c.id,c);
-        state.modal=null;
-        state.transferCustomerId=null;
-        render();
-        alert(`✓ ${c.name} siirretty kurssille ${target.name}`);
+        state.modal=null;state.transferCustomerId=null;render();
+        alert(`✓ ${c.name} siirretty: ${targetName}`);
         return;
       }
       if(a==="email-all"){
@@ -1731,7 +1744,9 @@ table{width:100%;border-collapse:collapse}
         const companyId=document.querySelector('[data-field="companyId"]')?.value||"";
         const reservationStatus=document.querySelector('[data-field="reservationStatus"]')?.value||"pending";
         if(billTo==="company"&&!companyId)return alert("Valitse tilaajayritys.");
-        const data={name,phone,email,sailingId,billTo,companyId:(billTo==="company")?companyId:"",reservationStatus};
+        const priceOverrideRaw=document.querySelector('[data-field="priceOverride"]')?.value||"";
+        const priceOverride=priceOverrideRaw!==""?parseFloat(priceOverrideRaw):null;
+        const data={name,phone,email,sailingId,billTo,companyId:(billTo==="company")?companyId:"",reservationStatus,...(priceOverride!=null?{priceOverride}:{priceOverride:null})};
         if(state.editId)await fsSet("customers",state.editId,data);else await fsAdd("customers",data);
         state.modal=null;state.editId=null;render();return;
       }
