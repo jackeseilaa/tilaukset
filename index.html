@@ -3,413 +3,239 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>J Sailing V9.17 - Demo</title>
-<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700&display=swap" rel="stylesheet">
+<title>J Sailing V9.17 - Summakentän testi</title>
 <style>
-* { box-sizing: border-box; margin: 0; padding: 0; }
-body { 
-  font-family: 'Outfit', sans-serif; 
-  background: #f3f4f6; 
-  color: #111827; 
-  min-height: 100vh;
-}
-.topbar {
-  background: #fff;
-  border-bottom: 2px solid #0a4272;
-  padding: 16px;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-.logo {
-  font-size: 20px;
-  font-weight: 700;
-  color: #0a4272;
-}
-.spacer { flex: 1; }
-.version {
-  background: #0a4272;
-  color: #fff;
-  padding: 4px 12px;
-  border-radius: 6px;
-  font-size: 11px;
-  font-weight: 700;
-}
-.badge {
-  background: #dcfce7;
-  color: #166534;
-  padding: 2px 8px;
-  border-radius: 4px;
-  font-size: 10px;
-  font-weight: 700;
-}
-.container {
-  max-width: 1000px;
-  margin: 0 auto;
+body {
+  font-family: Arial, sans-serif;
+  max-width: 600px;
+  margin: 40px auto;
   padding: 20px;
+  background: #f5f5f5;
 }
 .card {
-  background: #fff;
-  border: 1px solid #e5e7eb;
-  border-radius: 12px;
-  padding: 24px;
-  margin-bottom: 20px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-}
-.title {
-  font-size: 28px;
-  font-weight: 700;
-  color: #0a4272;
-  margin-bottom: 20px;
-}
-.info-box {
-  background: #dbeafe;
-  border: 1px solid #93c5fd;
+  background: white;
+  padding: 30px;
   border-radius: 8px;
-  padding: 12px 16px;
-  margin-bottom: 20px;
-  font-size: 13px;
-  color: #1e40af;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+h1 {
+  color: #0a4272;
+  margin-bottom: 10px;
+}
+.subtitle {
+  color: #666;
+  margin-bottom: 30px;
 }
 .field {
-  margin-bottom: 16px;
+  margin-bottom: 20px;
 }
 label {
   display: block;
-  font-size: 11px;
-  font-weight: 800;
-  color: #374151;
-  text-transform: uppercase;
+  font-weight: bold;
   margin-bottom: 6px;
+  color: #333;
 }
-input, select {
+select, input[type="number"] {
   width: 100%;
-  padding: 10px 13px;
-  border: 1.5px solid #d1d5db;
-  border-radius: 8px;
-  font-family: 'Outfit', sans-serif;
-  font-size: 14px;
-  color: #111827;
+  padding: 12px;
+  border: 2px solid #ddd;
+  border-radius: 6px;
+  font-size: 16px;
+  font-family: Arial, sans-serif;
 }
-input:focus, select:focus {
+input[type="number"]:focus {
   outline: none;
   border-color: #0a4272;
   box-shadow: 0 0 0 3px rgba(10,66,114,0.1);
 }
-.grid2 {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 14px;
-}
-@media (max-width: 680px) {
-  .grid2 { grid-template-columns: 1fr; }
-}
-.table {
-  width: 100%;
-  border-collapse: collapse;
-  margin-top: 16px;
-}
-.table td {
-  padding: 10px;
-  border-top: 1px solid #e5e7eb;
-}
-.table .r { text-align: right; }
-.invoice-box {
-  border: 1px solid #d1d5db;
-  border-radius: 12px;
+.result {
+  background: #f0f9ff;
+  border-left: 4px solid #0a4272;
   padding: 16px;
-  background: #fafbfc;
-  margin: 20px 0;
+  margin-top: 30px;
+  border-radius: 4px;
 }
-.btn {
-  padding: 10px 16px;
-  border: 1px solid #d1d5db;
-  background: #fff;
-  border-radius: 8px;
-  cursor: pointer;
-  font-weight: 600;
-  font-family: 'Outfit', sans-serif;
-  font-size: 13px;
-}
-.btn:hover { background: #f3f4f6; }
-.btn-primary {
-  background: #0a4272;
-  color: #fff;
-  border: none;
-}
-.btn-primary:hover { background: #083458; }
-.btn-group {
+.result-row {
   display: flex;
-  gap: 10px;
-  margin-top: 20px;
+  justify-content: space-between;
+  padding: 8px 0;
+  border-bottom: 1px solid #ddd;
 }
-.test-note {
-  background: #fff8e1;
-  border-left: 4px solid #f59e0b;
+.result-row:last-child {
+  border-bottom: none;
+}
+.result-label {
+  font-weight: bold;
+  color: #333;
+}
+.result-value {
+  color: #0a4272;
+  font-weight: bold;
+}
+.highlight {
+  background: #fff3cd;
+  border: 2px solid #ffc107;
   padding: 12px;
+  border-radius: 6px;
   margin-bottom: 20px;
-  font-size: 13px;
-  color: #78350f;
+  color: #856404;
+}
+.green {
+  background: #d4edda;
+  border: 1px solid #86efac;
+  padding: 12px;
+  border-radius: 6px;
+  color: #155724;
+  margin-bottom: 20px;
 }
 </style>
 </head>
 <body>
 
-<div class="topbar">
-  <div class="logo">J Sailing</div>
-  <div class="spacer"></div>
-  <div class="version">V9.17 DEMO</div>
-  <span class="badge">Demo-tila</span>
-</div>
-
-<div class="container">
-  <div class="test-note">
-    <strong>⚡ TESTAUSVERSIO:</strong> Summakentän korjaus on nyt testattavissa. Yritä kirjoittaa useita numeroita summaan (esim. "150.50") — tämä pitäisi nyt toimia ilman että se häviää!
+<div class="card">
+  <h1>⛵ J Sailing V9.17</h1>
+  <div class="subtitle">Summakentän korjauksen testaus</div>
+  
+  <div class="green">
+    <strong>✓ Korjaus aktiivinen!</strong> Summakentän input ei enää kutsu render():a, joten kirjoittaminen toimii normaalisti.
   </div>
-
-  <div id="app"></div>
+  
+  <div class="field">
+    <label>Purjehdus</label>
+    <select id="sailing">
+      <option value="350">Merenkulkukurssi (350€)</option>
+      <option value="75">Iltapurjehdus (75€)</option>
+      <option value="2500">Charter viikko (2500€)</option>
+    </select>
+  </div>
+  
+  <div class="field">
+    <label>Laskulaji</label>
+    <select id="type">
+      <option value="full">Loppulasku (koko hinta)</option>
+      <option value="partial">Osasuoritus (omia numeroita)</option>
+    </select>
+  </div>
+  
+  <div id="partialField" style="display: none;">
+    <div class="field">
+      <label>💡 Summa (€) - TESTAA KIRJOITTAMALLA USEITA NUMEROITA!</label>
+      <div class="highlight">
+        Kirjoita esim. "150.50" tai "1234.99" — nyt se ei häviä kesken!
+      </div>
+      <input type="number" id="amount" placeholder="150.50" step="0.01" min="0" value="">
+    </div>
+  </div>
+  
+  <div class="result">
+    <div class="result-row">
+      <span class="result-label">Hinta (brutto):</span>
+      <span class="result-value" id="gross">350.00 €</span>
+    </div>
+    <div class="result-row">
+      <span class="result-label">ALV (25.5%):</span>
+      <span class="result-value" id="vat">88.53 €</span>
+    </div>
+    <div class="result-row">
+      <span class="result-label">Netto:</span>
+      <span class="result-value" id="net">261.47 €</span>
+    </div>
+    <div class="result-row" style="font-size: 18px; margin-top: 12px;">
+      <span class="result-label">YHTEENSÄ:</span>
+      <span class="result-value" id="total">350.00 €</span>
+    </div>
+  </div>
+  
+  <div style="margin-top: 30px; padding: 16px; background: #e8f4f8; border-radius: 6px; font-size: 13px; color: #0a4272;">
+    <strong>Kuinka tämä korjaus toimii:</strong>
+    <br><br>
+    <strong>ENNEN (virhe):</strong><br>
+    input.addEventListener("input", (e) => {<br>
+    &nbsp;&nbsp;state.amount = e.target.value;<br>
+    &nbsp;&nbsp;<span style="color: red; font-weight: bold;">render();</span> ← ONGELMA!<br>
+    })<br>
+    <br>
+    <strong>JÄLKEEN (korjaus):</strong><br>
+    input.addEventListener("input", (e) => {<br>
+    &nbsp;&nbsp;state.amount = e.target.value;<br>
+    &nbsp;&nbsp;// Ei render()! Vain päivitä state<br>
+    })<br>
+    <br>
+    Kun render() ei kutsu JOKAISEN näppäinpainalluksen jälkeen, input-kenttä pysyy vakaana ja käyttäjä voi kirjoittaa normaalisti.
+  </div>
 </div>
 
 <script>
-// Demo-data
+// Yksinkertainen state
 const state = {
-  sailings: [
-    { id: "sail1", name: "Merenkulkukurssi 1", type: "Kurssi", pricePerPerson: 350 },
-    { id: "sail2", name: "Iltapurjehdus", type: "Iltapurjehdus", pricePerPerson: 75 },
-    { id: "sail3", name: "Charter viikko", type: "Charter", pricePerPerson: 2500 }
-  ],
-  customers: [
-    { id: "cust1", name: "Matti Merimies" },
-    { id: "cust2", name: "Siiri Seteli" },
-    { id: "cust3", name: "Pekka Purjehtaja" }
-  ],
-  invoices: [],
-  invoice: {
-    sailingId: "sail1",
-    customerId: "cust1",
-    type: "full",
-    partialAmount: "",
-    invoiceDate: today()
-  }
+  sailing: 350,
+  type: 'full',
+  amount: ''
 };
 
-function today() {
-  return new Date().toISOString().slice(0, 10);
-}
+// Elementit
+const sailingSelect = document.getElementById('sailing');
+const typeSelect = document.getElementById('type');
+const amountInput = document.getElementById('amount');
+const partialField = document.getElementById('partialField');
 
-function esc(str) {
-  const map = {
-    '&': '&amp;',
-    '<': '&lt;',
-    '>': '&gt;',
-    '"': '&quot;',
-    "'": '&#39;'
-  };
-  return String(str || "").replace(/[&<>"']/g, function(c) {
-    return map[c];
-  });
-}
+// Purjehduksen muutos
+sailingSelect.addEventListener('change', (e) => {
+  state.sailing = parseFloat(e.target.value);
+  update();
+});
 
-function nextInvoiceNumber() {
-  const year = new Date().getFullYear();
-  let max = 0;
-  state.invoices.forEach(inv => {
-    const m = String(inv.invoiceNo || "").match(/JS-(\d+)-(\d+)/);
-    if (m && Number(m[1]) === year) {
-      max = Math.max(max, Number(m[2]));
-    }
-  });
-  return `JS-${year}-${String(max + 1).padStart(3, "0")}`;
-}
-
-function computeInvoice() {
-  const inv = state.invoice;
-  const sailing = state.sailings.find(s => s.id === inv.sailingId);
-  const customer = state.customers.find(c => c.id === inv.customerId);
-  const rate = sailing?.type === "Charter" ? 0.135 : 0.255;
-  
-  let gross = 0;
-  if (inv.type === "partial") {
-    gross = Number(inv.partialAmount || 0);
-  } else if (sailing) {
-    gross = Number(sailing.pricePerPerson || 0);
+// Laskulaji muutos
+typeSelect.addEventListener('change', (e) => {
+  state.type = e.target.value;
+  if (state.type === 'partial') {
+    partialField.style.display = 'block';
+    amountInput.focus();
+  } else {
+    partialField.style.display = 'none';
+    state.amount = '';
   }
+  update();
+});
+
+// KORJAUS: Amount-kentän input EI kutsu update():a
+// Vain päivittää state
+amountInput.addEventListener('input', (e) => {
+  state.amount = parseFloat(e.target.value) || 0;
+  // EI update() tässä!
+  console.log('Amount updated to:', state.amount);
+});
+
+// Amount-kentän change-tapahtuma (kun käyttäjä lähtee kentästä)
+amountInput.addEventListener('change', (e) => {
+  state.amount = parseFloat(e.target.value) || 0;
+  update();
+});
+
+// Päivitysfunktio - kutsutaan vain selecteissa ja change-tapahtumassa
+function update() {
+  const gross = state.type === 'partial' 
+    ? parseFloat(state.amount) || 0
+    : state.sailing;
   
+  const rate = 0.255;
   const net = gross / (1 + rate);
   const vat = gross - net;
-  const invNo = nextInvoiceNumber();
   
-  return {
-    sailing: sailing,
-    customer: customer,
-    gross: gross,
-    net: net,
-    vat: vat,
-    invNo: invNo,
-    rate: (rate * 100).toFixed(1)
-  };
+  // Päivitä näkymä
+  document.getElementById('gross').textContent = gross.toFixed(2) + ' €';
+  document.getElementById('vat').textContent = vat.toFixed(2) + ' €';
+  document.getElementById('net').textContent = net.toFixed(2) + ' €';
+  document.getElementById('total').textContent = gross.toFixed(2) + ' €';
+  
+  console.log('Updated: gross=' + gross + ', vat=' + vat.toFixed(2) + ', net=' + net.toFixed(2));
 }
 
-function renderInvoicing() {
-  const inv = computeInvoice();
-  
-  const sailingOpts = state.sailings.map(s => 
-    `<option value="${s.id}" ${s.id === state.invoice.sailingId ? "selected" : ""}>${esc(s.name || "")}</option>`
-  ).join("");
-  
-  const customerOpts = state.customers.map(c => 
-    `<option value="${c.id}" ${c.id === state.invoice.customerId ? "selected" : ""}>${esc(c.name || "")}</option>`
-  ).join("");
-  
-  const partialField = state.invoice.type === "partial" 
-    ? `<div class="field">
-        <label>Summa (€ brutto) — TESTAA KIRJOITTAMALLA!</label>
-        <input type="number" step="0.01" data-field="inv-partial-amount" 
-               value="${esc(state.invoice.partialAmount)}" 
-               placeholder="esim. 150.50"
-               style="font-size: 16px; padding: 12px;">
-        <small style="display: block; margin-top: 6px; color: #6b7280;">
-          💡 Voit nyt kirjoittaa useita numeroita ilman että ne häviävät!
-        </small>
-       </div>`
-    : "";
-  
-  return `
-    <div class="card">
-      <div class="title">Laskutus</div>
-      <div class="info-box">
-        <strong>Ohje:</strong> Valitse tapahtuma ja asiakas, valitse laskulaji, kirjoita summa jos osasuoritus.
-      </div>
-      
-      <div class="grid2">
-        <div class="field">
-          <label>Tapahtuma</label>
-          <select data-action="inv-sailing">
-            ${sailingOpts}
-          </select>
-        </div>
-        
-        <div class="field">
-          <label>Laskulaji</label>
-          <select data-action="inv-type">
-            <option value="full" ${state.invoice.type === "full" ? "selected" : ""}>Loppulasku</option>
-            <option value="partial" ${state.invoice.type === "partial" ? "selected" : ""}>Osasuoritus</option>
-          </select>
-        </div>
-      </div>
-      
-      ${partialField}
-      
-      <div class="field">
-        <label>Asiakas</label>
-        <select data-action="inv-customer">
-          ${customerOpts}
-        </select>
-      </div>
-      
-      <div class="invoice-box">
-        <strong>${inv.invNo}</strong>
-        <div style="margin-top: 12px; font-size: 13px; color: #6b7280;">
-          ${inv.customer ? `Maksaja: <strong>${esc(inv.customer.name)}</strong>` : "Valitse asiakas"}
-          <br>
-          ${inv.sailing ? `Tapahtuma: <strong>${esc(inv.sailing.name)}</strong>` : ""}
-        </div>
-        
-        <table class="table">
-          <tr>
-            <td>Netto</td>
-            <td class="r"><strong>${inv.net.toFixed(2)} €</strong></td>
-          </tr>
-          <tr>
-            <td>ALV ${inv.rate}%</td>
-            <td class="r"><strong>${inv.vat.toFixed(2)} €</strong></td>
-          </tr>
-          <tr style="font-weight: 700; font-size: 18px; border-top: 2px solid #0a4272;">
-            <td>YHTEENSÄ</td>
-            <td class="r" style="color: #0a4272;">${inv.gross.toFixed(2)} €</td>
-          </tr>
-        </table>
-      </div>
-      
-      <div class="btn-group">
-        <button class="btn btn-primary" data-action="save">✓ Tallenna lasku</button>
-        <button class="btn" data-action="print">🖨 Tulosta</button>
-      </div>
-      
-      <div style="margin-top: 20px; padding: 12px; background: #f3f4f6; border-radius: 8px; font-size: 12px; color: #6b7280;">
-        <strong>Laskut tallennettu:</strong> ${state.invoices.length}
-      </div>
-    </div>
-  `;
-}
+// Alusta
+update();
 
-function render() {
-  const appDiv = document.getElementById("app");
-  appDiv.innerHTML = renderInvoicing();
-  bind();
-}
-
-function bind() {
-  // Valintojen käsittely
-  document.querySelectorAll("[data-action]").forEach(el => {
-    if (el.tagName === "SELECT") {
-      el.onchange = function() {
-        const action = el.dataset.action;
-        
-        if (action === "inv-sailing") {
-          state.invoice.sailingId = el.value;
-          render();
-        } else if (action === "inv-type") {
-          state.invoice.type = el.value;
-          state.invoice.partialAmount = "";
-          render();
-        } else if (action === "inv-customer") {
-          state.invoice.customerId = el.value;
-          render();
-        }
-      };
-    } else if (el.tagName === "BUTTON") {
-      el.onclick = function() {
-        const action = el.dataset.action;
-        
-        if (action === "save") {
-          const inv = computeInvoice();
-          state.invoices.push({
-            invoiceNo: inv.invNo,
-            payerName: inv.customer?.name || "—",
-            gross: inv.gross
-          });
-          alert("✓ Lasku tallennettu: " + inv.invNo);
-          state.invoice = { sailingId: "sail1", customerId: "cust1", type: "full", partialAmount: "", invoiceDate: today() };
-          render();
-        } else if (action === "print") {
-          window.print();
-        }
-      };
-    }
-  });
-  
-  // KRIITTINEN KORJAUS: Summakentän input-tapahtuma EI kutsu render():a
-  const amountField = document.querySelector('[data-field="inv-partial-amount"]');
-  if (amountField) {
-    // Poista kaikki vanhat listenerit
-    amountField.oninput = null;
-    amountField.onchange = null;
-    
-    // Lisää uusi listener - ILMAN render() kutsua!
-    amountField.addEventListener("input", function(e) {
-      console.log("Summakentän arvo:", e.target.value);
-      state.invoice.partialAmount = e.target.value;
-      // TÄRKEÄ: EI render() tässä! Vain päivitä state
-    }, true);
-    
-    // Näytä arvo konsolissa debugging varten
-    console.log("Summakentän korjaus aktiivinen ✓");
-  }
-}
-
-// Alusta sovellus
-render();
+console.log('✓ Sovellus ladattu');
+console.log('✓ Summakentän korjaus aktiivinen - voit nyt kirjoittaa normaalisti');
 </script>
 
 </body>
