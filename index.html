@@ -1,80 +1,416 @@
 <!DOCTYPE html>
 <html lang="fi">
 <head>
-<meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>J Sailing V9.17</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>J Sailing V9.17 - Demo</title>
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
-*{box-sizing:border-box;margin:0;padding:0}
-body{font-family:Outfit,sans-serif;background:#f3f4f6;color:#111827;min-height:100vh}
-.topbar{background:#fff;border-bottom:2px solid #0a4272;padding:16px;display:flex;align-items:center;gap:12px}
-.logo{font-size:20px;font-weight:700;color:#0a4272}
-.spacer{flex:1}
-.version{background:#0a4272;color:#fff;padding:4px 12px;border-radius:6px;font-size:11px;font-weight:700}
-.btn{padding:10px 16px;border:1px solid #d1d5db;background:#fff;border-radius:8px;cursor:pointer;font-weight:600}
-.btn:hover{background:#f3f4f6}
-.btn-primary{background:#0a4272;color:#fff;border:none}
-.container{max-width:1000px;margin:0 auto;padding:20px}
-.card{background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:24px;margin-bottom:20px;box-shadow:0 1px 3px rgba(0,0,0,.1)}
-.title{font-size:28px;font-weight:700;color:#0a4272;margin-bottom:20px}
-.field{margin-bottom:16px}
-label{display:block;font-size:11px;font-weight:800;color:#374151;text-transform:uppercase;margin-bottom:6px}
-input,select{width:100%;padding:10px 13px;border:1.5px solid #d1d5db;border-radius:8px;font-family:Outfit,sans-serif;font-size:14px}
-input:focus,select:focus{outline:none;border-color:#0a4272}
-.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
-.table{width:100%;border-collapse:collapse;margin-top:16px}
-.table td{padding:10px;border-top:1px solid #e5e7eb}
-.table .r{text-align:right}
-.invoice-box{border:1px solid #d1d5db;border-radius:12px;padding:16px;background:#fafbfc;margin:20px 0}
-.btn-group{display:flex;gap:10px;margin-top:20px}
-.auth-screen{display:flex;align-items:center;justify-content:center;min-height:100vh}
-.auth-card{background:#fff;border:1px solid #d1d5db;border-radius:16px;padding:40px;width:min(380px,90%);text-align:center;box-shadow:0 4px 12px rgba(0,0,0,.1)}
-.auth-card h1{font-size:32px;color:#0a4272;margin:20px 0 10px}
-.auth-card p{color:#6b7280;margin-bottom:30px}
-.loader{text-align:center;padding:60px 20px}
-.spinner{width:50px;height:50px;border:4px solid #d1d5db;border-top-color:#0a4272;border-radius:50%;animation:spin 1s linear infinite;margin:0 auto 20px}
-@keyframes spin{to{transform:rotate(360deg)}}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { 
+  font-family: 'Outfit', sans-serif; 
+  background: #f3f4f6; 
+  color: #111827; 
+  min-height: 100vh;
+}
+.topbar {
+  background: #fff;
+  border-bottom: 2px solid #0a4272;
+  padding: 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.logo {
+  font-size: 20px;
+  font-weight: 700;
+  color: #0a4272;
+}
+.spacer { flex: 1; }
+.version {
+  background: #0a4272;
+  color: #fff;
+  padding: 4px 12px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 700;
+}
+.badge {
+  background: #dcfce7;
+  color: #166534;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 700;
+}
+.container {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 20px;
+}
+.card {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 24px;
+  margin-bottom: 20px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+.title {
+  font-size: 28px;
+  font-weight: 700;
+  color: #0a4272;
+  margin-bottom: 20px;
+}
+.info-box {
+  background: #dbeafe;
+  border: 1px solid #93c5fd;
+  border-radius: 8px;
+  padding: 12px 16px;
+  margin-bottom: 20px;
+  font-size: 13px;
+  color: #1e40af;
+}
+.field {
+  margin-bottom: 16px;
+}
+label {
+  display: block;
+  font-size: 11px;
+  font-weight: 800;
+  color: #374151;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+input, select {
+  width: 100%;
+  padding: 10px 13px;
+  border: 1.5px solid #d1d5db;
+  border-radius: 8px;
+  font-family: 'Outfit', sans-serif;
+  font-size: 14px;
+  color: #111827;
+}
+input:focus, select:focus {
+  outline: none;
+  border-color: #0a4272;
+  box-shadow: 0 0 0 3px rgba(10,66,114,0.1);
+}
+.grid2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+@media (max-width: 680px) {
+  .grid2 { grid-template-columns: 1fr; }
+}
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 16px;
+}
+.table td {
+  padding: 10px;
+  border-top: 1px solid #e5e7eb;
+}
+.table .r { text-align: right; }
+.invoice-box {
+  border: 1px solid #d1d5db;
+  border-radius: 12px;
+  padding: 16px;
+  background: #fafbfc;
+  margin: 20px 0;
+}
+.btn {
+  padding: 10px 16px;
+  border: 1px solid #d1d5db;
+  background: #fff;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  font-family: 'Outfit', sans-serif;
+  font-size: 13px;
+}
+.btn:hover { background: #f3f4f6; }
+.btn-primary {
+  background: #0a4272;
+  color: #fff;
+  border: none;
+}
+.btn-primary:hover { background: #083458; }
+.btn-group {
+  display: flex;
+  gap: 10px;
+  margin-top: 20px;
+}
+.test-note {
+  background: #fff8e1;
+  border-left: 4px solid #f59e0b;
+  padding: 12px;
+  margin-bottom: 20px;
+  font-size: 13px;
+  color: #78350f;
+}
 </style>
 </head>
 <body>
-<div id="app"></div>
-<script type="module">
-import{initializeApp}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import{getAuth,GoogleAuthProvider,signInWithPopup,signOut,onAuthStateChanged}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-import{getFirestore,collection,doc,setDoc,onSnapshot}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
-const config={apiKey:"AIzaSyB7Dp5_5fN0Iko-4Jn1D2Dp6NNNih63UO0",authDomain:"jsailing-f716c.firebaseapp.com",projectId:"jsailing-f716c",storageBucket:"jsailing-f716c.firebasestorage.app",messagingSenderId:"543523103696",appId:"1:543523103696:web:439a312efa6aec398a8fd5"};
+<div class="topbar">
+  <div class="logo">J Sailing</div>
+  <div class="spacer"></div>
+  <div class="version">V9.17 DEMO</div>
+  <span class="badge">Demo-tila</span>
+</div>
 
-const app=initializeApp(config);
-const auth=getAuth(app);
-const db=getFirestore(app);
-const ALLOWED_EMAIL="jacke.seilaa@gmail.com";
+<div class="container">
+  <div class="test-note">
+    <strong>⚡ TESTAUSVERSIO:</strong> Summakentän korjaus on nyt testattavissa. Yritä kirjoittaa useita numeroita summaan (esim. "150.50") — tämä pitäisi nyt toimia ilman että se häviää!
+  </div>
 
-const state={user:null,tab:"dashboard",sailings:[],customers:[],invoices:[],invoice:{sailingId:"",customerId:"",type:"full",partialAmount:"",invoiceDate:today()}};
+  <div id="app"></div>
+</div>
 
-function today(){return new Date().toISOString().slice(0,10);}
-function esc(s){return String(s||"").replace(/[&<>"']/g,c=>{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]||c);}
-function fmtDate(d){return d?new Date(d+"T00:00:00").toLocaleDateString("fi-FI"):"";}
+<script>
+// Demo-data
+const state = {
+  sailings: [
+    { id: "sail1", name: "Merenkulkukurssi 1", type: "Kurssi", pricePerPerson: 350 },
+    { id: "sail2", name: "Iltapurjehdus", type: "Iltapurjehdus", pricePerPerson: 75 },
+    { id: "sail3", name: "Charter viikko", type: "Charter", pricePerPerson: 2500 }
+  ],
+  customers: [
+    { id: "cust1", name: "Matti Merimies" },
+    { id: "cust2", name: "Siiri Seteli" },
+    { id: "cust3", name: "Pekka Purjehtaja" }
+  ],
+  invoices: [],
+  invoice: {
+    sailingId: "sail1",
+    customerId: "cust1",
+    type: "full",
+    partialAmount: "",
+    invoiceDate: today()
+  }
+};
 
-function nextInvoiceNumber(){const y=new Date().getFullYear();let max=0;state.invoices.forEach(i=>{const m=String(i.invoiceNo||"").match(/JS-(\d+)-(\d+)/);if(m&&Number(m[1])===y)max=Math.max(max,Number(m[2]))});return`JS-${y}-${String(max+1).padStart(3,"0")}`;}
+function today() {
+  return new Date().toISOString().slice(0, 10);
+}
 
-function finnishRef(d){d=String(d).replace(/\D/g,"");if(!d)return"";let s=0,w=[7,3,1];for(let i=d.length-1;i>=0;i--)s+=Number(d[i])*w[i%3];return d+String((10-s%10)%10);}
+function esc(str) {
+  const map = {
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;'
+  };
+  return String(str || "").replace(/[&<>"']/g, function(c) {
+    return map[c];
+  });
+}
 
-function computeInvoice(){const i=state.invoice;const s=state.sailings.find(x=>x.id===i.sailingId);const c=state.customers.find(x=>x.id===i.customerId);const rate=s?.type==="Charter"?0.135:0.255;let gross=i.type==="partial"?Number(i.partialAmount||0):s?Number(s.pricePerPerson||0):0;const net=gross/(1+rate),vat=gross-net;const no=nextInvoiceNumber();return{sailing:s,customer:c,gross,net,vat,invNo:no,ref:finnishRef(no.replace(/\D/g,"")),rate:(rate*100).toFixed(1)};}
+function nextInvoiceNumber() {
+  const year = new Date().getFullYear();
+  let max = 0;
+  state.invoices.forEach(inv => {
+    const m = String(inv.invoiceNo || "").match(/JS-(\d+)-(\d+)/);
+    if (m && Number(m[1]) === year) {
+      max = Math.max(max, Number(m[2]));
+    }
+  });
+  return `JS-${year}-${String(max + 1).padStart(3, "0")}`;
+}
 
-function renderAuth(){return`<div class="auth-screen"><div class="auth-card"><div style="font-size:48px;margin-bottom:20px">⛵</div><h1>J Sailing</h1><p>Hallintapaneeli</p><button class="btn btn-primary" style="width:100%;padding:12px;font-size:16px" data-action="login">Kirjaudu</button></div></div>`;}
+function computeInvoice() {
+  const inv = state.invoice;
+  const sailing = state.sailings.find(s => s.id === inv.sailingId);
+  const customer = state.customers.find(c => c.id === inv.customerId);
+  const rate = sailing?.type === "Charter" ? 0.135 : 0.255;
+  
+  let gross = 0;
+  if (inv.type === "partial") {
+    gross = Number(inv.partialAmount || 0);
+  } else if (sailing) {
+    gross = Number(sailing.pricePerPerson || 0);
+  }
+  
+  const net = gross / (1 + rate);
+  const vat = gross - net;
+  const invNo = nextInvoiceNumber();
+  
+  return {
+    sailing: sailing,
+    customer: customer,
+    gross: gross,
+    net: net,
+    vat: vat,
+    invNo: invNo,
+    rate: (rate * 100).toFixed(1)
+  };
+}
 
-function renderDash(){return`<div class="card"><div class="title">Dashboard</div><p><strong>Purjehduksia:</strong> ${state.sailings.length}</p><p><strong>Asiakkaita:</strong> ${state.customers.length}</p><p><strong>Laskuja:</strong> ${state.invoices.length}</p></div>`;}
+function renderInvoicing() {
+  const inv = computeInvoice();
+  
+  const sailingOpts = state.sailings.map(s => 
+    `<option value="${s.id}" ${s.id === state.invoice.sailingId ? "selected" : ""}>${esc(s.name || "")}</option>`
+  ).join("");
+  
+  const customerOpts = state.customers.map(c => 
+    `<option value="${c.id}" ${c.id === state.invoice.customerId ? "selected" : ""}>${esc(c.name || "")}</option>`
+  ).join("");
+  
+  const partialField = state.invoice.type === "partial" 
+    ? `<div class="field">
+        <label>Summa (€ brutto) — TESTAA KIRJOITTAMALLA!</label>
+        <input type="number" step="0.01" data-field="inv-partial-amount" 
+               value="${esc(state.invoice.partialAmount)}" 
+               placeholder="esim. 150.50"
+               style="font-size: 16px; padding: 12px;">
+        <small style="display: block; margin-top: 6px; color: #6b7280;">
+          💡 Voit nyt kirjoittaa useita numeroita ilman että ne häviävät!
+        </small>
+       </div>`
+    : "";
+  
+  return `
+    <div class="card">
+      <div class="title">Laskutus</div>
+      <div class="info-box">
+        <strong>Ohje:</strong> Valitse tapahtuma ja asiakas, valitse laskulaji, kirjoita summa jos osasuoritus.
+      </div>
+      
+      <div class="grid2">
+        <div class="field">
+          <label>Tapahtuma</label>
+          <select data-action="inv-sailing">
+            ${sailingOpts}
+          </select>
+        </div>
+        
+        <div class="field">
+          <label>Laskulaji</label>
+          <select data-action="inv-type">
+            <option value="full" ${state.invoice.type === "full" ? "selected" : ""}>Loppulasku</option>
+            <option value="partial" ${state.invoice.type === "partial" ? "selected" : ""}>Osasuoritus</option>
+          </select>
+        </div>
+      </div>
+      
+      ${partialField}
+      
+      <div class="field">
+        <label>Asiakas</label>
+        <select data-action="inv-customer">
+          ${customerOpts}
+        </select>
+      </div>
+      
+      <div class="invoice-box">
+        <strong>${inv.invNo}</strong>
+        <div style="margin-top: 12px; font-size: 13px; color: #6b7280;">
+          ${inv.customer ? `Maksaja: <strong>${esc(inv.customer.name)}</strong>` : "Valitse asiakas"}
+          <br>
+          ${inv.sailing ? `Tapahtuma: <strong>${esc(inv.sailing.name)}</strong>` : ""}
+        </div>
+        
+        <table class="table">
+          <tr>
+            <td>Netto</td>
+            <td class="r"><strong>${inv.net.toFixed(2)} €</strong></td>
+          </tr>
+          <tr>
+            <td>ALV ${inv.rate}%</td>
+            <td class="r"><strong>${inv.vat.toFixed(2)} €</strong></td>
+          </tr>
+          <tr style="font-weight: 700; font-size: 18px; border-top: 2px solid #0a4272;">
+            <td>YHTEENSÄ</td>
+            <td class="r" style="color: #0a4272;">${inv.gross.toFixed(2)} €</td>
+          </tr>
+        </table>
+      </div>
+      
+      <div class="btn-group">
+        <button class="btn btn-primary" data-action="save">✓ Tallenna lasku</button>
+        <button class="btn" data-action="print">🖨 Tulosta</button>
+      </div>
+      
+      <div style="margin-top: 20px; padding: 12px; background: #f3f4f6; border-radius: 8px; font-size: 12px; color: #6b7280;">
+        <strong>Laskut tallennettu:</strong> ${state.invoices.length}
+      </div>
+    </div>
+  `;
+}
 
-function renderInv(){const inv=computeInvoice();const evOpts=state.sailings.map(s=>`<option value="${s.id}">${esc(s.name)}</option>`).join("");const cOpts=state.customers.map(c=>`<option value="${c.id}">${esc(c.name)}</option>`).join("");return`<div class="card"><div class="title">Laskutus</div><div class="grid2"><div class="field"><label>Tapahtuma</label><select data-action="inv-sailing"><option value="">-- valitse --</option>${evOpts}</select></div><div class="field"><label>Laskulaji</label><select data-action="inv-type"><option value="full">Loppulasku</option><option value="partial">Osasuoritus</option></select></div></div>${state.invoice.type==="partial"?`<div class="field"><label>Summa (€)</label><input type="number" step="0.01" data-field="inv-partial-amount" value="${esc(state.invoice.partialAmount)}" placeholder="150.00"></div>`:""}
-<div class="field"><label>Asiakas</label><select data-action="inv-customer"><option value="">-- valitse --</option>${cOpts}</select></div><div class="invoice-box"><table class="table"><tr><td>Netto</td><td class="r">${inv.net.toFixed(2)} €</td></tr><tr><td>ALV ${inv.rate}%</td><td class="r">${inv.vat.toFixed(2)} €</td></tr><tr style="font-weight:700"><td>Yhteensä</td><td class="r" style="font-size:18px">${inv.gross.toFixed(2)} €</td></tr></table></div><div class="btn-group"><button class="btn btn-primary" data-action="save">Tallenna</button><button class="btn" data-action="print">Tulosta</button></div></div>`;}
+function render() {
+  const appDiv = document.getElementById("app");
+  appDiv.innerHTML = renderInvoicing();
+  bind();
+}
 
-function render(){const app=document.getElementById("app");if(!state.user){app.innerHTML=renderAuth();bind();return;}app.innerHTML=`<div class="topbar"><div class="logo">J Sailing</div><div class="spacer"></div><div class="version">V9.17 FIX</div><button class="btn" data-action="logout">Ulos</button></div><div class="container">`;if(state.tab==="dashboard")app.innerHTML+=renderDash();else app.innerHTML+=renderInv();app.innerHTML+="</div>";bind();}
+function bind() {
+  // Valintojen käsittely
+  document.querySelectorAll("[data-action]").forEach(el => {
+    if (el.tagName === "SELECT") {
+      el.onchange = function() {
+        const action = el.dataset.action;
+        
+        if (action === "inv-sailing") {
+          state.invoice.sailingId = el.value;
+          render();
+        } else if (action === "inv-type") {
+          state.invoice.type = el.value;
+          state.invoice.partialAmount = "";
+          render();
+        } else if (action === "inv-customer") {
+          state.invoice.customerId = el.value;
+          render();
+        }
+      };
+    } else if (el.tagName === "BUTTON") {
+      el.onclick = function() {
+        const action = el.dataset.action;
+        
+        if (action === "save") {
+          const inv = computeInvoice();
+          state.invoices.push({
+            invoiceNo: inv.invNo,
+            payerName: inv.customer?.name || "—",
+            gross: inv.gross
+          });
+          alert("✓ Lasku tallennettu: " + inv.invNo);
+          state.invoice = { sailingId: "sail1", customerId: "cust1", type: "full", partialAmount: "", invoiceDate: today() };
+          render();
+        } else if (action === "print") {
+          window.print();
+        }
+      };
+    }
+  });
+  
+  // KRIITTINEN KORJAUS: Summakentän input-tapahtuma EI kutsu render():a
+  const amountField = document.querySelector('[data-field="inv-partial-amount"]');
+  if (amountField) {
+    // Poista kaikki vanhat listenerit
+    amountField.oninput = null;
+    amountField.onchange = null;
+    
+    // Lisää uusi listener - ILMAN render() kutsua!
+    amountField.addEventListener("input", function(e) {
+      console.log("Summakentän arvo:", e.target.value);
+      state.invoice.partialAmount = e.target.value;
+      // TÄRKEÄ: EI render() tässä! Vain päivitä state
+    }, true);
+    
+    // Näytä arvo konsolissa debugging varten
+    console.log("Summakentän korjaus aktiivinen ✓");
+  }
+}
 
-function bind(){document.querySelectorAll("[data-action]").forEach(el=>{if(el.tagName==="INPUT")return;const action=el.dataset.action;el.onclick=async()=>{if(action==="login"){const provider=new GoogleAuthProvider();await signInWithPopup(auth,provider);}else if(action==="logout"){await signOut(auth);}else if(action==="inv-sailing")state.invoice.sailingId=el.value;else if(action==="inv-type"){state.invoice.type=el.value;state.invoice.partialAmount="";}else if(action==="inv-customer")state.invoice.customerId=el.value;else if(action==="save"){const inv=computeInvoice();if(!inv.customer){alert("Valitse asiakas");return;}const doc={invoiceNo:inv.invNo,invoiceDate:state.invoice.invoiceDate,payerName:inv.customer.name,gross:inv.gross,net:inv.net,vat:inv.vat,vatRate:inv.rate,reference:inv.ref};await setDoc(doc(db,"invoices",inv.invNo),doc);alert("Lasku tallennettu!");state.invoice={sailingId:"",customerId:"",type:"full",partialAmount:"",invoiceDate:today()};}else if(action==="print")window.print();render();};});const amountField=document.querySelector('[data-field="inv-partial-amount"]');if(amountField){amountField.onchange=undefined;amountField.oninput=undefined;amountField.addEventListener("input",e=>{state.invoice.partialAmount=e.target.value;},true);}}
-
-onAuthStateChanged(auth,user=>{if(user){if(user.email===ALLOWED_EMAIL){state.user=user;onSnapshot(collection(db,"sailings"),snap=>{state.sailings=snap.docs.map(d=>({id:d.id,...d.data()}));});onSnapshot(collection(db,"customers"),snap=>{state.customers=snap.docs.map(d=>({id:d.id,...d.data()}));});onSnapshot(collection(db,"invoices"),snap=>{state.invoices=snap.docs.map(d=>({id:d.id,...d.data()}));render();});}else{signOut(auth);alert("Pääsy estetty");}}else state.user=null;render();});
+// Alusta sovellus
+render();
 </script>
+
 </body>
 </html>
