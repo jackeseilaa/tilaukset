@@ -1,242 +1,50 @@
-<!DOCTYPE html>
-<html lang="fi">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>J Sailing V9.17 - Summakentän testi</title>
-<style>
-body {
-  font-family: Arial, sans-serif;
-  max-width: 600px;
-  margin: 40px auto;
-  padding: 20px;
-  background: #f5f5f5;
-}
-.card {
-  background: white;
-  padding: 30px;
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-}
-h1 {
-  color: #0a4272;
-  margin-bottom: 10px;
-}
-.subtitle {
-  color: #666;
-  margin-bottom: 30px;
-}
-.field {
-  margin-bottom: 20px;
-}
-label {
-  display: block;
-  font-weight: bold;
-  margin-bottom: 6px;
-  color: #333;
-}
-select, input[type="number"] {
-  width: 100%;
-  padding: 12px;
-  border: 2px solid #ddd;
-  border-radius: 6px;
-  font-size: 16px;
-  font-family: Arial, sans-serif;
-}
-input[type="number"]:focus {
-  outline: none;
-  border-color: #0a4272;
-  box-shadow: 0 0 0 3px rgba(10,66,114,0.1);
-}
-.result {
-  background: #f0f9ff;
-  border-left: 4px solid #0a4272;
-  padding: 16px;
-  margin-top: 30px;
-  border-radius: 4px;
-}
-.result-row {
-  display: flex;
-  justify-content: space-between;
-  padding: 8px 0;
-  border-bottom: 1px solid #ddd;
-}
-.result-row:last-child {
-  border-bottom: none;
-}
-.result-label {
-  font-weight: bold;
-  color: #333;
-}
-.result-value {
-  color: #0a4272;
-  font-weight: bold;
-}
-.highlight {
-  background: #fff3cd;
-  border: 2px solid #ffc107;
-  padding: 12px;
-  border-radius: 6px;
-  margin-bottom: 20px;
-  color: #856404;
-}
-.green {
-  background: #d4edda;
-  border: 1px solid #86efac;
-  padding: 12px;
-  border-radius: 6px;
-  color: #155724;
-  margin-bottom: 20px;
-}
-</style>
-</head>
-<body>
-
-<div class="card">
-  <h1>⛵ J Sailing V9.17</h1>
-  <div class="subtitle">Summakentän korjauksen testaus</div>
-  
-  <div class="green">
-    <strong>✓ Korjaus aktiivinen!</strong> Summakentän input ei enää kutsu render():a, joten kirjoittaminen toimii normaalisti.
-  </div>
-  
-  <div class="field">
-    <label>Purjehdus</label>
-    <select id="sailing">
-      <option value="350">Merenkulkukurssi (350€)</option>
-      <option value="75">Iltapurjehdus (75€)</option>
-      <option value="2500">Charter viikko (2500€)</option>
-    </select>
-  </div>
-  
-  <div class="field">
-    <label>Laskulaji</label>
-    <select id="type">
-      <option value="full">Loppulasku (koko hinta)</option>
-      <option value="partial">Osasuoritus (omia numeroita)</option>
-    </select>
-  </div>
-  
-  <div id="partialField" style="display: none;">
-    <div class="field">
-      <label>💡 Summa (€) - TESTAA KIRJOITTAMALLA USEITA NUMEROITA!</label>
-      <div class="highlight">
-        Kirjoita esim. "150.50" tai "1234.99" — nyt se ei häviä kesken!
-      </div>
-      <input type="number" id="amount" placeholder="150.50" step="0.01" min="0" value="">
-    </div>
-  </div>
-  
-  <div class="result">
-    <div class="result-row">
-      <span class="result-label">Hinta (brutto):</span>
-      <span class="result-value" id="gross">350.00 €</span>
-    </div>
-    <div class="result-row">
-      <span class="result-label">ALV (25.5%):</span>
-      <span class="result-value" id="vat">88.53 €</span>
-    </div>
-    <div class="result-row">
-      <span class="result-label">Netto:</span>
-      <span class="result-value" id="net">261.47 €</span>
-    </div>
-    <div class="result-row" style="font-size: 18px; margin-top: 12px;">
-      <span class="result-label">YHTEENSÄ:</span>
-      <span class="result-value" id="total">350.00 €</span>
-    </div>
-  </div>
-  
-  <div style="margin-top: 30px; padding: 16px; background: #e8f4f8; border-radius: 6px; font-size: 13px; color: #0a4272;">
-    <strong>Kuinka tämä korjaus toimii:</strong>
-    <br><br>
-    <strong>ENNEN (virhe):</strong><br>
-    input.addEventListener("input", (e) => {<br>
-    &nbsp;&nbsp;state.amount = e.target.value;<br>
-    &nbsp;&nbsp;<span style="color: red; font-weight: bold;">render();</span> ← ONGELMA!<br>
-    })<br>
-    <br>
-    <strong>JÄLKEEN (korjaus):</strong><br>
-    input.addEventListener("input", (e) => {<br>
-    &nbsp;&nbsp;state.amount = e.target.value;<br>
-    &nbsp;&nbsp;// Ei render()! Vain päivitä state<br>
-    })<br>
-    <br>
-    Kun render() ei kutsu JOKAISEN näppäinpainalluksen jälkeen, input-kenttä pysyy vakaana ja käyttäjä voi kirjoittaa normaalisti.
-  </div>
-</div>
-
-<script>
-// Yksinkertainen state
-const state = {
-  sailing: 350,
-  type: 'full',
-  amount: ''
-};
-
-// Elementit
-const sailingSelect = document.getElementById('sailing');
-const typeSelect = document.getElementById('type');
-const amountInput = document.getElementById('amount');
-const partialField = document.getElementById('partialField');
-
-// Purjehduksen muutos
-sailingSelect.addEventListener('change', (e) => {
-  state.sailing = parseFloat(e.target.value);
-  update();
-});
-
-// Laskulaji muutos
-typeSelect.addEventListener('change', (e) => {
-  state.type = e.target.value;
-  if (state.type === 'partial') {
-    partialField.style.display = 'block';
-    amountInput.focus();
-  } else {
-    partialField.style.display = 'none';
-    state.amount = '';
-  }
-  update();
-});
-
-// KORJAUS: Amount-kentän input EI kutsu update():a
-// Vain päivittää state
-amountInput.addEventListener('input', (e) => {
-  state.amount = parseFloat(e.target.value) || 0;
-  // EI update() tässä!
-  console.log('Amount updated to:', state.amount);
-});
-
-// Amount-kentän change-tapahtuma (kun käyttäjä lähtee kentästä)
-amountInput.addEventListener('change', (e) => {
-  state.amount = parseFloat(e.target.value) || 0;
-  update();
-});
-
-// Päivitysfunktio - kutsutaan vain selecteissa ja change-tapahtumassa
-function update() {
-  const gross = state.type === 'partial' 
-    ? parseFloat(state.amount) || 0
-    : state.sailing;
-  
-  const rate = 0.255;
-  const net = gross / (1 + rate);
-  const vat = gross - net;
-  
-  // Päivitä näkymä
-  document.getElementById('gross').textContent = gross.toFixed(2) + ' €';
-  document.getElementById('vat').textContent = vat.toFixed(2) + ' €';
-  document.getElementById('net').textContent = net.toFixed(2) + ' €';
-  document.getElementById('total').textContent = gross.toFixed(2) + ' €';
-  
-  console.log('Updated: gross=' + gross + ', vat=' + vat.toFixed(2) + ', net=' + net.toFixed(2));
-}
-
-// Alusta
-update();
-
-console.log('✓ Sovellus ladattu');
-console.log('✓ Summakentän korjaus aktiivinen - voit nyt kirjoittaa normaalisti');
-</script>
-
-</body>
-</html>
+#!/usr/bin/env python3
+"""J Sailing V9.14 -> V9.17. cd ~/Downloads && python3 deploy_v917.py"""
+import urllib.request, json, base64, getpass, os, sys
+REPO = "jackeseilaa/tilaukset"
+FILE = "index.html"
+PATCHES = json.loads(base64.b64decode("W3siZmluZCI6ICI8dGl0bGU+SiBTYWlsaW5nIFY5LjE0IOKAlCBIYWxsaW50YXBhbmVlbGk8L3RpdGxlPiIsICJyZXBsYWNlIjogIjx0aXRsZT5KIFNhaWxpbmcgVjkuMTcg4oCUIEhhbGxpbnRhcGFuZWVsaTwvdGl0bGU+IiwgImRlc2MiOiAiVGl0bGUtdGFnIFY5LjE1In0sIHsiZmluZCI6ICJjb25zdCBBUFBfVkVSU0lPTj1cIlY5LjE0XCIiLCAicmVwbGFjZSI6ICJjb25zdCBBUFBfVkVSU0lPTj1cIlY5LjE3XCIiLCAiZGVzYyI6ICJWZXJzaW8ifSwgeyJmaW5kIjogIiR7Yy5waG9uZXx8Yy5lbWFpbD9gPGRpdiBjbGFzcz1cInJvd1wiIHN0eWxlPVwiZ2FwOjZweDttYXJnaW4tdG9wOjRweDtmbGV4LXdyYXA6d3JhcFwiPiIsICJyZXBsYWNlIjogIiR7Yy5wcmljZU92ZXJyaWRlIT1udWxsJiZjLnByaWNlT3ZlcnJpZGUhPT1cIlwiP1wiPGRpdiBzdHlsZT0nbWFyZ2luLXRvcDozcHgnPjxzcGFuIGNsYXNzPSdiYWRnZSBiYWRnZS1hbWJlcicgc3R5bGU9J2ZvbnQtc2l6ZToxMHB4Jz5Za3NpbG9sbGluZW4gaGludGE6IFwiK051bWJlcihjLnByaWNlT3ZlcnJpZGUpLnRvRml4ZWQoMCkrXCIgRVVSPC9zcGFuPjwvZGl2PlwiOlwiXCJ9XG4gICAgICAke2MucGhvbmV8fGMuZW1haWw/YDxkaXYgY2xhc3M9XCJyb3dcIiBzdHlsZT1cImdhcDo2cHg7bWFyZ2luLXRvcDo0cHg7ZmxleC13cmFwOndyYXBcIj4iLCAiZGVzYyI6ICJBdHRlbmRlZUNhcmQgaGludGFiYWRnZSJ9LCB7ImZpbmQiOiAiaWYoYyl7XG4gICAgICAgIHBheWVyTmFtZT1jLm5hbWV8fFwiXCI7cGF5ZXJFbWFpbD1jLmVtYWlsfHxcIlwiO1xuICAgICAgICBsZXQgYW10PWlzQ3JlZGl0Py1NYXRoLmFicyhwcmljZSk6cHJpY2U7XG4gICAgICAgIGxpbmVzLnB1c2goe3RpdGxlOmAke3MubmFtZX0g4oCUICR7aW52VHlwZUxhYmVsKGl0eXBlKX0g4oCUICR7Yy5uYW1lfWAscXR5OjEsdW5pdDphbXQsdG90YWw6YW10fSk7IiwgInJlcGxhY2UiOiAiaWYoYyl7XG4gICAgICAgIHBheWVyTmFtZT1jLm5hbWV8fFwiXCI7cGF5ZXJFbWFpbD1jLmVtYWlsfHxcIlwiO1xuICAgICAgICBjb25zdCBlZmZlY3RpdmVQcmljZT0oYy5wcmljZU92ZXJyaWRlIT1udWxsJiZjLnByaWNlT3ZlcnJpZGUhPT1cIlwiKT9OdW1iZXIoYy5wcmljZU92ZXJyaWRlKTpwcmljZTtcbiAgICAgICAgbGV0IGFtdD1pc0NyZWRpdD8tTWF0aC5hYnMoZWZmZWN0aXZlUHJpY2UpOmVmZmVjdGl2ZVByaWNlO1xuICAgICAgICBjb25zdCBwcmljZU5vdGU9KGMucHJpY2VPdmVycmlkZSE9bnVsbCYmYy5wcmljZU92ZXJyaWRlIT09XCJcIik/XCIgKHlrc2lsb2xsaW5lbiBoaW50YSlcIjpcIlwiO1xuICAgICAgICBsaW5lcy5wdXNoKHt0aXRsZTpgJHtzLm5hbWV9IOKAlCAke2ludlR5cGVMYWJlbChpdHlwZSl9IOKAlCAke2MubmFtZX0ke3ByaWNlTm90ZX1gLHF0eToxLHVuaXQ6YW10LHRvdGFsOmFtdH0pOyIsICJkZXNjIjogImNvbXB1dGVJbnZvaWNlIGVmZmVjdGl2ZVByaWNlIn0sIHsiZmluZCI6ICIke3N0YXR1cz09PVwicmVzZXJ2ZVwiP2A8ZGl2IGNsYXNzPVwiaW5mb2JveCBpbmZvYm94LWFtYmVyXCI+4peOIFZhcmFwYWlrYWxsYS48L2Rpdj5gOlwiXCJ9XG4gICAgICA8ZGl2IGNsYXNzPVwicm93XCIgc3R5bGU9XCJqdXN0aWZ5LWNvbnRlbnQ6ZmxleC1lbmQ7bWFyZ2luLXRvcDoxNnB4XCI+PGJ1dHRvbiBjbGFzcz1cImJ0biBidG4tcHJpbWFyeVwiIGRhdGEtYWN0aW9uPVwic2F2ZS1jdXN0b21lclwiPiIsICJyZXBsYWNlIjogIiR7c3RhdHVzPT09XCJyZXNlcnZlXCI/YDxkaXYgY2xhc3M9XCJpbmZvYm94IGluZm9ib3gtYW1iZXJcIj7il44gVmFyYXBhaWthbGxhLjwvZGl2PmA6XCJcIn1cbiAgICAgIDxkaXYgY2xhc3M9XCJmaWVsZFwiIHN0eWxlPVwibWFyZ2luLXRvcDoxMnB4XCI+XG4gICAgICAgIDxsYWJlbCBjbGFzcz1cImxibFwiPllrc2lsb2xsaW5lbiBoaW50YSAoRVVSKSA8c3BhbiBzdHlsZT1cImZvbnQtd2VpZ2h0OjQwMDt0ZXh0LXRyYW5zZm9ybTpub25lO2ZvbnQtc2l6ZToxMXB4O2NvbG9yOiM2YjcyODBcIj4tLSB0eWhqYSA9IHRhcGFodHVtYW4gaGludGE8L3NwYW4+PC9sYWJlbD5cbiAgICAgICAgPGlucHV0IHR5cGU9XCJudW1iZXJcIiBtaW49XCIwXCIgc3RlcD1cIjAuMDFcIiBkYXRhLWZpZWxkPVwicHJpY2VPdmVycmlkZVwiIHZhbHVlPVwiJHtlc2MoU3RyaW5nKGM/LnByaWNlT3ZlcnJpZGUhPW51bGwmJmM/LnByaWNlT3ZlcnJpZGUhPT1cIlwiP2MucHJpY2VPdmVycmlkZTpcIlwiKSl9XCIgcGxhY2Vob2xkZXI9XCJZbGlraXJqb2l0dGFhIHRhcGFodHVtYW4gaGlubmFuXCI+XG4gICAgICA8L2Rpdj5cbiAgICAgIDxkaXYgY2xhc3M9XCJyb3dcIiBzdHlsZT1cImp1c3RpZnktY29udGVudDpmbGV4LWVuZDttYXJnaW4tdG9wOjE2cHhcIj48YnV0dG9uIGNsYXNzPVwiYnRuIGJ0bi1wcmltYXJ5XCIgZGF0YS1hY3Rpb249XCJzYXZlLWN1c3RvbWVyXCI+IiwgImRlc2MiOiAiQ3VzdG9tZXIgbW9kYWwgcHJpY2VPdmVycmlkZSJ9LCB7ImZpbmQiOiAiY29uc3QgZGF0YT17bmFtZSxwaG9uZSxlbWFpbCxzYWlsaW5nSWQsYmlsbFRvLGNvbXBhbnlJZDooYmlsbFRvPT09XCJjb21wYW55XCIpP2NvbXBhbnlJZDpcIlwiLHJlc2VydmF0aW9uU3RhdHVzfTsiLCAicmVwbGFjZSI6ICJjb25zdCBwcmljZU92ZXJyaWRlUmF3PWRvY3VtZW50LnF1ZXJ5U2VsZWN0b3IoJ1tkYXRhLWZpZWxkPVwicHJpY2VPdmVycmlkZVwiXScpPy52YWx1ZXx8XCJcIjtcbiAgICAgICAgY29uc3QgcHJpY2VPdmVycmlkZT1wcmljZU92ZXJyaWRlUmF3IT09XCJcIj9wYXJzZUZsb2F0KHByaWNlT3ZlcnJpZGVSYXcpOm51bGw7XG4gICAgICAgIGNvbnN0IGRhdGE9e25hbWUscGhvbmUsZW1haWwsc2FpbGluZ0lkLGJpbGxUbyxjb21wYW55SWQ6KGJpbGxUbz09PVwiY29tcGFueVwiKT9jb21wYW55SWQ6XCJcIixyZXNlcnZhdGlvblN0YXR1cywuLi4ocHJpY2VPdmVycmlkZSE9bnVsbD97cHJpY2VPdmVycmlkZX06e3ByaWNlT3ZlcnJpZGU6bnVsbH0pfTsiLCAiZGVzYyI6ICJzYXZlLWN1c3RvbWVyIHByaWNlT3ZlcnJpZGUifSwgeyJmaW5kIjogImNvbnN0IG9wdGlvbnM9c3RhdGUuc2FpbGluZ3NcbiAgICAuZmlsdGVyKHM9PntcbiAgICAgIGlmKHMuaWQ9PT1jLnNhaWxpbmdJZClyZXR1cm4gZmFsc2U7XG4gICAgICAvLyBUdWxldmlhIHNlc3Npb2l0YT9cbiAgICAgIGNvbnN0IGhhc0Z1dHVyZVNlc3M9QXJyYXkuaXNBcnJheShzLnNlc3Npb25zKSYmcy5zZXNzaW9ucy5zb21lKHNlc3M9PihzZXNzLmRhdGV8fFwiXCIpPj10b2RheSgpKTtcbiAgICAgIC8vIEFsa3Vww6RpdsOkIHR1bGV2YWlzdXVkZXNzYSB0YWkgbG9wcHVww6RpdsOkIGVpIG1lbm55dD9cbiAgICAgIGNvbnN0IGlzRnV0dXJlPShzLmRhdGV8fFwiXCIpPj10b2RheSgpfHwocy5lbmREYXRlJiZzLmVuZERhdGU+PXRvZGF5KCkpO1xuICAgICAgcmV0dXJuIGlzRnV0dXJlfHxoYXNGdXR1cmVTZXNzO1xuICAgIH0pXG4gICAgLnNvcnQoKGEsYik9PihhLmRhdGV8fFwiXCIpLmxvY2FsZUNvbXBhcmUoYi5kYXRlfHxcIlwiKSk7IiwgInJlcGxhY2UiOiAiY29uc3Qgc2FpbGluZ09wdHM9c3RhdGUuc2FpbGluZ3MuZmlsdGVyKHM9PntcbiAgICBpZihzLmlkPT09Yy5zYWlsaW5nSWQpcmV0dXJuIGZhbHNlO1xuICAgIGNvbnN0IGhhc0Z1dHVyZVNlc3M9QXJyYXkuaXNBcnJheShzLnNlc3Npb25zKSYmcy5zZXNzaW9ucy5zb21lKHNlc3M9PihzZXNzLmRhdGV8fFwiXCIpPj10b2RheSgpKTtcbiAgICBjb25zdCBpc0Z1dHVyZT0ocy5kYXRlfHxcIlwiKT49dG9kYXkoKXx8KHMuZW5kRGF0ZSYmcy5lbmREYXRlPj10b2RheSgpKTtcbiAgICByZXR1cm4gaXNGdXR1cmV8fGhhc0Z1dHVyZVNlc3M7XG4gIH0pLnNvcnQoKGEsYik9PihhLmRhdGV8fFwiXCIpLmxvY2FsZUNvbXBhcmUoYi5kYXRlfHxcIlwiKSk7XG4gIGNvbnN0IHR1dGtpbnRvT3B0cz1zdGF0ZS50dXRraW5ub3RcbiAgICAuZmlsdGVyKHQ9PnQuaWQhPT1jLnR1dGtpbnRvSWQmJih0LmRhdGV8fFwiXCIpPj10b2RheSgpKVxuICAgIC5zb3J0KChhLGIpPT4oYS5kYXRlfHxcIlwiKS5sb2NhbGVDb21wYXJlKGIuZGF0ZXx8XCJcIikpO1xuICBjb25zdCBvcHRpb25zPVtcbiAgICAuLi5zYWlsaW5nT3B0cy5tYXAocz0+KHsuLi5zLF9pc1R1dGtpbnRvOmZhbHNlfSkpLFxuICAgIC4uLnR1dGtpbnRvT3B0cy5tYXAodD0+KHsuLi50LF9pc1R1dGtpbnRvOnRydWUsbmFtZTp0LnR5cGUrKHQuYm9hdFR5cGU/XCIgKFwiK3QuYm9hdFR5cGUrXCIpXCI6XCJcIil9KSlcbiAgXTsiLCAiZGVzYyI6ICJUcmFuc2ZlciBtb2RhbCB0dXRraW50b09wdHMifSwgeyJmaW5kIjogImlmKGE9PT1cImRvLXRyYW5zZmVyXCIpe1xuICAgICAgICBjb25zdCBjPXN0YXRlLmN1c3RvbWVycy5maW5kKHg9PnguaWQ9PT1pdGVtSWQpO1xuICAgICAgICBpZighYylyZXR1cm47XG4gICAgICAgIGNvbnN0IHRhcmdldElkPWVsLmRhdGFzZXQudGFyZ2V0O1xuICAgICAgICBjb25zdCB0YXJnZXQ9c3RhdGUuc2FpbGluZ3MuZmluZCh4PT54LmlkPT09dGFyZ2V0SWQpO1xuICAgICAgICBpZighdGFyZ2V0KXJldHVybjtcbiAgICAgICAgaWYoIWNvbmZpcm0oYFNpaXJyZXTDpMOkbmvDtiAke2MubmFtZX1cXG5rdXJzc2lsbGU6ICR7dGFyZ2V0Lm5hbWV9P2ApKXJldHVybjtcbiAgICAgICAgYy5zYWlsaW5nSWQ9dGFyZ2V0SWQ7XG4gICAgICAgIGMudHV0a2ludG9JZD1cIlwiO1xuICAgICAgICBhd2FpdCBmc1NldChcImN1c3RvbWVyc1wiLGMuaWQsYyk7XG4gICAgICAgIHN0YXRlLm1vZGFsPW51bGw7XG4gICAgICAgIHN0YXRlLnRyYW5zZmVyQ3VzdG9tZXJJZD1udWxsO1xuICAgICAgICByZW5kZXIoKTtcbiAgICAgICAgYWxlcnQoYOKckyAke2MubmFtZX0gc2lpcnJldHR5IGt1cnNzaWxsZSAke3RhcmdldC5uYW1lfWApO1xuICAgICAgICByZXR1cm47XG4gICAgICB9IiwgInJlcGxhY2UiOiAiaWYoYT09PVwiZG8tdHJhbnNmZXJcIil7XG4gICAgICAgIGNvbnN0IGM9c3RhdGUuY3VzdG9tZXJzLmZpbmQoeD0+eC5pZD09PWl0ZW1JZCk7aWYoIWMpcmV0dXJuO1xuICAgICAgICBjb25zdCB0YXJnZXRJZD1lbC5kYXRhc2V0LnRhcmdldDtcbiAgICAgICAgY29uc3QgaXNUdXRraW50b1RhcmdldD1lbC5kYXRhc2V0LnRhcmdldHR5cGU9PT1cInR1dGtpbnRvXCI7XG4gICAgICAgIGNvbnN0IHRhcmdldD1pc1R1dGtpbnRvVGFyZ2V0XG4gICAgICAgICAgP3N0YXRlLnR1dGtpbm5vdC5maW5kKHg9PnguaWQ9PT10YXJnZXRJZClcbiAgICAgICAgICA6c3RhdGUuc2FpbGluZ3MuZmluZCh4PT54LmlkPT09dGFyZ2V0SWQpO1xuICAgICAgICBpZighdGFyZ2V0KXJldHVybjtcbiAgICAgICAgY29uc3QgdGFyZ2V0TmFtZT1pc1R1dGtpbnRvVGFyZ2V0XG4gICAgICAgICAgPyh0YXJnZXQudHlwZSsodGFyZ2V0LmJvYXRUeXBlP1wiIChcIit0YXJnZXQuYm9hdFR5cGUrXCIpXCI6XCJcIikpXG4gICAgICAgICAgOnRhcmdldC5uYW1lO1xuICAgICAgICBpZighY29uZmlybShgU2lpcnJldMOkw6Rua8O2ICR7Yy5uYW1lfVxcbmtvaHRlZXNlZW46ICR7dGFyZ2V0TmFtZX0/YCkpcmV0dXJuO1xuICAgICAgICBpZihpc1R1dGtpbnRvVGFyZ2V0KXtjLnR1dGtpbnRvSWQ9dGFyZ2V0SWQ7Yy5zYWlsaW5nSWQ9XCJcIjt9XG4gICAgICAgIGVsc2V7Yy5zYWlsaW5nSWQ9dGFyZ2V0SWQ7Yy50dXRraW50b0lkPVwiXCI7fVxuICAgICAgICBhd2FpdCBmc1NldChcImN1c3RvbWVyc1wiLGMuaWQsYyk7XG4gICAgICAgIHN0YXRlLm1vZGFsPW51bGw7c3RhdGUudHJhbnNmZXJDdXN0b21lcklkPW51bGw7cmVuZGVyKCk7XG4gICAgICAgIGFsZXJ0KGDinJMgJHtjLm5hbWV9IHNpaXJyZXR0eTogJHt0YXJnZXROYW1lfWApO1xuICAgICAgICByZXR1cm47XG4gICAgICB9IiwgImRlc2MiOiAiZG8tdHJhbnNmZXIgdHV0a2ludG8ta2FzaXR0ZWx5In0sIHsiZmluZCI6ICIgICAgICA8ZGl2IGNsYXNzPVwicm93XCIgc3R5bGU9XCJqdXN0aWZ5LWNvbnRlbnQ6ZmxleC1lbmQ7bWFyZ2luLXRvcDoxNnB4XCI+PGJ1dHRvbiBjbGFzcz1cImJ0biBidG4tcHJpbWFyeVwiIGRhdGEtYWN0aW9uPVwic2F2ZS1jdXN0b21lclwiPiR7ZWRpdGluZz9cIlRhbGxlbm5hIG11dXRva3NldFwiOlwiVGFsbGVubmFcIn08L2J1dHRvbj48L2Rpdj4iLCAicmVwbGFjZSI6ICIgICAgICAke2M/LnR1dGtpbnRvSWQ/YDxkaXYgY2xhc3M9XCJmaWVsZFwiIHN0eWxlPVwibWFyZ2luLXRvcDoxMnB4XCI+PGxhYmVsIGNsYXNzPVwibGJsXCI+VHV0a2ludG90eXlwcGkgKHlrc2lsb2xsaW5lbikgPHNwYW4gc3R5bGU9XCJmb250LXdlaWdodDo0MDA7dGV4dC10cmFuc2Zvcm06bm9uZTtmb250LXNpemU6MTFweDtjb2xvcjojNmI3MjgwXCI+LS0gdHloamEgPSB0aWxhaXN1dWRlbiB0eXlwcGk8L3NwYW4+PC9sYWJlbD48c2VsZWN0IGRhdGEtZmllbGQ9XCJ0dXRraW50b1R5cGVPdmVycmlkZVwiPjxvcHRpb24gdmFsdWU9XCJcIj4tLSBUaWxhaXN1dWRlbiB0eXlwcGkgKG9sZXR1cykgLS08L29wdGlvbj4ke1tcIlJhbm5pa2tvcMOkw6RsbGlra8O2XCIsXCJTYWFyaXN0b3DDpMOkbGxpa2vDtlwiLFwiS1ZWSyBuw6R5dHTDtmtvZVwiLFwiVnVva3JhdmVuZWVua3VsamV0dGFqYSBuw6R5dHTDtmtvZVwiLFwiTXV1XCJdLm1hcCh0PT5gPG9wdGlvbiB2YWx1ZT1cIiR7ZXNjKHQpfVwiICR7KGM/LnR1dGtpbnRvVHlwZU92ZXJyaWRlfHxcIlwiKT09PXQ/XCJzZWxlY3RlZFwiOlwiXCJ9PiR7ZXNjKHQpfTwvb3B0aW9uPmApLmpvaW4oXCJcIil9PC9zZWxlY3Q+PC9kaXY+YDpcIlwifVxuICAgICAgPGRpdiBjbGFzcz1cInJvd1wiIHN0eWxlPVwianVzdGlmeS1jb250ZW50OmZsZXgtZW5kO21hcmdpbi10b3A6MTZweFwiPjxidXR0b24gY2xhc3M9XCJidG4gYnRuLXByaW1hcnlcIiBkYXRhLWFjdGlvbj1cInNhdmUtY3VzdG9tZXJcIj4ke2VkaXRpbmc/XCJUYWxsZW5uYSBtdXV0b2tzZXRcIjpcIlRhbGxlbm5hXCJ9PC9idXR0b24+PC9kaXY+IiwgImRlc2MiOiAiQ3VzdG9tZXIgbW9kYWw6IHR1dGtpbnRvVHlwZU92ZXJyaWRlIn0sIHsiZmluZCI6ICIgICAgICAgIGNvbnN0IGRhdGE9e25hbWUscGhvbmUsZW1haWwsc2FpbGluZ0lkLGJpbGxUbyxjb21wYW55SWQ6KGJpbGxUbz09PVwiY29tcGFueVwiKT9jb21wYW55SWQ6XCJcIixyZXNlcnZhdGlvblN0YXR1cywuLi4ocHJpY2VPdmVycmlkZSE9bnVsbD97cHJpY2VPdmVycmlkZX06e3ByaWNlT3ZlcnJpZGU6bnVsbH0pfTsiLCAicmVwbGFjZSI6ICIgICAgICAgIGNvbnN0IHR1dGtpbnRvVHlwZU92ZXJyaWRlPWRvY3VtZW50LnF1ZXJ5U2VsZWN0b3IoJ1tkYXRhLWZpZWxkPVwidHV0a2ludG9UeXBlT3ZlcnJpZGVcIl0nKT8udmFsdWV8fFwiXCI7XG4gICAgICAgIGNvbnN0IGRhdGE9e25hbWUscGhvbmUsZW1haWwsc2FpbGluZ0lkLGJpbGxUbyxjb21wYW55SWQ6KGJpbGxUbz09PVwiY29tcGFueVwiKT9jb21wYW55SWQ6XCJcIixyZXNlcnZhdGlvblN0YXR1cywuLi4ocHJpY2VPdmVycmlkZSE9bnVsbD97cHJpY2VPdmVycmlkZX06e3ByaWNlT3ZlcnJpZGU6bnVsbH0pLHR1dGtpbnRvVHlwZU92ZXJyaWRlfTsiLCAiZGVzYyI6ICJzYXZlLWN1c3RvbWVyOiB0dXRraW50b1R5cGVPdmVycmlkZSJ9LCB7ImZpbmQiOiAiJHtjLnByaWNlT3ZlcnJpZGUhPW51bGwmJmMucHJpY2VPdmVycmlkZSE9PVwiXCI/XCI8ZGl2IHN0eWxlPSdtYXJnaW4tdG9wOjNweCc+PHNwYW4gY2xhc3M9J2JhZGdlIGJhZGdlLWFtYmVyJyBzdHlsZT0nZm9udC1zaXplOjEwcHgnPllrc2lsb2xsaW5lbiBoaW50YTogXCIrTnVtYmVyKGMucHJpY2VPdmVycmlkZSkudG9GaXhlZCgwKStcIiBFVVI8L3NwYW4+PC9kaXY+XCI6XCJcIn0iLCAicmVwbGFjZSI6ICIke2MudHV0a2ludG9UeXBlT3ZlcnJpZGU/XCI8ZGl2IHN0eWxlPSdtYXJnaW4tdG9wOjNweCc+PHNwYW4gY2xhc3M9J2JhZGdlIGJhZGdlLWJsdWUnIHN0eWxlPSdmb250LXNpemU6MTBweCc+8J+OkyBcIitjLnR1dGtpbnRvVHlwZU92ZXJyaWRlK1wiPC9zcGFuPjwvZGl2PlwiOlwiXCJ9XG4gICAgICAke2MucHJpY2VPdmVycmlkZSE9bnVsbCYmYy5wcmljZU92ZXJyaWRlIT09XCJcIj9cIjxkaXYgc3R5bGU9J21hcmdpbi10b3A6M3B4Jz48c3BhbiBjbGFzcz0nYmFkZ2UgYmFkZ2UtYW1iZXInIHN0eWxlPSdmb250LXNpemU6MTBweCc+WWtzaWxvbGxpbmVuIGhpbnRhOiBcIitOdW1iZXIoYy5wcmljZU92ZXJyaWRlKS50b0ZpeGVkKDApK1wiIEVVUjwvc3Bhbj48L2Rpdj5cIjpcIlwifSIsICJkZXNjIjogIkF0dGVuZGVlQ2FyZDogdHV0a2ludG9UeXBlT3ZlcnJpZGUgYmFkZ2UifSwgeyJmaW5kIjogImlmKGlzVHV0a2ludG8mJnQpe1xuICAgIGV2ZW50TmFtZT10LnR5cGUrKHQuYm9hdFR5cGU/XCIgKFwiK3QuYm9hdFR5cGUrXCIpXCI6XCJcIik7IiwgInJlcGxhY2UiOiAiaWYoaXNUdXRraW50byYmdCl7XG4gICAgY29uc3QgaW52Q3VzdD1zdGF0ZS5jdXN0b21lcnMuZmluZCh4PT54LmlkPT09aW52LmN1c3RvbWVySWQpO1xuICAgIGNvbnN0IGN1c3RUeXBlPWludkN1c3Q/LnR1dGtpbnRvVHlwZU92ZXJyaWRlfHxcIlwiO1xuICAgIGV2ZW50TmFtZT0oY3VzdFR5cGV8fHQudHlwZSkrKHQuYm9hdFR5cGUmJiFjdXN0VHlwZT9cIiAoXCIrdC5ib2F0VHlwZStcIilcIjpcIlwiKTsiLCAiZGVzYyI6ICJjb21wdXRlSW52b2ljZTogdHV0a2ludG9UeXBlT3ZlcnJpZGUifSwgeyJmaW5kIjogImRvY3VtZW50LnF1ZXJ5U2VsZWN0b3IoJ1tkYXRhLWFjdGlvbj1cImludi1wYXJ0aWFsLWFtb3VudFwiXScpPy5hZGRFdmVudExpc3RlbmVyKFwiaW5wdXRcIixlPT57c3RhdGUuaW52b2ljZS5wYXJ0aWFsQW1vdW50PWUudGFyZ2V0LnZhbHVlO3JlbmRlcigpO30pOyIsICJyZXBsYWNlIjogImRvY3VtZW50LnF1ZXJ5U2VsZWN0b3IoJ1tkYXRhLWFjdGlvbj1cImludi1wYXJ0aWFsLWFtb3VudFwiXScpPy5hZGRFdmVudExpc3RlbmVyKFwiaW5wdXRcIixlPT57c3RhdGUuaW52b2ljZS5wYXJ0aWFsQW1vdW50PWUudGFyZ2V0LnZhbHVlO30pO1xuICBkb2N1bWVudC5xdWVyeVNlbGVjdG9yKCdbZGF0YS1hY3Rpb249XCJpbnYtcGFydGlhbC1hbW91bnRcIl0nKT8uYWRkRXZlbnRMaXN0ZW5lcihcImNoYW5nZVwiLGU9PntzdGF0ZS5pbnZvaWNlLnBhcnRpYWxBbW91bnQ9ZS50YXJnZXQudmFsdWU7cmVuZGVyKCk7fSk7IiwgImRlc2MiOiAiaW52LXBhcnRpYWwtYW1vdW50OiBlaSByZW5kZXIoKSBqb2thIG5ha2thaW50YSJ9XQ==").decode("utf-8"))
+def apply_patches(code):
+    ok=0
+    for p in PATCHES:
+        if p["find"] in code:
+            code=code.replace(p["find"],p["replace"],1); ok+=1; print("  OK  "+p["desc"])
+        else: print("  --  "+p["desc"])
+    lines=code.split("\n")
+    for i,l in enumerate(lines):
+        if "do-transfer" in l and "data-target=" in l and "data-targettype" not in l:
+            lines[i]=l.replace('data-target="${s.id}"','data-target="${s.id}" data-targettype="${s._isTutkinto?\'tutkinto\':\'sailing\'}"'); ok+=1; print('  OK  Transfer nappi'); break
+    code="\n".join(lines); print("  Yhteensa: "+str(ok)+"/13"); return code,ok
+def upload(token,data,msg):
+    api="https://api.github.com/repos/"+REPO+"/contents/"+FILE
+    h={"Authorization":"token "+token,"Content-Type":"application/json","User-Agent":"JSailing"}
+    try:
+        with urllib.request.urlopen(urllib.request.Request(api,headers=h)) as r: sha=json.loads(r.read())["sha"]
+    except Exception as e: print("SHA err: "+str(e)); sys.exit(1)
+    body=json.dumps({"message":msg,"content":base64.b64encode(data).decode(),"sha":sha}).encode()
+    try:
+        with urllib.request.urlopen(urllib.request.Request(api,data=body,headers=h,method="PUT")) as r:
+            res=json.loads(r.read())
+        print("Julkaistu! https://jackeseilaa.github.io/tilaukset" if "content" in res else "Virhe: "+str(res.get("message","")))
+    except urllib.error.HTTPError as e: print("HTTP "+str(e.code)+": "+e.read().decode()[:200])
+print("V9.14 -> V9.17"); print("-"*40)
+paths=[os.path.expanduser("~/Downloads/index.html"),os.path.expanduser("~/Downloads/index.txt"),"index.html"]
+src=next((p for p in paths if os.path.exists(p)),None)
+if not src: print("index.html ei loydy"); sys.exit(1)
+print("Tiedosto: "+src)
+with open(src,"r",encoding="utf-8") as f: orig=f.read()
+if "V9.14" not in orig: print("Ei ole V9.14 - lataa index.txt GitHubista (Raw-nappi)"); sys.exit(1)
+print("\nPatchataan...")
+patched,ok=apply_patches(orig)
+if any(c not in patched for c in ["V9.17","tutkintoTypeOverride","priceOverride"]): print("VIRHE"); sys.exit(1)
+s=patched.find("<script type=\"module\">"); e=patched.rfind("</script>")
+bt=patched[s:e].count("`")
+if bt%2!=0: print("VIRHE backtick "+str(bt)); sys.exit(1)
+print("  Backticks: "+str(bt)+" (OK)")
+out=os.path.expanduser("~/Downloads/index_v917.html")
+with open(out,"w",encoding="utf-8") as f: f.write(patched)
+print("\nTallennettu: "+out)
+print("\nGitHub Token:")
+token=getpass.getpass("Token: ")
+if not token: print("Ei tokenia"); sys.exit(0)
+upload(token,patched.encode("utf-8"),"V9.17 - Korjattu laskutuksen summakentta")
