@@ -9,7 +9,7 @@
 <meta name="theme-color" content="#0a1628"/>
 <link rel="manifest" href="manifest.json"/>
 <link rel="apple-touch-icon" href="icon-512.png"/>
-<title>J Sailing V9.27 — Hallintapaneeli</title>
+<title>J Sailing V9.28 — Hallintapaneeli</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400;1,600&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -207,7 +207,7 @@ import{getAuth,GoogleAuthProvider,signInWithPopup,signOut,onAuthStateChanged}fro
 import{getFirestore,collection,doc,addDoc,setDoc,deleteDoc,onSnapshot,serverTimestamp}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 const FIREBASE_CONFIG={apiKey:"AIzaSyB7Dp5_5fN0Iko-4Jn1D2Dp6NNNih63UO0",authDomain:"jsailing-f716c.firebaseapp.com",projectId:"jsailing-f716c",storageBucket:"jsailing-f716c.firebasestorage.app",messagingSenderId:"543523103696",appId:"1:543523103696:web:439a312efa6aec398a8fd5"};
 const ALLOWED_EMAIL="jacke.seilaa@gmail.com";
-const APP_VERSION="V9.27";const UPDATE_DATE=(()=>{const n=new Date();return n.toLocaleDateString("fi-FI")+' klo '+String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0');})();
+const APP_VERSION="V9.28";const UPDATE_DATE=(()=>{const n=new Date();return n.toLocaleDateString("fi-FI")+' klo '+String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0');})();
 const ISSUERS={
   tmi:{name:"J Sailing",businessId:"1728993-9",address:"Kontiontie 55, 11120 Riihimäki",iban:"FI62 1132 3000 4277 43",bic:"NDEAFIHH"},
   oy:{name:"AJarmo Oy",businessId:"3432355-3",address:"Kontiontie 55, 11120 Riihimäki",iban:"FI73 7997 7994 4257 05",bic:"HOLVFIHH"}
@@ -1869,7 +1869,8 @@ table{width:100%;border-collapse:collapse}
         if(inv.lines.length===0)return alert("Laskulla ei ole rivejä.");
         if(inv.isCredit&&!state.invoice.creditRefId)return alert("Valitse hyvitettävä lasku.");
         if(inv.isPartial&&!parseFloat(state.invoice.partialAmount||0))return alert("Syötä osasuorituksen summa.");
-        const rec={mode:state.invoice.mode,source:state.invoice.source||"sailing",isReservation:!!inv.isReservation,itype:inv.itype,isCredit:!!inv.isCredit,creditRefId:state.invoice.creditRefId||"",creditRefNo:inv.creditRef?.invoiceNo||"",invoiceNo:inv.invNo,invoiceDate:state.invoice.invoiceDate,reference:inv.reference,payerName:inv.payerName,payerBusinessId:inv.payerBusinessId||"",payerEmail:inv.payerEmail||"",eventId:inv.isTutkinto?(state.invoice.tutkintoId||""):(inv.sailing?.id||""),eventName:inv.eventName,vatRatePct:Number(inv.ratePct),net:Number(inv.net||0),vat:Number(inv.vat||0),grossTotal:Number(inv.grossTotal||0),paid:false,paidDate:""};
+        const issr2=ISSUERS[state.invoice.issuer||"tmi"]||ISSUERS.tmi;
+        const rec={issuer:state.invoice.issuer||"tmi",issuerName:issr2.name,mode:state.invoice.mode,source:state.invoice.source||"sailing",isReservation:!!inv.isReservation,itype:inv.itype,isCredit:!!inv.isCredit,creditRefId:state.invoice.creditRefId||"",creditRefNo:inv.creditRef?.invoiceNo||"",invoiceNo:inv.invNo,invoiceDate:state.invoice.invoiceDate,reference:inv.reference,payerName:inv.payerName,payerBusinessId:inv.payerBusinessId||"",payerEmail:inv.payerEmail||"",eventId:inv.isTutkinto?(state.invoice.tutkintoId||""):(inv.sailing?.id||""),eventName:inv.eventName,vatRatePct:Number(inv.ratePct),net:Number(inv.net||0),vat:Number(inv.vat||0),grossTotal:Number(inv.grossTotal||0),paid:false,paidDate:""};
         if(state.editInvoiceId){
           const oldInv=state.invoices.find(x=>x.id===state.editInvoiceId);
           if(oldInv){rec.invoiceNo=oldInv.invoiceNo;rec.reference=oldInv.reference;rec.itype=oldInv.itype||rec.itype;rec.isReservation=oldInv.isReservation||false;}
