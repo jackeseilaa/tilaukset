@@ -9,7 +9,7 @@
 <meta name="theme-color" content="#0a1628"/>
 <link rel="manifest" href="manifest.json"/>
 <link rel="apple-touch-icon" href="icon-512.png"/>
-<title>J Sailing V9.22 — Hallintapaneeli</title>
+<title>J Sailing V9.23 — Hallintapaneeli</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400;1,600&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -207,7 +207,7 @@ import{getAuth,GoogleAuthProvider,signInWithPopup,signOut,onAuthStateChanged}fro
 import{getFirestore,collection,doc,addDoc,setDoc,deleteDoc,onSnapshot,serverTimestamp}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 const FIREBASE_CONFIG={apiKey:"AIzaSyB7Dp5_5fN0Iko-4Jn1D2Dp6NNNih63UO0",authDomain:"jsailing-f716c.firebaseapp.com",projectId:"jsailing-f716c",storageBucket:"jsailing-f716c.firebasestorage.app",messagingSenderId:"543523103696",appId:"1:543523103696:web:439a312efa6aec398a8fd5"};
 const ALLOWED_EMAIL="jacke.seilaa@gmail.com";
-const APP_VERSION="V9.22";const UPDATE_DATE=(()=>{const n=new Date();return n.toLocaleDateString("fi-FI")+' klo '+String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0');})();
+const APP_VERSION="V9.23";const UPDATE_DATE=(()=>{const n=new Date();return n.toLocaleDateString("fi-FI")+' klo '+String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0');})();
 const ISSUERS={
   tmi:{name:"J Sailing",businessId:"1728993-9",address:"Kontiontie 55, 11120 Riihimäki",iban:"FI62 1132 3000 4277 43",bic:"NDEAFIHH"},
   oy:{name:"AJarmo Oy",businessId:"3432355-3",address:"Kontiontie 55, 11120 Riihimäki",iban:"FI73 7997 7994 4257 05",bic:"HOLVFIHH"}
@@ -1479,7 +1479,17 @@ function bind(){
   document.querySelector('[data-field="qnc-phone"]')?.addEventListener("input",e=>{if(!state.dashNewCustomer)state.dashNewCustomer={};state.dashNewCustomer.phone=e.target.value;});
   document.querySelector('[data-field="qnc-email"]')?.addEventListener("input",e=>{if(!state.dashNewCustomer)state.dashNewCustomer={};state.dashNewCustomer.email=e.target.value;});
   document.querySelector('[data-field="qnc-status"]')?.addEventListener("change",e=>{if(!state.dashNewCustomer)state.dashNewCustomer={};state.dashNewCustomer.status=e.target.value;});
-  document.querySelectorAll('[data-action="reg-paid"]').forEach(cb=>{cb.onchange=async()=>{const x=state.invoices.find(z=>z.id===cb.dataset.id);if(!x)return;x.paid=!!cb.checked;if(x.paid){const pd=prompt("Maksupäivä (YYYY-MM-DD):",x.paidDate||today());if(!pd){x.paid=false;x.paidDate="";}else{x.paidDate=pd;}}else x.paidDate="";await fsSet("invoices",x.id,x);render();};});
+  document.querySelectorAll('[data-action="reg-paid"]').forEach(cb=>{cb.onchange=async()=>{const x=state.invoices.find(z=>z.id===cb.dataset.id);if(!x)return;x.paid=!!cb.checked;if(x.paid){
+      const pd=prompt("Maksupäivä (YYYY-MM-DD):",x.paidDate||today());
+      if(!pd){x.paid=false;x.paidDate="";}
+      else{
+        x.paidDate=pd;
+        // Päivitä asiakkaan status -> Vahvistettu
+        const cust=state.customers.find(c=>c.name===x.payerName&&(c.sailingId===x.eventId||c.tutkintoId===x.eventId));
+        if(cust&&cust.reservationStatus==="pending"){cust.reservationStatus="paid";await fsSet("customers",cust.id,cust);}
+      }
+    }else x.paidDate="";
+    await fsSet("invoices",x.id,x);render();};});
   document.querySelectorAll("[data-action]").forEach(el=>{
     if(el.tagName==="INPUT"&&el.type==="checkbox")return;
     if(el.tagName==="A"&&el.dataset.action==="gcal-mark"){el.onclick=async()=>{const sailingId=el.dataset.id,idxRaw=el.dataset.idx;const idx=(idxRaw!==""&&idxRaw!=null)?Number(idxRaw):null;setTimeout(()=>markGcalAdded(sailingId,idx),300);};return;}
@@ -1837,7 +1847,17 @@ table{width:100%;border-collapse:collapse}
       }
       if(a==="cancel-edit-invoice"){state.editInvoiceId=null;render();return;}
       if(a==="delete-register"){if(!confirm("Poistetaanko lasku rekisteristä?"))return;await fsDel("invoices",itemId);render();return;}
-      if(a==="reskontra-mark-paid"){const x=state.invoices.find(z=>z.id===itemId);if(!x)return;const pd=prompt(`Merkitään ${x.invoiceNo} maksetuksi.\nMaksupäivä (YYYY-MM-DD):`,x.paidDate||today());if(!pd)return;x.paid=true;x.paidDate=pd;await fsSet("invoices",x.id,x);render();return;}
+      if(a==="reskontra-mark-paid"){
+        const x=state.invoices.find(z=>z.id===itemId);if(!x)return;
+        const pd=prompt(`Merkitään ${x.invoiceNo} maksetuksi.\nMaksupäivä (YYYY-MM-DD):`,x.paidDate||today());
+        if(!pd)return;
+        x.paid=true;x.paidDate=pd;
+        await fsSet("invoices",x.id,x);
+        // Päivitä asiakkaan status -> Vahvistettu jos varausmaksu odottaa
+        const cust=state.customers.find(c=>c.name===x.payerName&&(c.sailingId===x.eventId||c.tutkintoId===x.eventId));
+        if(cust&&cust.reservationStatus==="pending"){cust.reservationStatus="paid";await fsSet("customers",cust.id,cust);}
+        render();return;
+      }
       if(a==="save-invoice"){
         const inv=computeInvoice();
         if(!inv.isTutkinto&&!inv.sailing)return alert("Valitse tapahtuma.");
