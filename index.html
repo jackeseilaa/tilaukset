@@ -9,7 +9,7 @@
 <meta name="theme-color" content="#0a1628"/>
 <link rel="manifest" href="manifest.json"/>
 <link rel="apple-touch-icon" href="icon-512.png"/>
-<title>J Sailing V9.24 — Hallintapaneeli</title>
+<title>J Sailing V9.25 — Hallintapaneeli</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400;1,600&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -207,7 +207,7 @@ import{getAuth,GoogleAuthProvider,signInWithPopup,signOut,onAuthStateChanged}fro
 import{getFirestore,collection,doc,addDoc,setDoc,deleteDoc,onSnapshot,serverTimestamp}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 const FIREBASE_CONFIG={apiKey:"AIzaSyB7Dp5_5fN0Iko-4Jn1D2Dp6NNNih63UO0",authDomain:"jsailing-f716c.firebaseapp.com",projectId:"jsailing-f716c",storageBucket:"jsailing-f716c.firebasestorage.app",messagingSenderId:"543523103696",appId:"1:543523103696:web:439a312efa6aec398a8fd5"};
 const ALLOWED_EMAIL="jacke.seilaa@gmail.com";
-const APP_VERSION="V9.24";const UPDATE_DATE=(()=>{const n=new Date();return n.toLocaleDateString("fi-FI")+' klo '+String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0');})();
+const APP_VERSION="V9.25";const UPDATE_DATE=(()=>{const n=new Date();return n.toLocaleDateString("fi-FI")+' klo '+String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0');})();
 const ISSUERS={
   tmi:{name:"J Sailing",businessId:"1728993-9",address:"Kontiontie 55, 11120 Riihimäki",iban:"FI62 1132 3000 4277 43",bic:"NDEAFIHH"},
   oy:{name:"AJarmo Oy",businessId:"3432355-3",address:"Kontiontie 55, 11120 Riihimäki",iban:"FI73 7997 7994 4257 05",bic:"HOLVFIHH"}
@@ -1825,18 +1825,20 @@ table{width:100%;border-collapse:collapse}
       if(a==="delete-company"){if(!confirm("Poistetaanko yritys?"))return;await fsDel("companies",itemId);render();return;}
       if(a==="edit-invoice"){
         const x=state.invoices.find(z=>z.id===itemId);if(!x)return;
-        // Avaa laskutusnäkymä esitäytettynä
         state.editInvoiceId=x.id;
+        const isTutk=x.source==="tutkinto";
+        // Kaytetaan aina "partial" tyyppia jotta alkuperainen summa sailyy
+        const editType=x.itype==="credit"?"credit":"partial";
         state.invoice={
           mode:x.mode||"customer",
           source:x.source||"sailing",
-          sailingId:x.eventId&&!x.source?.includes("tutkinto")?x.eventId:"",
-          tutkintoId:x.source==="tutkinto"?x.eventId:"",
+          sailingId:!isTutk?(x.eventId||""):"",
+          tutkintoId:isTutk?(x.eventId||""):"",
           customerId:x.customerId||state.customers.find(c=>c.name===x.payerName)?.id||"",
           companyId:x.companyId||state.companies.find(c=>c.name===x.payerName)?.id||"",
           invoiceDate:x.invoiceDate||today(),
-          type:x.itype||"full",
-          partialAmount:String(x.grossTotal||""),
+          type:editType,
+          partialAmount:String(Math.abs(x.grossTotal||"")),
           creditRefId:x.creditRefId||"",
           issuer:x.issuer||"tmi"
         };
@@ -1870,7 +1872,7 @@ table{width:100%;border-collapse:collapse}
         const rec={mode:state.invoice.mode,source:state.invoice.source||"sailing",isReservation:!!inv.isReservation,itype:inv.itype,isCredit:!!inv.isCredit,creditRefId:state.invoice.creditRefId||"",creditRefNo:inv.creditRef?.invoiceNo||"",invoiceNo:inv.invNo,invoiceDate:state.invoice.invoiceDate,reference:inv.reference,payerName:inv.payerName,payerBusinessId:inv.payerBusinessId||"",payerEmail:inv.payerEmail||"",eventId:inv.isTutkinto?(state.invoice.tutkintoId||""):(inv.sailing?.id||""),eventName:inv.eventName,vatRatePct:Number(inv.ratePct),net:Number(inv.net||0),vat:Number(inv.vat||0),grossTotal:Number(inv.grossTotal||0),paid:false,paidDate:""};
         if(state.editInvoiceId){
           const oldInv=state.invoices.find(x=>x.id===state.editInvoiceId);
-          if(oldInv){rec.invoiceNo=oldInv.invoiceNo;rec.reference=oldInv.reference;}
+          if(oldInv){rec.invoiceNo=oldInv.invoiceNo;rec.reference=oldInv.reference;rec.itype=oldInv.itype||rec.itype;rec.isReservation=oldInv.isReservation||false;}
           await fsDel("invoices",state.editInvoiceId);
         }
         await fsAdd("invoices",rec);alert(`Tallennettu!\nLaskunro: ${rec.invoiceNo}\nViite: ${rec.reference}`);
