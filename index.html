@@ -9,7 +9,7 @@
 <meta name="theme-color" content="#0a1628"/>
 <link rel="manifest" href="manifest.json"/>
 <link rel="apple-touch-icon" href="icon-512.png"/>
-<title>J Sailing V9.18 — Hallintapaneeli</title>
+<title>J Sailing V9.19 — Hallintapaneeli</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400;1,600&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -207,9 +207,13 @@ import{getAuth,GoogleAuthProvider,signInWithPopup,signOut,onAuthStateChanged}fro
 import{getFirestore,collection,doc,addDoc,setDoc,deleteDoc,onSnapshot,serverTimestamp}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 const FIREBASE_CONFIG={apiKey:"AIzaSyB7Dp5_5fN0Iko-4Jn1D2Dp6NNNih63UO0",authDomain:"jsailing-f716c.firebaseapp.com",projectId:"jsailing-f716c",storageBucket:"jsailing-f716c.firebasestorage.app",messagingSenderId:"543523103696",appId:"1:543523103696:web:439a312efa6aec398a8fd5"};
 const ALLOWED_EMAIL="jacke.seilaa@gmail.com";
-const APP_VERSION="V9.18";const UPDATE_DATE=(()=>{const n=new Date();return n.toLocaleDateString("fi-FI")+' klo '+String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0');})();
-const ISSUER={name:"J Sailing",businessId:"1728993-9"};
-const BANK={iban:"FI62 1132 3000 4277 43",bic:"NDEAFIHH"};
+const APP_VERSION="V9.19";const UPDATE_DATE=(()=>{const n=new Date();return n.toLocaleDateString("fi-FI")+' klo '+String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0');})();
+const ISSUERS={
+  tmi:{name:"J Sailing",businessId:"1728993-9",address:"Kontiontie 55, 11120 Riihimäki",iban:"FI62 1132 3000 4277 43",bic:"NDEAFIHH"},
+  oy:{name:"AJarmo Oy",businessId:"3432355-3",address:"Kontiontie 55, 11120 Riihimäki",iban:"FI73 7997 7994 4257 05",bic:"NDEAFIHH"}
+};
+const ISSUER=ISSUERS.tmi;
+const BANK={iban:ISSUER.iban,bic:ISSUER.bic};
 const SAILING_TYPES=["Iltapurjehdus","Päiväpurjehdus","Charter","Kurssi","Yritystilaisuus","Purjehdusretki","Muu"];
 const MULTIDAY_TYPES=["Charter","Purjehdusretki","Iltapurjehdus","Päiväpurjehdus","Yritystilaisuus","Muu","Kurssi"];
 const SAILING_GROUPS=[{id:"all",label:"Kaikki",types:null},{id:"courses",label:"Kurssit",types:["Kurssi"]},{id:"charter",label:"Charter",types:["Charter"]},{id:"evening",label:"Iltapurjehdukset",types:["Iltapurjehdus"]},{id:"trips",label:"Retket",types:["Purjehdusretki"]},{id:"day",label:"Päiväpurjehdukset",types:["Päiväpurjehdus"]},{id:"other",label:"Muut",types:["Yritystilaisuus","Muu"]}];
@@ -227,10 +231,10 @@ const state={
   dashNewCustomer:{name:"",phone:"",email:"",status:"pending"},
   sailingGroup:"all",
   calendarMonth:today().slice(0,7),
-  registerMonth:today().slice(0,7),
+  registerMonth:today().slice(0,7),registerIssuerFilter:"all",
   syncing:false,
   sailingDraft:{},
-  invoice:{mode:"customer",source:"sailing",sailingId:"",tutkintoId:"",customerId:"",companyId:"",invoiceDate:today(),type:"full",partialAmount:"",creditRefId:""}
+  invoice:{mode:"customer",source:"sailing",sailingId:"",tutkintoId:"",customerId:"",companyId:"",invoiceDate:today(),type:"full",partialAmount:"",creditRefId:"",issuer:"tmi"}
 };
 function today(){return new Date().toISOString().slice(0,10);}
 function esc(s){return String(s||"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));}
@@ -359,7 +363,10 @@ function computeInvoice(overrideState){
   const source=inv.source||"sailing",isTutkinto=source==="tutkinto";
   const s=isTutkinto?null:(state.sailings.find(x=>x.id===inv.sailingId)||null);
   const t=isTutkinto?(state.tutkinnot.find(x=>x.id===inv.tutkintoId)||null):null;
-  const rate=(!isTutkinto&&s?.type==="Charter")?0.135:0.255;
+  const invIssuer=ISSUERS[inv.issuer||"tmi"]||ISSUERS.tmi;
+  const isCharter=!isTutkinto&&s?.type==="Charter";
+  const isForeign=!isTutkinto&&s?.reitti&&/viro|tallinn|ruots|saksa|gotlan|ulkom/i.test(s.reitti||"");
+  const rate=isForeign?0:isCharter?0.135:0.255;
   const ratePct=(rate*100).toFixed(1);
   const itype=inv.type||"full",isRes=itype==="reservation",isPartial=itype==="partial",isCredit=itype==="credit";
   let payerName="",payerEmail="",payerBusinessId="",lines=[],grossTotal=0,eventName="";
@@ -784,6 +791,7 @@ function renderInvoicing(){
   return`<div class="card noPrint"><div class="card-title">Laskutus</div><div class="card-sub">Luo lasku — valitse laskutettava kohde</div>
     <div class="hr"></div>
     <div class="grid2" style="margin-bottom:14px">
+      <div class="field"><label class="lbl">Laskuttaja</label><select data-action="inv-issuer"><option value="tmi" ${(state.invoice.issuer||"tmi")==="tmi"?"selected":""}>J Sailing Tmi</option><option value="oy" ${state.invoice.issuer==="oy"?"selected":""}>AJarmo Oy</option></select></div>
       <div class="field"><label class="lbl">Laskutettava kohde</label><select data-action="inv-source"><option value="sailing" ${!isTutkinto?"selected":""}>⛵ Purjehdus / Kurssi</option><option value="tutkinto" ${isTutkinto?"selected":""}>🎓 Tutkinto</option></select></div>
       ${isTutkinto?`<div class="field"><label class="lbl">Tutkinto *</label><select data-action="inv-tutkinto"><option value="">-- valitse tutkinto --</option>${tutkintoOpts}</select></div>`:`<div class="field"><label class="lbl">Tapahtuma *</label><select data-action="inv-sailing">${evOpts}</select></div>`}
     </div>
@@ -802,7 +810,7 @@ function renderInvoicing(){
   </div>
   <div class="card"><div class="invoice-box" id="invoiceBox">
     <div class="row-between">
-      <div style="line-height:1.7;font-size:14px"><strong style="font-size:16px;color:${isCredit?"#991b1b":"#111827"}">${invTitle}</strong><br>${esc(ISSUER.name)}<br>Y-tunnus ${esc(ISSUER.businessId)}<br><span class="small" style="color:#6b7280">IBAN</span> ${esc(BANK.iban)}<br><span class="small" style="color:#6b7280">BIC</span> ${esc(BANK.bic)}</div>
+      <div style="line-height:1.7;font-size:14px">${(()=>{const issr=ISSUERS[state.invoice.issuer||"tmi"]||ISSUERS.tmi;return`<strong style="font-size:16px;color:${isCredit?"#991b1b":"#111827"}">${invTitle}</strong><br>${esc(issr.name)}<br>Y-tunnus ${esc(issr.businessId)}<br>${esc(issr.address)}<br><span class="small" style="color:#6b7280">IBAN</span> ${esc(issr.iban)}<br><span class="small" style="color:#6b7280">BIC</span> ${esc(issr.bic)}`;})()}</div>
       <div style="text-align:right;line-height:1.7;font-size:14px"><strong style="color:#0a4272;font-size:15px">Nro: ${esc(inv.invNo)}</strong><br>Päivä: ${esc(state.invoice.invoiceDate)}<br>Viite: <strong>${esc(inv.reference)}</strong>${inv.creditRef?`<br><span class="small muted">Hyvittää: ${esc(inv.creditRef.invoiceNo)}</span>`:""}</div>
     </div>
     <div class="hr"></div>
@@ -1201,7 +1209,8 @@ function renderCompanyModal(){
 }
 function renderRegisterModal(){
   const month=state.registerMonth||today().slice(0,7);
-  const list=state.invoices.filter(x=>String(x.invoiceDate||"").slice(0,7)===month).slice().sort((a,b)=>(a.invoiceDate||"").localeCompare(b.invoiceDate||""));
+  const issFilter=state.registerIssuerFilter||"all";
+  const list=state.invoices.filter(x=>String(x.invoiceDate||"").slice(0,7)===month&&(issFilter==="all"||(x.issuer||"tmi")===issFilter)).slice().sort((a,b)=>(a.invoiceDate||"").localeCompare(b.invoiceDate||""));
   const sum=monthSummary(month);
   const paid=list.filter(x=>x.paid);
   const openList=list.filter(x=>!x.paid&&Number(x.grossTotal||0)>0);
@@ -1247,7 +1256,13 @@ function renderRegisterModal(){
       </div>
     </div></div>
     <div class="modal-body">
+      <div class="row" style="gap:12px;flex-wrap:wrap;margin-bottom:4px">
       <div class="field" style="max-width:220px"><label class="lbl">Kuukausi</label><input data-action="reg-month" value="${esc(month)}" placeholder="2026-05"></div>
+      <div class="field"><label class="lbl">Laskuttaja</label><div class="row" style="gap:6px">
+        <button class="btn btn-sm ${(state.registerIssuerFilter||'all')==='all'?'btn-primary':'btn-secondary'}" data-action="reg-issuer" data-issuer="all">Kaikki</button>
+        <button class="btn btn-sm ${state.registerIssuerFilter==='tmi'?'btn-primary':'btn-secondary'}" data-action="reg-issuer" data-issuer="tmi">J Sailing Tmi</button>
+        <button class="btn btn-sm ${state.registerIssuerFilter==='oy'?'btn-primary':'btn-secondary'}" data-action="reg-issuer" data-issuer="oy">AJarmo Oy</button>
+      </div></div></div>
       <div id="reg-print-area">
 
         <!-- OTSIKKO: yrityksen tiedot + ajanjakso -->
@@ -1445,6 +1460,7 @@ function bind(){
   document.querySelector('[data-action="search-customers"]')?.addEventListener("input",e=>{state.searchCustomers=e.target.value;render();});
   document.querySelector('[data-action="search-sailings"]')?.addEventListener("input",e=>{state.searchSailings=e.target.value;render();});
   document.querySelector('[data-action="search-tutkinnot"]')?.addEventListener("input",e=>{state.searchTutkinnot=e.target.value;render();});
+  document.querySelector('[data-action="inv-issuer"]')?.addEventListener("change",e=>{state.invoice.issuer=e.target.value;render();});
   document.querySelector('[data-action="inv-source"]')?.addEventListener("change",e=>{state.invoice.source=e.target.value;state.invoice.type="full";state.invoice.partialAmount="";state.invoice.creditRefId="";render();});
   document.querySelector('[data-action="inv-tutkinto"]')?.addEventListener("change",e=>{state.invoice.tutkintoId=e.target.value;render();});
   document.querySelector('[data-action="inv-sailing"]')?.addEventListener("change",e=>{state.invoice.sailingId=e.target.value;state.invoice.type="full";state.invoice.creditRefId="";render();});
@@ -1457,6 +1473,7 @@ function bind(){
   document.querySelector('[data-action="inv-partial-amount"]')?.addEventListener("change",e=>{state.invoice.partialAmount=e.target.value;render();});
   document.querySelector('[data-action="inv-credit-ref"]')?.addEventListener("change",e=>{state.invoice.creditRefId=e.target.value;render();});
   document.querySelector('[data-action="reg-month"]')?.addEventListener("input",e=>{state.registerMonth=(e.target.value||"").trim();});
+  document.querySelectorAll('[data-action="reg-issuer"]').forEach(b=>{b.onclick=()=>{state.registerIssuerFilter=b.dataset.issuer;render();};});
   document.querySelector('[data-field="qnc-name"]')?.addEventListener("input",e=>{if(!state.dashNewCustomer)state.dashNewCustomer={};state.dashNewCustomer.name=e.target.value;render();});
   document.querySelector('[data-field="qnc-phone"]')?.addEventListener("input",e=>{if(!state.dashNewCustomer)state.dashNewCustomer={};state.dashNewCustomer.phone=e.target.value;});
   document.querySelector('[data-field="qnc-email"]')?.addEventListener("input",e=>{if(!state.dashNewCustomer)state.dashNewCustomer={};state.dashNewCustomer.email=e.target.value;});
@@ -1816,9 +1833,11 @@ table{width:100%;border-collapse:collapse}
         if(inv.lines.length===0)return alert("Laskulla ei ole rivejä.");
         if(inv.isCredit&&!state.invoice.creditRefId)return alert("Valitse hyvitettävä lasku.");
         if(inv.isPartial&&!parseFloat(state.invoice.partialAmount||0))return alert("Syötä osasuorituksen summa.");
-        const rec={mode:inv.isTutkinto?"customer":state.invoice.mode,source:state.invoice.source||"sailing",isReservation:!!inv.isReservation,itype:inv.itype,isCredit:!!inv.isCredit,creditRefId:state.invoice.creditRefId||"",creditRefNo:inv.creditRef?.invoiceNo||"",invoiceNo:inv.invNo,invoiceDate:state.invoice.invoiceDate,reference:inv.reference,payerName:inv.payerName,payerBusinessId:inv.payerBusinessId||"",payerEmail:inv.payerEmail||"",eventId:inv.isTutkinto?(state.invoice.tutkintoId||""):(inv.sailing?.id||""),eventName:inv.eventName,vatRatePct:Number(inv.ratePct),net:Number(inv.net||0),vat:Number(inv.vat||0),grossTotal:Number(inv.grossTotal||0),paid:false,paidDate:""};
+        const issr=ISSUERS[state.invoice.issuer||"tmi"]||ISSUERS.tmi;
+        const rec={issuer:state.invoice.issuer||"tmi",issuerName:issr.name,mode:inv.isTutkinto?"customer":state.invoice.mode,source:state.invoice.source||"sailing",isReservation:!!inv.isReservation,itype:inv.itype,isCredit:!!inv.isCredit,creditRefId:state.invoice.creditRefId||"",creditRefNo:inv.creditRef?.invoiceNo||"",invoiceNo:inv.invNo,invoiceDate:state.invoice.invoiceDate,reference:inv.reference,payerName:inv.payerName,payerBusinessId:inv.payerBusinessId||"",payerEmail:inv.payerEmail||"",eventId:inv.isTutkinto?(state.invoice.tutkintoId||""):(inv.sailing?.id||""),eventName:inv.eventName,vatRatePct:Number(inv.ratePct),net:Number(inv.net||0),vat:Number(inv.vat||0),grossTotal:Number(inv.grossTotal||0),paid:false,paidDate:""};
         await fsAdd("invoices",rec);alert(`Tallennettu!\nLaskunro: ${inv.invNo}\nViite: ${inv.reference}`);
-        state.invoice={mode:"customer",source:"sailing",sailingId:state.sailings[0]?.id||"",tutkintoId:"",customerId:"",companyId:"",invoiceDate:today(),type:"full",partialAmount:"",creditRefId:""};
+        const keepIssuer=state.invoice.issuer||"tmi";
+        state.invoice={mode:"customer",source:"sailing",sailingId:state.sailings[0]?.id||"",tutkintoId:"",customerId:"",companyId:"",invoiceDate:today(),type:"full",partialAmount:"",creditRefId:"",issuer:keepIssuer};
         render();return;
       }
       if(a==="export-json"){const blob=new Blob([JSON.stringify({customers:state.customers,sailings:state.sailings,companies:state.companies,invoices:state.invoices,tutkinnot:state.tutkinnot},null,2)],{type:"application/json"});const url=URL.createObjectURL(blob);const x=document.createElement("a");x.href=url;x.download=`jsailing_backup_${today()}.json`;x.click();URL.revokeObjectURL(url);return;}
