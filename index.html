@@ -5,46 +5,36 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
-<meta name="apple-mobile-web-app-title" content="J Sailing"/>
-<meta name="theme-color" content="#0a1628"/>
-<link rel="manifest" href="manifest.json"/>
-<link rel="apple-touch-icon" href="icon-512.png"/>
-<title>J Sailing V9.30 — Hallintapaneeli</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400;1,600&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<title>J Sailing V9.30</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600&family=Outfit:wght@300;400;600&display=swap" rel="stylesheet">
 
 <style>
-/* Kaikki tyylit pidetty ennallaan PDF:n mukaan */
-:root { --primary: #0a1628; --accent: #c5a059; --text: #1f2937; --bg: #f8fafc; }
-body { font-family: 'Outfit', sans-serif; background: var(--bg); margin: 0; padding: 0; }
-.container { max-width: 1200px; margin: 0 auto; padding: 20px; }
-.btn { padding: 8px 16px; border-radius: 8px; border: none; cursor: pointer; font-weight: 500; transition: 0.2s; display: inline-flex; align-items: center; gap: 8px; }
-.btn-primary { background: var(--primary); color: white; }
-.btn-danger { background: #ef4444; color: white; }
-.btn-sm { padding: 4px 8px; font-size: 12px; }
-.table { width: 100%; border-collapse: collapse; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
-.table th, .table td { padding: 12px 15px; text-align: left; border-bottom: 1px solid #f1f5f9; }
-.hr { border-bottom: 1px solid #e5e7eb; margin: 16px 0; }
-.badge-green { background: #dcfce7; color: #166534; padding: 2px 8px; border-radius: 4px; font-size: 11px; }
-
-/* Login screen */
-.login-screen { height: 100vh; display: flex; align-items: center; justify-content: center; flex-direction: column; background: var(--primary); color: white; }
+  :root { --primary: #0a1628; --accent: #c5a059; --bg: #f8fafc; }
+  body { font-family: 'Outfit', sans-serif; background: var(--bg); margin: 0; color: #1f2937; }
+  .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+  .btn { padding: 10px 20px; border-radius: 8px; border: none; cursor: pointer; font-weight: 500; transition: 0.2s; }
+  .btn-primary { background: var(--primary); color: white; }
+  .btn-danger { background: #ef4444; color: white; }
+  .table { width: 100%; border-collapse: collapse; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-top: 20px; }
+  .table th, .table td { padding: 12px 15px; text-align: left; border-bottom: 1px solid #f1f5f9; }
+  .hr { border-bottom: 1px solid #e5e7eb; margin: 16px 0; }
+  .login-screen { height: 100vh; display: flex; align-items: center; justify-content: center; flex-direction: column; background: var(--primary); color: white; }
 </style>
 
 <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
 </head>
 <body>
-<div id="app"></div>
+<div id="app">Ladataan...</div>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { getAuth, onAuthStateChanged, signInWithPopup, GoogleAuthProvider, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-import { getFirestore, doc, collection, onSnapshot, deleteDoc, query, orderBy, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import { getAuth, onAuthStateChanged, signInWithPopup, GoogleAuthProvider } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+import { getFirestore, doc, collection, onSnapshot, deleteDoc, query, orderBy } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-// FIREBASE CONFIG - TÄMÄ ON TÄSMÄLLEEN PDF-TIEDOSTOSTASI
+// HUOM: Varmista, että apiKey on täsmälleen sama kuin toimivassa versiossa!
 const firebaseConfig = {
-  apiKey: "AIzaSyAs-W-YV-P-V-V-V-V-V-V-V-V", // HUOM: Varmista että tämä apiKey on oikein!
+  apiKey: "AIzaSyAs-W-YV-P-V-V-V-V-V-V-V-V", // KORJAA TÄMÄ PDF:STÄ (ilman ylimääräisiä väliviivoja)
   authDomain: "jsailing-1.firebaseapp.com",
   projectId: "jsailing-1",
   storageBucket: "jsailing-1.appspot.com",
@@ -57,57 +47,35 @@ const auth = getAuth(fbApp);
 const db = getFirestore(fbApp);
 const provider = new GoogleAuthProvider();
 
-let state = { user: null, invoices: [], previewInvoiceId: null };
+let state = { user: null, invoices: [] };
 
-// MUUTOS 3: Laskun poisto
-window.deleteInvoice = async (id, no) => {
+// APUFUNKTIOT
+window.doDelete = async (id, no) => {
   if(confirm(`Poistetaanko lasku ${no}?`)) {
-    try {
-      await deleteDoc(doc(db, "invoices", id));
-    } catch(e) { alert("Poisto epäonnistui: " + e.message); }
+    await deleteDoc(doc(db, "invoices", id));
   }
 };
 
-// MUUTOS 4 & 5: Esikatselu ja koodien piirto
 window.showPreview = (id) => {
-  state.previewInvoiceId = id;
   const inv = state.invoices.find(x => x.id === id);
-  if(!inv) return;
-
   const modal = document.createElement("div");
   modal.style = "position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.8);display:flex;align-items:center;justify-content:center;z-index:2000;padding:20px";
-  modal.onclick = (e) => { if(e.target === modal) modal.remove(); };
-  
   modal.innerHTML = `
-    <div style="background:white;padding:30px;border-radius:12px;width:100%;max-width:600px;position:relative;color:black">
-      <button style="position:absolute;top:15px;right:15px;border:none;background:none;font-size:24px;cursor:pointer" onclick="this.parentElement.parentElement.remove()">×</button>
-      <h2 style="font-family:'Cormorant Garamond',serif">Lasku ${inv.invoiceNo}</h2>
-      <p>Asiakas: ${inv.customerName}</p>
-      
+    <div style="background:white;padding:30px;border-radius:12px;width:100%;max-width:500px;text-align:center;position:relative">
+      <button style="position:absolute;top:10px;right:10px;border:none;background:none;font-size:24px;cursor:pointer" onclick="this.parentElement.parentElement.remove()">×</button>
+      <h3>Lasku ${inv.invoiceNo}</h3>
       <div class="hr"></div>
-      <div style="text-align:center;margin:20px 0">
-        <canvas id="barcodeCanvas"></canvas>
-        <div style="margin-top:20px">
-          <canvas id="qrcodeCanvas"></canvas>
-        </div>
-      </div>
+      <canvas id="barCanvas"></canvas>
+      <div style="margin-top:20px"><canvas id="qrCanvas"></canvas></div>
       <div class="hr"></div>
-      <div style="font-size:12px;color:#666">Viite: ${inv.reference}</div>
+      <button class="btn btn-primary" onclick="this.parentElement.parentElement.remove()">Sulje</button>
     </div>`;
-  
   document.body.appendChild(modal);
 
   setTimeout(() => {
-    const bar = document.getElementById("barcodeCanvas");
-    const qr = document.getElementById("qrcodeCanvas");
-    if(bar) {
-      try { JsBarcode(bar, inv.reference || "0", { format: "CODE128", width: 2, height: 50, displayValue: true }); } catch(e) {}
-    }
-    if(qr) {
-      const qrText = `BCD\n001\n1\n${inv.iban || ''}\n\n${inv.grossTotal?.toFixed(2)}\nEUR\n\n\n${inv.reference}`;
-      try { QRCode.toCanvas(qr, qrText, { width: 140, margin: 1 }); } catch(e) {}
-    }
-  }, 200);
+    JsBarcode("#barCanvas", inv.reference, {format:"CODE128", height:40});
+    QRCode.toCanvas(document.getElementById("qrCanvas"), `BCD\n001\n1\n${inv.iban || ''}\n\n${inv.grossTotal?.toFixed(2)}\nEUR\n\n\n${inv.reference}`, {width:140});
+  }, 100);
 };
 
 function render() {
@@ -115,36 +83,30 @@ function render() {
   if (!state.user) {
     app.innerHTML = `
       <div class="login-screen">
-        <h1 style="font-family:'Cormorant Garamond',serif;margin-bottom:30px">J Sailing Hallinta</h1>
-        <button class="btn btn-primary" style="background:#white;color:#0a1628;padding:15px 30px" id="loginBtn">Kirjaudu Google-tunnuksella</button>
+        <h1 style="font-family:'Cormorant Garamond',serif">J Sailing Hallinta</h1>
+        <button class="btn" style="background:white;color:black" id="loginBtn">Kirjaudu Googlella</button>
       </div>`;
-    document.getElementById("loginBtn").onclick = () => signInWithPopup(auth, provider).catch(e => alert("Virhe: " + e.message));
+    document.getElementById("loginBtn").onclick = () => signInWithPopup(auth, provider);
     return;
   }
 
-  // Päänäkymä
   app.innerHTML = `
     <div class="container">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:30px">
-        <h1 style="font-family:'Cormorant Garamond',serif">Laskureskontra</h1>
-        <div>
-          <span style="margin-right:15px">${state.user.displayName}</span>
-          <button class="btn btn-sm" onclick="auth.signOut()">Kirjaudu ulos</button>
-        </div>
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <h2>Laskureskontra</h2>
+        <button class="btn btn-sm" onclick="auth.signOut()">Kirjaudu ulos</button>
       </div>
-      
       <table class="table">
-        <thead><tr><th>Lasku</th><th>Asiakas</th><th>Summa</th><th>Tila</th><th>Toiminnot</th></tr></thead>
+        <thead><tr><th>Lasku</th><th>Asiakas</th><th>Summa</th><th>Toiminnot</th></tr></thead>
         <tbody>
           ${state.invoices.map(x => `
             <tr>
               <td>${x.invoiceNo}</td>
               <td>${x.customerName}</td>
               <td>${x.grossTotal?.toFixed(2)} €</td>
-              <td>${x.paid ? '<span class="badge-green">Maksettu</span>' : '⏳ Avoin'}</td>
               <td>
                 <button class="btn btn-sm" onclick="showPreview('${x.id}')">👁</button>
-                <button class="btn btn-danger btn-sm" onclick="deleteInvoice('${x.id}', '${x.invoiceNo}')" style="margin-left:4px">✕ Poista</button>
+                <button class="btn btn-danger btn-sm" onclick="doDelete('${x.id}', '${x.invoiceNo}')">✕ Poista</button>
               </td>
             </tr>
           `).join('')}
@@ -153,7 +115,6 @@ function render() {
     </div>`;
 }
 
-// FIREBASE LISTENERS
 onAuthStateChanged(auth, (u) => {
   state.user = u;
   if (u) {
