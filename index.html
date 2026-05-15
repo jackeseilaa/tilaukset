@@ -816,7 +816,7 @@ function renderInvoicing(){
     <div class="row-between">
       <div style="line-height:1.7;font-size:14px">${(()=>{const issr=ISSUERS[state.invoice.issuer||"tmi"]||ISSUERS.tmi;return`<strong style="font-size:16px;color:${isCredit?"#991b1b":"#111827"}">${invTitle}</strong><br>${esc(issr.name)}<br>Y-tunnus ${esc(issr.businessId)}<br>${esc(issr.address)}<br><span class="small" style="color:#6b7280">IBAN</span> ${esc(issr.iban)}<br><span class="small" style="color:#6b7280">BIC</span> ${esc(issr.bic)}`;})()}</div>
       <div style="text-align:right;line-height:1.7;font-size:14px"><strong style="color:#0a4272;font-size:15px">Nro: ${esc(inv.invNo)}</strong><br>Päivä: ${esc(state.invoice.invoiceDate)}<br>Viite: <strong>${esc(inv.reference)}</strong>${inv.creditRef?`<br><span class="small muted">Hyvittää: ${esc(inv.creditRef.invoiceNo)}</span>`:""}</div>
-    </div>
+      <tbody>${console.log("DEBUG inv:", inv, "lines:", inv.lines); inv.lines.length===0?`<tr><td colspan="4" class="muted">Valitse tapahtuma ja maksaja.</td></tr>`:inv.lines.map(l=>`<tr><td>${esc(l.title)}</td><td class="r">${l.qty}</td><td class="r">${Number(l.unit).toFixed(2)}</td><td class="r" style="${Number(l.total)<0?"color:#991b1b;font-weight:700":""}">${Number(l.total).toFixed(2)}</td></tr>`).join("")}</tbody>
     <div class="hr"></div>
     <div style="font-size:14px;line-height:1.7"><strong>Maksaja:</strong><br>${esc(inv.payerName||"—")}${inv.payerBusinessId?`<div class="small muted">Y-tunnus ${esc(inv.payerBusinessId)}</div>`:""}${inv.payerEmail?`<div><a href="mailto:${esc(inv.payerEmail)}" style="color:#1e40af">${esc(inv.payerEmail)}</a></div>`:""}</div>
     <div class="hr"></div>
