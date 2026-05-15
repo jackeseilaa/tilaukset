@@ -12,7 +12,10 @@
 <title>J Sailing V9.30 — Hallintapaneeli</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400;1,600&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-<style>
+</style>
+<script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+</head>
 :root{
   --ocean-surf:#0a4272;--text:#111827;--text-muted:#374151;--text-light:#6b7280;
   --green:#166534;--green-bg:#dcfce7;--green-border:#86efac;
@@ -286,7 +289,8 @@ function renderAttendeeCard(c){
       ${st==="pending"?`<button class="btn btn-teal btn-sm" data-action="confirm-payment" data-id="${c.id}">✓</button>`:""}
       ${st==="reserve"?`<button class="btn btn-secondary btn-sm" data-action="promote-reserve" data-id="${c.id}">↑</button>`:""}
       <button class="btn btn-secondary btn-sm" data-action="transfer-customer" data-id="${c.id}" title="Siirrä toiselle kurssille">↗️</button>
-      <button class="btn btn-danger btn-sm" data-action="delete-customer" data-id="${c.id}">✕</button>
+      <button class="btn btn-danger btn-sm" data-action="make-credit-invoice" data-id="${x.id}" style="margin-left:4px">↩ Hyvityslasku</button>
+      <button class="btn btn-danger btn-sm" data-action="delete-invoice" data-id="${x.id}" style="margin-left:4px">✕ Poista</button></td></tr>
     </div>
   </div>`;
 }
