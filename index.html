@@ -1465,6 +1465,7 @@ function bind(){
   document.querySelector('[data-action="inv-source"]')?.addEventListener("change",e=>{state.invoice.source=e.target.value;state.invoice.type="full";state.invoice.partialAmount="";state.invoice.creditRefId="";render();});
   document.querySelector('[data-action="inv-tutkinto"]')?.addEventListener("change",e=>{state.invoice.tutkintoId=e.target.value;render();});
   document.querySelector('[data-action="inv-sailing"]')?.addEventListener("change",e=>{state.invoice.sailingId=e.target.value;state.invoice.type="full";state.invoice.creditRefId="";render();});
+    if(state.customers.length===1&&!state.invoice.customerId){state.invoice.customerId=state.customers[0].id;}
   document.querySelector('[data-action="inv-mode"]')?.addEventListener("change",e=>{state.invoice.mode=e.target.value;render();});
   document.querySelector('[data-action="inv-type"]')?.addEventListener("change",e=>{state.invoice.type=e.target.value;render();});
   document.querySelector('[data-action="inv-customer"]')?.addEventListener("change",e=>{state.invoice.customerId=e.target.value;render();});
