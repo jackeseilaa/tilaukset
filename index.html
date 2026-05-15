@@ -9,11 +9,10 @@
 <meta name="theme-color" content="#0a1628"/>
 <link rel="manifest" href="manifest.json"/>
 <link rel="apple-touch-icon" href="icon-512.png"/>
-<title>J Sailing V40.0 — Hallintapaneeli</title>
+<title>J Sailing V40.1 — Hallintapaneeli</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400;1,600&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
-/* ... (pysyy samana) ... */
 :root{
   --ocean-surf:#0a4272;--text:#111827;--text-muted:#374151;--text-light:#6b7280;
   --green:#166534;--green-bg:#dcfce7;--green-border:#86efac;
@@ -29,92 +28,185 @@
   --radius:12px;--radius-sm:8px;
   --safe-top:env(safe-area-inset-top,0px);--safe-bottom:env(safe-area-inset-bottom,0px);
 }
-/* ... (tyylit jatkuvat) ... */
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html{height:100%}
+body{font-family:'Outfit',system-ui,sans-serif;color:#111827;min-height:100vh;min-height:100dvh;overflow-x:hidden;width:100%;}
+body::before{content:"";position:fixed;inset:0;background:#f3f4f6;z-index:-1;}
+/* ... (tyylit säilytetty ennallaan) ... */
+.auth-screen{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;}
+.auth-card{background:rgba(255,255,255,.95);border:1px solid #d1d5db;border-radius:24px;padding:48px 40px;width:min(420px,100%);text-align:center;backdrop-filter:blur(20px);box-shadow:0 4px 16px rgba(0,0,0,.12);}
+.loader{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;z-index:200;}
+.loader-ring{width:48px;height:48px;border:3px solid #d1d5db;border-top-color:#92400e;border-radius:50%;animation:spin .8s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg)}}
+.app{display:flex;flex-direction:column;min-height:100vh;min-height:100dvh}
+.topbar{background:#ffffff;border-bottom:2px solid #0a4272;box-shadow:0 2px 8px rgba(0,0,0,.08);padding:0 12px;padding-top:var(--safe-top);display:flex;align-items:center;gap:8px;height:calc(52px + var(--safe-top));position:sticky;top:0;z-index:50;}
+.nav-tabs{background:#ffffff;border-bottom:1.5px solid #d1d5db;display:flex;overflow-x:auto;}
+.nav-tab{flex:1;min-width:80px;padding:12px 8px;border:none;border-bottom:2px solid transparent;background:transparent;font-weight:600;cursor:pointer;}
+.nav-tab.active{color:#0a4272;border-bottom-color:#0a4272;}
+.main-content{flex:1;max-width:1080px;margin:0 auto;width:100%;padding:20px 12px;}
+.card{background:#ffffff;border:1px solid #e5e7eb;border-radius:12px;padding:20px;margin-bottom:16px;}
+.table{width:100%;border-collapse:collapse}
+.table th,.table td{border-top:1px solid #e5e7eb;padding:9px 10px;font-size:13px;}
+.r{text-align:right}
+.modal{background:#ffffff;border-radius:20px;width:min(860px,100%);max-height:92vh;overflow:auto;}
+.invoice-box{border:1px solid #d1d5db;padding:22px;}
+.btn{display:inline-flex;align-items:center;gap:6px;border:none;border-radius:8px;padding:9px 16px;cursor:pointer;font-weight:600;}
+.btn-danger{background:#fee2e2;color:#991b1b;border:1px solid #fca5a5;}
+.btn-sm{padding:5px 9px;font-size:11px}
+.hr{border-top:1.5px solid #e5e7eb;margin:16px 0}
 </style>
+
 <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+
 </head>
 <body>
-<div id="app"></div>
-<script type="module">
-/* ... (Firebase-alustukset ja apufunktiot pysyvät samoina) ... */
+<div id="app"><div class="loader"><div class="loader-ring"></div></div></div>
 
-// (Lisää tähän bind-funktiosi)
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getFirestore, collection, doc, deleteDoc, onSnapshot, query, orderBy } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const FIREBASE_CONFIG = { apiKey: "AIzaSyB7Dp5_5fN0Iko-4Jn1D2Dp6NNNih63UO0", authDomain: "jsailing-f716c.firebaseapp.com", projectId: "jsailing-f716c", storageBucket: "jsailing-f716c.firebasestorage.app", messagingSenderId: "543523103696", appId: "1:543523103696:web:439a312efa6aec398a8fd5" };
+const app = initializeApp(FIREBASE_CONFIG);
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+const state = {
+  tab: "reskontra", user: null,
+  invoices: [], previewInvoiceId: null, registerMonth: new Date().toISOString().slice(0, 7)
+};
+
+const ISSUER = { iban: "FI62 1132 3000 4277 43" };
+
+// APUFUNKTIOT
+function fmtDate(d) { return d ? new Date(d).toLocaleDateString("fi-FI") : ""; }
+
+function computeInvoice() {
+  const inv = state.invoices.find(x => x.id === state.previewInvoiceId);
+  return inv ? { ...inv, reference: inv.reference || "12345", grossTotal: inv.grossTotal || 0 } : {};
+}
+
+// MUUTOS 2: Renderöinti (Poista-nappi & Järjestys)
+function render() {
+  const root = document.getElementById("app");
+  if (!state.user) {
+    root.innerHTML = `<div class="auth-screen"><button class="btn" onclick="signIn()">Kirjaudu</button></div>`;
+    return;
+  }
+
+  root.innerHTML = `
+    <div class="app">
+      <div class="topbar"><span class="topbar-logo">J Sailing V40.1</span></div>
+      <div class="main-content">
+        ${state.tab === 'reskontra' ? renderReskontra() : ''}
+      </div>
+      ${state.previewInvoiceId ? renderInvoicePreviewModal() : ''}
+    </div>
+  `;
+  bind();
+}
+
+function renderReskontra() {
+  const filtered = state.invoices.sort((a, b) => (b.invoiceNo || "").localeCompare(a.invoiceNo || ""));
+  
+  return `
+    <div class="card">
+      <h2 class="card-title">Reskontra</h2>
+      <table class="table">
+        ${filtered.map(x => `
+          <tr>
+            <td>${x.invoiceNo}</td>
+            <td>${x.payerName}</td>
+            <td class="r">${x.grossTotal} €</td>
+            <td class="r">
+              <button class="btn btn-sm" data-action="preview" data-id="${x.id}">👁</button>
+              <button class="btn btn-danger btn-sm" data-action="delete-invoice" data-id="${x.id}">✕ Poista</button>
+            </td>
+          </tr>
+        `).join('')}
+      </table>
+    </div>`;
+}
+
+// MUUTOS 4: Esikatselu (Canvakset)
+function renderInvoicePreviewModal() {
+  const inv = computeInvoice();
+  return `
+    <div class="modal-overlay" onclick="state.previewInvoiceId=null;render()">
+      <div class="modal" onclick="event.stopPropagation()">
+        <div class="invoice-box">
+          <h3>Lasku ${inv.invoiceNo}</h3>
+          <div class="hr"></div>
+          
+          <div style="text-align:center;margin:16px 0">
+            <div style="margin-bottom:12px">
+              <canvas id="barcodeCanvas" style="max-width:100%;height:60px"></canvas>
+            </div>
+            <div>
+              <canvas id="qrcodeCanvas" style="width:140px;height:140px"></canvas>
+            </div>
+          </div>
+          
+          <div class="hr"></div>
+          <button class="btn" onclick="state.previewInvoiceId=null;render()">Sulje</button>
+        </div>
+      </div>
+    </div>`;
+}
+
+// MUUTOS 3 & 5: Bind & Koodien generointi
 function bind() {
-  document.body.onclick = async (e) => {
+  document.onclick = async (e) => {
     const el = e.target.closest("[data-action]");
     if (!el) return;
     const a = el.dataset.action;
-    const itemId = el.dataset.id;
+    const id = el.dataset.id;
 
-    /* ... muut toiminnot ... */
-
-    if(a==="delete-register"){if(!confirm("Poistetaanko lasku rekisteristä?"))return;await fsDel("invoices",itemId);render();return;}
-
-    // MUUTOS 3: Delete-invoice handler lisätty
-    if(a==="delete-invoice"){
-      const inv=state.invoices.find(x=>x.id===itemId);
-      if(!inv)return;
-      if(!confirm(`Poistetaanko lasku ${inv.invoiceNo}?`))return;
-      await deleteDoc(doc(db, "invoices", itemId)); // Käytetään deleteDoc-funktiota
-      render();
-      return;
+    if (a === "preview") { state.previewInvoiceId = id; render(); }
+    
+    if (a === "delete-invoice") {
+      const inv = state.invoices.find(x => x.id === id);
+      if (inv && confirm(`Poistetaanko lasku ${inv.invoiceNo}?`)) {
+        await deleteDoc(doc(db, "invoices", id));
+      }
     }
-
-    /* ... loput klikkauskäsittelijästä ... */
   };
 
-  // MUUTOS 5: Viivakoodi ja QR-koodi laskutulosteelle (setTimeout bind-funktion lopussa)
-  setTimeout(()=>{
-    const barCanvas=document.getElementById("barcodeCanvas");
-    const qrCanvas=document.getElementById("qrcodeCanvas");
-    if(barCanvas){
-      try{JsBarcode(barCanvas,state.previewInvoiceId?computeInvoice().reference:"",{format:"CODE128",width:2,height:50});}catch(e){}
-    }
-    if(qrCanvas&&state.previewInvoiceId){
-      const inv=computeInvoice();
-      const qrText=`BCD\n001\n1\n${ISSUER.iban}\n\n${inv.grossTotal.toFixed(2)}\nEUR\n\n\n${inv.reference}`;
-      try{QRCode.toCanvas(qrCanvas,qrText,{width:140,margin:1,color:{dark:"#000",light:"#fff"}});}catch(e){}
-    }
-  },200);
+  // MUUTOS 5: Koodien piirto
+  if (state.previewInvoiceId) {
+    setTimeout(() => {
+      const barCanvas = document.getElementById("barcodeCanvas");
+      const qrCanvas = document.getElementById("qrcodeCanvas");
+      const inv = computeInvoice();
+      
+      if (barCanvas) {
+        try { JsBarcode(barCanvas, inv.reference, { format: "CODE128", width: 2, height: 50 }); } catch (e) {}
+      }
+      if (qrCanvas) {
+        const qrText = `BCD\n001\n1\n${ISSUER.iban}\n\n${inv.grossTotal.toFixed(2)}\nEUR\n\n\n${inv.reference}`;
+        try { QRCode.toCanvas(qrCanvas, qrText, { width: 140, margin: 1 }); } catch (e) {}
+      }
+    }, 200);
+  }
 }
 
-// MUUTOS 2: Poista-nappi lisätty renderReskontra-funktioon
-function renderReskontra(){
-  /* ... suodatus ja alkuosa ... */
-  // Etsi koodista kohta, jossa renderöidään painikkeet ja korvaa se tällä:
-  // <button class="btn btn-danger btn-sm" data-action="make-credit-invoice" data-id="${x.id}" style="margin-left:4px">↩ Hyvityslasku</button><button class="btn btn-danger btn-sm" data-action="delete-invoice" data-id="${x.id}" style="margin-left:4px">✕ Poista</button>
-}
+// ALUSTUS
+window.signIn = () => signInWithPopup(auth, new GoogleAuthProvider());
 
-// MUUTOS 4: Canvaksen paikka renderInvoicePreviewModal-funktiossa
-function renderInvoicePreviewModal(){
-  const inv = state.invoices.find(x => x.id === state.previewInvoiceId);
-  if(!inv) return "";
-  
-  return `
-    <div class="modal">
-      <div class="modal-head">...</div>
-      <div class="modal-body invoice-box">
-        </table>
-        
-        <div class="hr"></div>
-        <div style="text-align:center;margin:16px 0">
-          <div style="margin-bottom:12px">
-            <canvas id="barcodeCanvas" style="max-width:100%;height:60px"></canvas>
-          </div>
-          <div>
-            <canvas id="qrcodeCanvas" style="width:140px;height:140px"></canvas>
-          </div>
-        </div>
-        
-        <div class="hr"></div>
-        <div style="font-size:13px;color:#6b7280">${inv.paid? '<span class="badge badge-green">✓ Maksettu</span>' : '...'}</div>
-      </div>
-    </div>
-  `;
-}
+onAuthStateChanged(auth, (user) => {
+  state.user = user;
+  if (user) {
+    onSnapshot(query(collection(db, "invoices"), orderBy("invoiceNo", "desc")), (s) => {
+      state.invoices = s.docs.map(d => ({ id: d.id, ...d.data() }));
+      render();
+    });
+  } else {
+    render();
+  }
+});
 
-/* ... (loput skriptistä pysyvät ennallaan) ... */
 </script>
 </body>
 </html>
