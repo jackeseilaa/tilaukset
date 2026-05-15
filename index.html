@@ -787,7 +787,9 @@ function renderInvoicing(){
   const hasFee=!isTutkinto&&selS&&Number(selS.reservationFee||0)>0;
   const itype=state.invoice.type||"full",isCredit=itype==="credit",isPartial=itype==="partial";
   const creditRefOpts=state.invoices.filter(x=>!x.isCredit).sort((a,b)=>(a.invoiceDate||"").localeCompare(b.invoiceDate||"")).map(x=>`<option value="${x.id}" ${x.id===state.invoice.creditRefId?"selected":""}>${esc(x.invoiceNo)} — ${esc(x.payerName)} — ${Number(x.grossTotal||0).toFixed(2)} €</option>`).join("");
+  const debugMsg=!state.invoice.sailingId&&!state.invoice.tutkintoId?"Valitse purjehdus tai tutkinto":!state.invoice.customerId?"Valitse asiakas":"";
   const invTitle=isCredit?"HYVITYSLASKU":itype==="reservation"?"LASKU — VARAUSMAKSU":itype==="partial"?"LASKU — OSASUORITUS":"LASKU — LOPPULASKU";
+  if(debugMsg)lines.push({title:debugMsg,qty:"",unit:"",total:"",isDebug:true});
   return`<div class="card noPrint"><div class="card-title">Laskutus</div><div class="card-sub">${editingInv?`Muokkaat laskua <strong>${esc(editingInv.invoiceNo)}</strong>`:'Luo lasku — valitse laskutettava kohde'}</div>${editingInv?`<div class="infobox infobox-amber" style="margin-bottom:12px">✎ Muokkaustila — laskunumero <strong>${esc(editingInv.invoiceNo)}</strong> säilyy · <button class="btn btn-secondary btn-sm" data-action="cancel-edit-invoice" style="margin-left:8px">✕ Peruuta</button></div>`:""}
     <div class="hr"></div>
     <div class="grid2" style="margin-bottom:14px">
@@ -908,7 +910,9 @@ function renderModal(){
 function renderInvoicePreviewModal(){
   const inv=state.invoices.find(x=>x.id===state.previewInvoiceId);if(!inv)return"";
   const isCredit=inv.isCredit||inv.itype==="credit";
+  const debugMsg=!state.invoice.sailingId&&!state.invoice.tutkintoId?"Valitse purjehdus tai tutkinto":!state.invoice.customerId?"Valitse asiakas":"";
   const invTitle=isCredit?"HYVITYSLASKU":inv.itype==="reservation"?"LASKU — VARAUSMAKSU":inv.itype==="partial"?"LASKU — OSASUORITUS":"LASKU — LOPPULASKU";
+  if(debugMsg)lines.push({title:debugMsg,qty:"",unit:"",total:"",isDebug:true});
   const vatPct=Number(inv.vatRatePct||25.5).toFixed(1);
   return`<div class="overlay" data-action="close-modal"><div class="modal" onclick="event.stopPropagation()">
     <div class="modal-head"><div class="row-between"><div><div class="modal-title">Lasku ${esc(inv.invoiceNo||"")}</div><div class="card-sub">${esc(inv.payerName||"")} · ${fmtDate(inv.invoiceDate)}</div></div><div class="row"><button class="btn btn-primary btn-sm" data-action="print-preview">🖨️ Tulosta</button><button class="btn btn-secondary btn-sm" data-action="close-modal">✕</button></div></div></div>
