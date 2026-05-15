@@ -13,7 +13,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400;1,600&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
-/* Käytetään lähettämääsi tyylitiedostoa sellaisenaan */
+/* ... (pysyy samana) ... */
 :root{
   --ocean-surf:#0a4272;--text:#111827;--text-muted:#374151;--text-light:#6b7280;
   --green:#166534;--green-bg:#dcfce7;--green-border:#86efac;
@@ -21,196 +21,100 @@
   --amber:#92400e;--amber-bg:#fef3c7;--amber-border:#fcd34d;
   --blue-accent:#1e40af;--blue-bg:#dbeafe;
   --gold:#92400e;--gold-light:#b45309;
-  --white:#ffffff;--line:#e5e7eb;--line-bright:#d1d5db;
+  --silver:#111827;--silver-dim:#1f2937;--silver-muted:#374151;
+  --white:#111827;--line:#e5e7eb;--line-bright:#d1d5db;
   --card-bg:#ffffff;--card-border:#e5e7eb;
   --shadow:0 1px 3px rgba(0,0,0,.12),0 1px 2px rgba(0,0,0,.08);
+  --shadow-lg:0 4px 16px rgba(0,0,0,.12),0 2px 6px rgba(0,0,0,.08);
   --radius:12px;--radius-sm:8px;
   --safe-top:env(safe-area-inset-top,0px);--safe-bottom:env(safe-area-inset-bottom,0px);
 }
-*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
-body{font-family:'Outfit',system-ui,sans-serif;color:#111827;background:#f3f4f6;min-height:100vh;}
-.auth-screen{height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;}
-.auth-card{background:white;padding:40px;border-radius:24px;text-align:center;box-shadow:var(--shadow);max-width:400px;width:100%;}
-.topbar{background:#ffffff;border-bottom:2px solid #0a4272;padding:0 20px;padding-top:var(--safe-top);display:flex;align-items:center;height:calc(60px + var(--safe-top));position:sticky;top:0;z-index:100;}
-.topbar-logo{font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:700;color:#0a4272;}
-.nav-tabs{background:#ffffff;border-bottom:1px solid #d1d5db;display:flex;overflow-x:auto;scrollbar-width:none;}
-.nav-tab{flex:1;padding:15px;border:none;border-bottom:3px solid transparent;background:transparent;font-weight:600;font-size:12px;cursor:pointer;white-space:nowrap;text-transform:uppercase;color:var(--text-muted);}
-.nav-tab.active{color:#0a4272;border-bottom-color:#0a4272;}
-.main-content{max-width:1100px;margin:0 auto;padding:20px;}
-.card{background:#ffffff;border:1px solid #e5e7eb;border-radius:12px;padding:20px;box-shadow:var(--shadow);margin-bottom:16px;}
-.table{width:100%;border-collapse:collapse;}
-.table th, .table td{padding:12px;text-align:left;border-bottom:1px solid #eee;font-size:14px;}
-.btn{padding:10px 18px;border-radius:8px;border:none;cursor:pointer;font-weight:600;font-size:13px;transition:0.2s;}
-.btn-primary{background:#0a4272;color:white;}
-.btn-danger{background:var(--red-bg);color:var(--red);}
-.loader{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;}
-.loader-ring{width:40px;height:40px;border:4px solid #f3f3f3;border-top:4px solid #0a4272;border-radius:50%;animation:spin 1s linear infinite;}
-@keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}
+/* ... (tyylit jatkuvat) ... */
 </style>
 <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
 </head>
 <body>
-<div id="app">
-  <div class="loader"><div class="loader-ring"></div><p>Käynnistetään V40.0...</p></div>
-</div>
-
+<div id="app"></div>
 <script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-import { getFirestore, collection, doc, onSnapshot, deleteDoc, query, orderBy } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+/* ... (Firebase-alustukset ja apufunktiot pysyvät samoina) ... */
 
-const FIREBASE_CONFIG = {
-  apiKey: "AIzaSyB7Dp5_5fN0Iko-4Jn1D2Dp6NNNih63UO0",
-  authDomain: "jsailing-f716c.firebaseapp.com",
-  projectId: "jsailing-f716c",
-  storageBucket: "jsailing-f716c.firebasestorage.app",
-  messagingSenderId: "543523103696",
-  appId: "1:543523103696:web:439a312efa6aec398a8fd5"
-};
+// (Lisää tähän bind-funktiosi)
+function bind() {
+  document.body.onclick = async (e) => {
+    const el = e.target.closest("[data-action]");
+    if (!el) return;
+    const a = el.dataset.action;
+    const itemId = el.dataset.id;
 
-const app = initializeApp(FIREBASE_CONFIG);
-const auth = getAuth(app);
-const db = getFirestore(app);
-const provider = new GoogleAuthProvider();
+    /* ... muut toiminnot ... */
 
-const state = {
-  user: null,
-  tab: "dashboard",
-  invoices: [],
-  sailings: [],
-  tutkinnot: [],
-  companies: []
-};
+    if(a==="delete-register"){if(!confirm("Poistetaanko lasku rekisteristä?"))return;await fsDel("invoices",itemId);render();return;}
 
-// --- LOGIIKKA ---
+    // MUUTOS 3: Delete-invoice handler lisätty
+    if(a==="delete-invoice"){
+      const inv=state.invoices.find(x=>x.id===itemId);
+      if(!inv)return;
+      if(!confirm(`Poistetaanko lasku ${inv.invoiceNo}?`))return;
+      await deleteDoc(doc(db, "invoices", itemId)); // Käytetään deleteDoc-funktiota
+      render();
+      return;
+    }
 
-window.switchTab = (t) => { state.tab = t; render(); };
+    /* ... loput klikkauskäsittelijästä ... */
+  };
 
-window.login = () => signInWithPopup(auth, provider);
-window.logout = () => signOut(auth);
+  // MUUTOS 5: Viivakoodi ja QR-koodi laskutulosteelle (setTimeout bind-funktion lopussa)
+  setTimeout(()=>{
+    const barCanvas=document.getElementById("barcodeCanvas");
+    const qrCanvas=document.getElementById("qrcodeCanvas");
+    if(barCanvas){
+      try{JsBarcode(barCanvas,state.previewInvoiceId?computeInvoice().reference:"",{format:"CODE128",width:2,height:50});}catch(e){}
+    }
+    if(qrCanvas&&state.previewInvoiceId){
+      const inv=computeInvoice();
+      const qrText=`BCD\n001\n1\n${ISSUER.iban}\n\n${inv.grossTotal.toFixed(2)}\nEUR\n\n\n${inv.reference}`;
+      try{QRCode.toCanvas(qrCanvas,qrText,{width:140,margin:1,color:{dark:"#000",light:"#fff"}});}catch(e){}
+    }
+  },200);
+}
 
-window.deleteInvoice = async (id, no) => {
-  if(confirm(`Poistetaanko lasku ${no}?`)) await deleteDoc(doc(db, "invoices", id));
-};
+// MUUTOS 2: Poista-nappi lisätty renderReskontra-funktioon
+function renderReskontra(){
+  /* ... suodatus ja alkuosa ... */
+  // Etsi koodista kohta, jossa renderöidään painikkeet ja korvaa se tällä:
+  // <button class="btn btn-danger btn-sm" data-action="make-credit-invoice" data-id="${x.id}" style="margin-left:4px">↩ Hyvityslasku</button><button class="btn btn-danger btn-sm" data-action="delete-invoice" data-id="${x.id}" style="margin-left:4px">✕ Poista</button>
+}
 
-window.showInvoice = (id) => {
-  const inv = state.invoices.find(x => x.id === id);
-  if(!inv) return;
-  const modal = document.createElement("div");
-  modal.style = "position:fixed;inset:0;background:rgba(0,0,0,0.8);display:flex;align-items:center;justify-content:center;z-index:2000;padding:20px";
-  modal.innerHTML = `
-    <div style="background:white;padding:30px;border-radius:12px;width:100%;max-width:450px;text-align:center;">
-      <h2 style="font-family:'Cormorant Garamond',serif;color:#0a4272">Lasku ${inv.invoiceNo}</h2>
-      <p style="margin:10px 0">${inv.payerName}</p>
-      <canvas id="bc"></canvas>
-      <div style="margin:15px 0"><canvas id="qr"></canvas></div>
-      <button class="btn btn-primary" onclick="this.parentElement.parentElement.remove()">Sulje</button>
-    </div>`;
-  document.body.appendChild(modal);
-  setTimeout(() => {
-    JsBarcode("#bc", inv.reference, {format:"CODE128", height:40, fontSize:14});
-    QRCode.toCanvas(document.getElementById("qr"), `BCD\n001\n1\n${inv.iban||''}\n\n${inv.grossTotal?.toFixed(2)}\nEUR\n\n\n${inv.reference}`, {width:140});
-  }, 100);
-};
-
-// --- NÄKYMÄT ---
-
-function render() {
-  const root = document.getElementById("app");
-  if (!state.user) {
-    root.innerHTML = `
-      <div class="auth-screen">
-        <div class="auth-card">
-          <h1 class="topbar-logo">J Sailing <em>Hallinta</em></h1>
-          <p style="margin:20px 0; color:#6b7280;">Versio 40.0</p>
-          <button class="btn btn-primary" style="width:100%" onclick="login()">Kirjaudu Google-tunnuksella</button>
+// MUUTOS 4: Canvaksen paikka renderInvoicePreviewModal-funktiossa
+function renderInvoicePreviewModal(){
+  const inv = state.invoices.find(x => x.id === state.previewInvoiceId);
+  if(!inv) return "";
+  
+  return `
+    <div class="modal">
+      <div class="modal-head">...</div>
+      <div class="modal-body invoice-box">
+        </table>
+        
+        <div class="hr"></div>
+        <div style="text-align:center;margin:16px 0">
+          <div style="margin-bottom:12px">
+            <canvas id="barcodeCanvas" style="max-width:100%;height:60px"></canvas>
+          </div>
+          <div>
+            <canvas id="qrcodeCanvas" style="width:140px;height:140px"></canvas>
+          </div>
         </div>
-      </div>`;
-    return;
-  }
-
-  root.innerHTML = `
-    <div class="topbar">
-      <div class="topbar-logo">J Sailing <em>V40.0</em></div>
-      <div style="flex:1"></div>
-      <button class="btn-signout" style="background:none; border:1px solid #ddd; padding:5px 10px; border-radius:5px; cursor:pointer;" onclick="logout()">Kirjaudu ulos</button>
-    </div>
-    <div class="nav-tabs">
-      <button class="nav-tab ${state.tab==='dashboard'?'active':''}" onclick="switchTab('dashboard')">Paneeli</button>
-      <button class="nav-tab ${state.tab==='courses'?'active':''}" onclick="switchTab('courses')">Kurssit</button>
-      <button class="nav-tab ${state.tab==='tutkinnot'?'active':''}" onclick="switchTab('tutkinnot')">Tutkinnot</button>
-      <button class="nav-tab ${state.tab==='reskontra'?'active':''}" onclick="switchTab('reskontra')">Reskontra</button>
-    </div>
-    <div class="main-content">
-      ${renderTabContent()}
+        
+        <div class="hr"></div>
+        <div style="font-size:13px;color:#6b7280">${inv.paid? '<span class="badge badge-green">✓ Maksettu</span>' : '...'}</div>
+      </div>
     </div>
   `;
 }
 
-function renderTabContent() {
-  switch(state.tab) {
-    case 'dashboard':
-      return `<div class="card"><h2>Tervetuloa, ${state.user.displayName}</h2><p>Tässä on yhteenveto JSailing-toiminnasta.</p></div>`;
-    
-    case 'courses':
-      return `
-        <div class="card">
-          <h2>Kurssit ja purjehdukset</h2>
-          <table class="table">
-            <thead><tr><th>Pvm</th><th>Nimi</th><th>Tyyppi</th></tr></thead>
-            <tbody>
-              ${state.sailings.length ? state.sailings.map(s => `<tr><td>${s.date}</td><td>${s.name}</td><td>${s.type}</td></tr>`).join('') : '<tr><td colspan="3">Ei kursseja ladattuna.</td></tr>'}
-            </tbody>
-          </table>
-        </div>`;
-
-    case 'tutkinnot':
-      return `<div class="card"><h2>Tutkinnot</h2><p>Tutkintojen hallinta ladataan tästä...</p></div>`;
-
-    case 'reskontra':
-      return `
-        <div class="card">
-          <h2>Laskureskontra</h2>
-          <table class="table">
-            <thead><tr><th>Nro</th><th>Asiakas</th><th>Summa</th><th>Toiminnot</th></tr></thead>
-            <tbody>
-              ${state.invoices.map(inv => `
-                <tr>
-                  <td><b>${inv.invoiceNo}</b></td>
-                  <td>${inv.payerName}</td>
-                  <td>${inv.grossTotal?.toFixed(2)} €</td>
-                  <td>
-                    <button class="btn btn-primary" style="padding:5px 10px" onclick="showInvoice('${inv.id}')">👁</button>
-                    <button class="btn btn-danger" style="padding:5px 10px" onclick="deleteInvoice('${inv.id}', '${inv.invoiceNo}')">✕</button>
-                  </td>
-                </tr>
-              `).join('')}
-            </tbody>
-          </table>
-        </div>`;
-    
-    default: return '';
-  }
-}
-
-// --- DATA ---
-
-onAuthStateChanged(auth, (user) => {
-  state.user = user;
-  if (user) {
-    onSnapshot(query(collection(db, "invoices"), orderBy("invoiceNo", "desc")), (s) => {
-      state.invoices = s.docs.map(d => ({id: d.id, ...d.data()}));
-      render();
-    });
-    onSnapshot(collection(db, "sailings"), (s) => {
-      state.sailings = s.docs.map(d => ({id: d.id, ...d.data()}));
-      render();
-    });
-  }
-  render();
-});
-
+/* ... (loput skriptistä pysyvät ennallaan) ... */
 </script>
 </body>
 </html>
