@@ -789,6 +789,10 @@ function renderInvoicing(){
   const creditRefOpts=state.invoices.filter(x=>!x.isCredit).sort((a,b)=>(a.invoiceDate||"").localeCompare(b.invoiceDate||"")).map(x=>`<option value="${x.id}" ${x.id===state.invoice.creditRefId?"selected":""}>${esc(x.invoiceNo)} — ${esc(x.payerName)} — ${Number(x.grossTotal||0).toFixed(2)} €</option>`).join("");
   const invTitle=isCredit?"HYVITYSLASKU":itype==="reservation"?"LASKU — VARAUSMAKSU":itype==="partial"?"LASKU — OSASUORITUS":"LASKU — LOPPULASKU";
   return`<div class="card noPrint"><div class="card-title">Laskutus</div><div class="card-sub">${editingInv?`Muokkaat laskua <strong>${esc(editingInv.invoiceNo)}</strong>`:'Luo lasku — valitse laskutettava kohde'}</div>${editingInv?`<div class="infobox infobox-amber" style="margin-bottom:12px">✎ Muokkaustila — laskunumero <strong>${esc(editingInv.invoiceNo)}</strong> säilyy · <button class="btn btn-secondary btn-sm" data-action="cancel-edit-invoice" style="margin-left:8px">✕ Peruuta</button></div>`:""}
+    ${state.sailings.length===0?`<div class="infobox infobox-red" style="margin-bottom:12px">⚠️ Ei purjehduksia! Luo purjehdus ensin Kalenterista.</div>`:""}
+    ${state.customers.length===0?`<div class="infobox infobox-red" style="margin-bottom:12px">⚠️ Ei asiakkaita! Rekisteröi asiakkaita Rekisterissä.</div>`:""}
+    ${state.tutkinnot.length===0?`<div class="infobox infobox-orange" style="margin-bottom:12px">ℹ️ Ei tutkintoja. Luo tutkinto jos haluat laskuttaa tutkinnosta.</div>`:""}
+
     <div class="hr"></div>
     <div class="grid2" style="margin-bottom:14px">
       <div class="field"><label class="lbl">Laskuttaja</label><select data-action="inv-issuer"><option value="tmi" ${(state.invoice.issuer||"tmi")==="tmi"?"selected":""}>J Sailing Tmi</option><option value="oy" ${state.invoice.issuer==="oy"?"selected":""}>AJarmo Oy</option></select></div>
