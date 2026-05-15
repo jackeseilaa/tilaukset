@@ -1854,6 +1854,14 @@ table{width:100%;border-collapse:collapse}
       }
       if(a==="cancel-edit-invoice"){state.editInvoiceId=null;render();return;}
       if(a==="delete-register"){if(!confirm("Poistetaanko lasku rekisteristä?"))return;await fsDel("invoices",itemId);render();return;}
+      if(a==="delete-invoice"){
+ const inv=state.invoices.find(x=>x.id===itemId);
+ if(!inv)return;
+ if(!confirm(`Poistetaanko lasku ${inv.invoiceNo}?`))return;
+ await fsDel("invoices",itemId);
+ render();
+ return;
+}
       if(a==="reskontra-mark-paid"){
         const x=state.invoices.find(z=>z.id===itemId);if(!x)return;
         const pd=prompt(`Merkitään ${x.invoiceNo} maksetuksi.\nMaksupäivä (YYYY-MM-DD):`,x.paidDate||today());
