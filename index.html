@@ -414,6 +414,7 @@ function computeInvoice(overrideState){
       }
     }
   }
+  if(isCredit&&inv.creditRefId){const origInv=state.invoices.find(x=>x.id===inv.creditRefId);if(origInv&&origInv.lines){lines.unshift({title:`📋 ALKUPERÄISEN LASKUN RIVIT (${origInv.invoiceNo}):`,qty:"",unit:"",total:"",isHeader:true},...origInv.lines);}}
   const creditRef=isCredit?state.invoices.find(x=>x.id===inv.creditRefId):null;
   const net=(grossTotal||0)/(1+rate),vat=(grossTotal||0)-net;
   const invNo=nextInvoiceNumber();
