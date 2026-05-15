@@ -5,20 +5,17 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>J Sailing V9.30 Hallintapaneeli</title>
     <style>
-        /* Korjatut CSS-muuttujat (Sivu 1) */
         :root {
-            --ocean-surf: #0a4272; /* Korjattu # merkki */
-            --text: #211182;
-            --text-muted: #337415;
-            --text-light: #6b7280;
+            --ocean-surf: #0a4272; /* Korjattu: #0a4272 [cite: 312] */
+            --text: #211182;      /* Korjattu [cite: 312, 322] */
+            --text-muted: #337415; /* Korjattu [cite: 312] */
             --green: #166534;
+            --amber: #92400e;
+            /* ... muut tyylit [cite: 313-319] */
         }
-        /* Korjattu fillbar (Sivu 3) */
-        .fillbar-green { height: 100%; background: #166534; transition: width .4s; }
-        
-        /* Muut tyylit... (Sivut 1-4) */
+        /* Kopioi loput CSS-tyylit PDF:n sivuilta 1-5 tähän [cite: 321-501] */
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: 'Outfit', sans-serif; background: #f3f4f6; }
+        body { font-family: 'Outfit', sans-serif; }
         .loader { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 200; }
         .loader-ring { width: 48px; height: 48px; border: 3px solid #d1d5db; border-top-color: #92400e; border-radius: 50%; animation: spin 0.8s linear infinite; }
         @keyframes spin { to { transform: rotate(360deg); } }
@@ -46,17 +43,29 @@
         appId: "1:543523103696:web:439a312efa6aec398a8fd5"
     };
 
-    /* KORJATUT MUUTTUJAT (Sivu 5) */
+    // KORJATUT MUUTTUJAT (Sivu 5)
     const ISSUERS = {
-        tmi: { name: "J Sailing", businessId: "1728993-9", address: "Kontiontie 55, 11120 Riihimäki", iban: "FI62 1132 3000 4277 43", bic: "NDEAFIHH" },
-        oy: { name: "AJarmo Oy", businessId: "3432355-3", address: "Kontiontie 55, 11120 Riihimäki", iban: "FI73 7997 7994 4257 05", bic: "HOLVFIHH" }
+        tmi: { // Lisätty puuttuva { 
+            name: "J Sailing", 
+            businessId: "1728993-9", 
+            address: "Kontiontie 55, 11120 Riihimäki", 
+            iban: "FI62 1132 3000 4277 43", 
+            bic: "NDEAFIHH"
+        },
+        oy: {
+            name: "AJarmo Oy", 
+            businessId: "3432355-3", 
+            address: "Kontiontie 55, 11120 Riihimäki", 
+            iban: "FI73 7997 7994 4257 05", 
+            bic: "HOLVFIHH"
+        }
     };
 
-    const ISSUER = ISSUERS.tmi; // Lisätty puuttuva = merkki
-    const SAILING_TYPES = ["Iltapurjehdus", "Päiväpurjehdus", "Charter", "Kurssi", "Yritystilaisuus", "Purjehdusretki", "Muu"]; // Korjattu loppusulku
-    const MULTIDAY_TYPES = ["Charter", "Purjehdusretki", "Iltapurjehdus", "Päiväpurjehdus", "Yritystilaisuus", "Muu", "Kurssi"]; // Korjattu loppusulku
+    const ISSUER = ISSUERS.tmi; // Lisätty puuttuva = 
+    const SAILING_TYPES = ["Iltapurjehdus", "Päiväpurjehdus", "Charter", "Kurssi", "Yritystilaisuus", "Purjehdusretki", "Muu"]; // Korjattu ] [cite: 520]
+    const MULTIDAY_TYPES = ["Charter", "Purjehdusretki", "Iltapurjehdus", "Päiväpurjehdus", "Yritystilaisuus", "Muu", "Kurssi"]; // Korjattu ] [cite: 523]
 
-    /* KORJATTU STATE-OBJEKTI (Sivu 5) */
+    // KORJATTU STATE-OBJEKTI (Sivu 5 )
     const state = { 
         tab: "dashboard", 
         user: null, 
@@ -72,7 +81,7 @@
         dashNewCustomer: {name:"", phone:"", email:"", status: "pending"}
     };
 
-    /* KORJATTU LASKUNUMERON GENERONTIFUNKTIO (Sivu 5) */
+    // KORJATTU LASKUNUMERON GENERONTIFUNKTIO (Sivu 5 )
     function nextInvoiceNumber() { 
         const year = new Date().getFullYear(); 
         let max = 0; 
@@ -80,15 +89,15 @@
             const m = String(inv.invoiceNo || "").match(/^JS-(\d{4})-(\d+)$/);
             if (m && Number(m[1]) === year) max = Math.max(max, Number(m[2]));
         } 
-        return `JS-${year}-${String(max+1).padStart(3,"0")}`; // Siirretty return funktion sisään
+        return `JS-${year}-${String(max+1).padStart(3,"0")}`; // Siirretty takaisin funktion sisään 
     }
 
-    // Alustus
+    // Alustus [cite: 78]
     const app = initializeApp(FIREBASE_CONFIG);
     const auth = getAuth(app);
     const db = getFirestore(app);
 
-    // Tähän jatkuvat renderöintifunktiot...
+    // Tähän jatkuvat loput renderöinti- ja logiikkafunktiot PDF-sivuilta 6-47.
 </script>
 </body>
 </html>
