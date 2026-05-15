@@ -789,10 +789,6 @@ function renderInvoicing(){
   const creditRefOpts=state.invoices.filter(x=>!x.isCredit).sort((a,b)=>(a.invoiceDate||"").localeCompare(b.invoiceDate||"")).map(x=>`<option value="${x.id}" ${x.id===state.invoice.creditRefId?"selected":""}>${esc(x.invoiceNo)} — ${esc(x.payerName)} — ${Number(x.grossTotal||0).toFixed(2)} €</option>`).join("");
   const invTitle=isCredit?"HYVITYSLASKU":itype==="reservation"?"LASKU — VARAUSMAKSU":itype==="partial"?"LASKU — OSASUORITUS":"LASKU — LOPPULASKU";
   return`<div class="card noPrint"><div class="card-title">Laskutus</div><div class="card-sub">${editingInv?`Muokkaat laskua <strong>${esc(editingInv.invoiceNo)}</strong>`:'Luo lasku — valitse laskutettava kohde'}</div>${editingInv?`<div class="infobox infobox-amber" style="margin-bottom:12px">✎ Muokkaustila — laskunumero <strong>${esc(editingInv.invoiceNo)}</strong> säilyy · <button class="btn btn-secondary btn-sm" data-action="cancel-edit-invoice" style="margin-left:8px">✕ Peruuta</button></div>`:""}
-    ${state.sailings.length===0?`<div class="infobox infobox-red" style="margin-bottom:12px">⚠️ Ei purjehduksia! Luo purjehdus ensin Kalenterista.</div>`:""}
-    ${state.customers.length===0?`<div class="infobox infobox-red" style="margin-bottom:12px">⚠️ Ei asiakkaita! Rekisteröi asiakkaita Rekisterissä.</div>`:""}
-    ${state.tutkinnot.length===0?`<div class="infobox infobox-orange" style="margin-bottom:12px">ℹ️ Ei tutkintoja. Luo tutkinto jos haluat laskuttaa tutkinnosta.</div>`:""}
-
     <div class="hr"></div>
     <div class="grid2" style="margin-bottom:14px">
       <div class="field"><label class="lbl">Laskuttaja</label><select data-action="inv-issuer"><option value="tmi" ${(state.invoice.issuer||"tmi")==="tmi"?"selected":""}>J Sailing Tmi</option><option value="oy" ${state.invoice.issuer==="oy"?"selected":""}>AJarmo Oy</option></select></div>
@@ -816,7 +812,7 @@ function renderInvoicing(){
     <div class="row-between">
       <div style="line-height:1.7;font-size:14px">${(()=>{const issr=ISSUERS[state.invoice.issuer||"tmi"]||ISSUERS.tmi;return`<strong style="font-size:16px;color:${isCredit?"#991b1b":"#111827"}">${invTitle}</strong><br>${esc(issr.name)}<br>Y-tunnus ${esc(issr.businessId)}<br>${esc(issr.address)}<br><span class="small" style="color:#6b7280">IBAN</span> ${esc(issr.iban)}<br><span class="small" style="color:#6b7280">BIC</span> ${esc(issr.bic)}`;})()}</div>
       <div style="text-align:right;line-height:1.7;font-size:14px"><strong style="color:#0a4272;font-size:15px">Nro: ${esc(inv.invNo)}</strong><br>Päivä: ${esc(state.invoice.invoiceDate)}<br>Viite: <strong>${esc(inv.reference)}</strong>${inv.creditRef?`<br><span class="small muted">Hyvittää: ${esc(inv.creditRef.invoiceNo)}</span>`:""}</div>
-      <tbody>${console.log("DEBUG inv:", inv, "lines:", inv.lines); inv.lines.length===0?`<tr><td colspan="4" class="muted">Valitse tapahtuma ja maksaja.</td></tr>`:inv.lines.map(l=>`<tr><td>${esc(l.title)}</td><td class="r">${l.qty}</td><td class="r">${Number(l.unit).toFixed(2)}</td><td class="r" style="${Number(l.total)<0?"color:#991b1b;font-weight:700":""}">${Number(l.total).toFixed(2)}</td></tr>`).join("")}</tbody>
+    </div>
     <div class="hr"></div>
     <div style="font-size:14px;line-height:1.7"><strong>Maksaja:</strong><br>${esc(inv.payerName||"—")}${inv.payerBusinessId?`<div class="small muted">Y-tunnus ${esc(inv.payerBusinessId)}</div>`:""}${inv.payerEmail?`<div><a href="mailto:${esc(inv.payerEmail)}" style="color:#1e40af">${esc(inv.payerEmail)}</a></div>`:""}</div>
     <div class="hr"></div>
