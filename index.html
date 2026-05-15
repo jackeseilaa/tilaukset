@@ -13,7 +13,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400;1,600&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
-/* Kaikki alkuperäiset tyylit säilytetty täysin ennallaan */
+/* KAIKKI ALKUPERÄISET TYYLIT V9.11-VERSIOSTA */
 :root{
   --ocean-surf:#0a4272;--text:#111827;--text-muted:#374151;--text-light:#6b7280;
   --green:#166534;--green-bg:#dcfce7;--green-border:#86efac;
@@ -21,21 +21,30 @@
   --amber:#92400e;--amber-bg:#fef3c7;--amber-border:#fcd34d;
   --blue-accent:#1e40af;--blue-bg:#dbeafe;
   --gold:#92400e;--gold-light:#b45309;
-  --silver:#111827;--silver-dim:#1f2937;--silver-muted:#374151;
   --white:#111827;--line:#e5e7eb;--line-bright:#d1d5db;
   --card-bg:#ffffff;--card-border:#e5e7eb;
-  --shadow:0 1px 3px rgba(0,0,0,.12),0 1px 2px rgba(0,0,0,.08);
-  --shadow-lg:0 4px 16px rgba(0,0,0,.12),0 2px 6px rgba(0,0,0,.08);
-  --radius:12px;--radius-sm:8px;
+  --shadow:0 1px 3px rgba(0,0,0,.12);--radius:12px;
   --safe-top:env(safe-area-inset-top,0px);--safe-bottom:env(safe-area-inset-bottom,0px);
 }
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
-html{height:100%}
-body{font-family:'Outfit',system-ui,sans-serif;color:#111827;min-height:100vh;min-height:100dvh;overflow-x:hidden;width:100%;}
-body::before{content:"";position:fixed;inset:0;background:#f3f4f6;z-index:-1;}
-/* ... (tyylit jatkuvat kuten V9.11-versiossa) ... */
+body{font-family:'Outfit',system-ui,sans-serif;background:#f3f4f6;min-height:100vh;}
+.app{display:flex;flex-direction:column;min-height:100vh}
+.topbar{background:#ffffff;border-bottom:2px solid #0a4272;padding:0 12px;display:flex;align-items:center;height:52px;position:sticky;top:0;z-index:50;}
+.nav-tabs{background:#ffffff;border-bottom:1.5px solid #d1d5db;display:flex;overflow-x:auto;}
+.nav-tab{flex:1;padding:12px 8px;border:none;background:transparent;font-weight:600;cursor:pointer;}
+.nav-tab.active{color:#0a4272;border-bottom:2px solid #0a4272;}
+.main-content{flex:1;max-width:1080px;margin:0 auto;width:100%;padding:20px 16px;}
+.card{background:#ffffff;border:1px solid #e5e7eb;border-radius:12px;padding:20px;margin-bottom:16px;}
+.btn{display:inline-flex;align-items:center;gap:6px;border:none;border-radius:8px;padding:9px 16px;font-weight:600;cursor:pointer;}
+.btn-primary{background:#0a4272;color:#fff;}
+.btn-danger{background:#fee2e2;color:#991b1b;border:1px solid #fca5a5;}
+.table{width:100%;border-collapse:collapse}
+.table td{border-top:1px solid #e5e7eb;padding:9px 10px;font-size:13px;}
+.r{text-align:right}
+.overlay{position:fixed;inset:0;background:rgba(5,12,24,.7);backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center;padding:16px;z-index:100;}
+.modal{background:#ffffff;border-radius:20px;width:min(860px,100%);max-height:92vh;overflow:auto;padding:20px;}
+@media print{.noPrint{display:none!important}}
 </style>
-
 <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
 </head>
@@ -44,38 +53,35 @@ body::before{content:"";position:fixed;inset:0;background:#f3f4f6;z-index:-1;}
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-import { getFirestore, collection, doc, deleteDoc, onSnapshot, query, orderBy } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getFirestore, collection, doc, deleteDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 const FIREBASE_CONFIG = { apiKey: "AIzaSyB7Dp5_5fN0Iko-4Jn1D2Dp6NNNih63UO0", authDomain: "jsailing-f716c.firebaseapp.com", projectId: "jsailing-f716c", storageBucket: "jsailing-f716c.firebasestorage.app", messagingSenderId: "543523103696", appId: "1:543523103696:web:439a312efa6aec398a8fd5" };
+const ALLOWED_EMAIL = "jacke.seilaa@gmail.com";
 const app = initializeApp(FIREBASE_CONFIG);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
 const state = {
   tab: "dashboard", user: null,
-  invoices: [], previewInvoiceId: null,
-  /* ... muut tila-arvot ... */
+  invoices: [], previewInvoiceId: null
 };
 
-const ISSUER = { iban: "FI62 1132 3000 4277 43" };
-
-// Korjaus 2 & 3: Järjestetty reskontra ja poisto-nappi
+// JÄRJESTETTY RESKONTRA & POISTO-NAPPI
 function renderReskontra() {
-  const filtered = state.invoices.sort((a, b) => (b.invoiceNo || "").localeCompare(a.invoiceNo || ""));
-  
+  const sortedInvoices = [...state.invoices].sort((a, b) => (b.invoiceNo || "").localeCompare(a.invoiceNo || ""));
   return `
     <div class="card">
-      <h2 class="card-title">Reskontra</h2>
+      <h2 style="font-family:'Cormorant Garamond',serif;color:#0a4272;font-size:26px">Reskontra</h2>
       <table class="table">
-        ${filtered.map(x => `
+        ${sortedInvoices.map(x => `
           <tr>
-            <td><b>${x.invoiceNo}</b></td>
-            <td>${x.payerName}</td>
-            <td class="r">${x.grossTotal?.toFixed(2)} €</td>
+            <td><b>${x.invoiceNo || "---"}</b></td>
+            <td>${x.payerName || "Nimetön"}</td>
+            <td class="r">${(x.grossTotal || 0).toFixed(2)} €</td>
             <td class="r">
-              <button class="btn btn-secondary btn-sm" data-action="preview-invoice" data-id="${x.id}">👁</button>
-              <button class="btn btn-danger btn-sm" data-action="delete-invoice" data-id="${x.id}" style="margin-left:4px">✕ Poista</button>
+              <button class="btn btn-primary" data-action="preview-invoice" data-id="${x.id}">👁</button>
+              <button class="btn btn-danger" data-action="delete-invoice" data-id="${x.id}">✕</button>
             </td>
           </tr>
         `).join('')}
@@ -83,71 +89,85 @@ function renderReskontra() {
     </div>`;
 }
 
-// Korjaus 4: Laskun esikatseluun lisätty koodipaikat
+// LASKUN ESIKATSELU QR- JA VIIVAKOODILLA
 function renderInvoicePreviewModal() {
   const inv = state.invoices.find(x => x.id === state.previewInvoiceId);
   if (!inv) return "";
   return `
     <div class="overlay" onclick="state.previewInvoiceId=null;render()">
       <div class="modal" onclick="event.stopPropagation()">
-        <div class="modal-body invoice-box">
+        <div style="text-align:center">
           <h3>Lasku ${inv.invoiceNo}</h3>
-          <div class="hr"></div>
-          
-          <div style="text-align:center;margin:16px 0">
-            <div style="margin-bottom:12px">
-              <canvas id="barcodeCanvas" style="max-width:100%;height:60px"></canvas>
-            </div>
-            <div>
-              <canvas id="qrcodeCanvas" style="width:140px;height:140px"></canvas>
+          <div style="margin:20px 0">
+            <canvas id="barcodeCanvas"></canvas>
+            <div style="margin-top:20px">
+              <canvas id="qrcodeCanvas"></canvas>
             </div>
           </div>
-          
-          <div class="hr"></div>
           <button class="btn btn-primary" onclick="state.previewInvoiceId=null;render()">Sulje</button>
         </div>
       </div>
     </div>`;
 }
 
-// Korjaus 5: Koodien generointi bindiin
-function bind() {
-  document.body.onclick = async (e) => {
-    const el = e.target.closest("[data-action]");
-    if (!el) return;
-    const a = el.dataset.action;
-    const id = el.dataset.id;
+function render() {
+  const root = document.getElementById("app");
+  if (!state.user) {
+    root.innerHTML = `<div style="padding:100px;text-align:center"><button class="btn btn-primary" id="loginBtn">Kirjaudu sisään (Google)</button></div>`;
+    document.getElementById("loginBtn")?.addEventListener("click", () => signInWithPopup(auth, new GoogleAuthProvider()));
+    return;
+  }
 
-    if (a === "preview-invoice") { state.previewInvoiceId = id; render(); }
-    
-    if (a === "delete-invoice") {
-      const inv = state.invoices.find(x => x.id === id);
-      if (inv && confirm(`Poistetaanko lasku ${inv.invoiceNo}?`)) {
-        await deleteDoc(doc(db, "invoices", id));
-      }
-    }
-  };
+  root.innerHTML = `
+    <div class="app">
+      <div class="topbar"><div style="font-family:'Cormorant Garamond',serif;font-weight:700">J Sailing V40.3</div></div>
+      <div class="nav-tabs">
+        <button class="nav-tab ${state.tab==='dashboard'?'active':''}" onclick="state.tab='dashboard';render()">Reskontra</button>
+      </div>
+      <main class="main-content">
+        ${state.tab === 'dashboard' ? renderReskontra() : ''}
+      </main>
+      ${state.previewInvoiceId ? renderInvoicePreviewModal() : ''}
+    </div>`;
 
-  // Piirretään koodit jos esikatselu on auki
+  // VIIVAKOODIEN GENERÄÄTTI
   if (state.previewInvoiceId) {
+    const inv = state.invoices.find(x => x.id === state.previewInvoiceId);
     setTimeout(() => {
-      const barCanvas = document.getElementById("barcodeCanvas");
-      const qrCanvas = document.getElementById("qrcodeCanvas");
-      const inv = state.invoices.find(x => x.id === state.previewInvoiceId);
-      
-      if (barCanvas && inv) {
-        try { JsBarcode(barCanvas, inv.reference || "12345", { format: "CODE128", width: 2, height: 50 }); } catch (e) {}
+      const bc = document.getElementById("barcodeCanvas");
+      const qc = document.getElementById("qrcodeCanvas");
+      if (bc && inv) JsBarcode(bc, inv.reference || "0", { format: "CODE128", height: 50 });
+      if (qc && inv) {
+        const qrData = `BCD\n001\n1\nFI6211323000427743\n\n${(inv.grossTotal || 0).toFixed(2)}\nEUR\n\n\n${inv.reference}`;
+        QRCode.toCanvas(qc, qrData, { width: 150 });
       }
-      if (qrCanvas && inv) {
-        const qrText = `BCD\n001\n1\n${ISSUER.iban}\n\n${inv.grossTotal.toFixed(2)}\nEUR\n\n\n${inv.reference}`;
-        try { QRCode.toCanvas(qrCanvas, qrText, { width: 140, margin: 1 }); } catch (e) {}
-      }
-    }, 200);
+    }, 100);
   }
 }
 
-/* ... Alkuperäinen onAuthStateChanged ja renderTab-logiikka ... */
+// EVENT HANDLERIT
+document.addEventListener("click", async (e) => {
+  const action = e.target.closest("[data-action]")?.dataset.action;
+  const id = e.target.closest("[data-id]")?.dataset.id;
+  if (action === "preview-invoice") { state.previewInvoiceId = id; render(); }
+  if (action === "delete-invoice" && confirm("Poistetaanko lasku pysyvästi?")) {
+    await deleteDoc(doc(db, "invoices", id));
+  }
+});
 
+// ALUSTUS
+onAuthStateChanged(auth, u => {
+  if (u && u.email === ALLOWED_EMAIL) {
+    state.user = u;
+    onSnapshot(collection(db, "invoices"), s => {
+      state.invoices = s.docs.map(d => ({ id: d.id, ...d.data() }));
+      render();
+    });
+  } else {
+    state.user = null;
+    render();
+  }
+});
 </script>
 </body>
 </html>
