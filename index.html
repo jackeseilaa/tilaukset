@@ -198,8 +198,6 @@ select option{background:#ffffff;color:#111827}
   .row-between .row{width:100%}
 }
 </style>
-<script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
 </head>
 <body>
 <div id="app"><div class="loader"><div class="loader-ring"></div><div class="loader-text">Ladataan…</div></div></div>
@@ -1626,8 +1624,6 @@ table{width:100%;border-collapse:collapse}
   @page{size:A4 portrait;margin:14mm 12mm}
   body{padding:0}
 }
-<script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
 </style></head><body>
   <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:16px;padding-bottom:10px;border-bottom:3px solid #0a4272">
     <div>
@@ -1922,8 +1918,6 @@ body{font-family:'Outfit',sans-serif;font-size:11px;color:#111;padding:28px;max-
 hr{border-top:1.5px solid #e5e7eb;margin:10px 0}
 @page{margin:15mm;size:A4}
 @media print{.noPrint{display:none}body{padding:0}}
-<script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
 </style></head><body>`+area.innerHTML+`</body></html>`);
         win.document.close();
         setTimeout(()=>{win.focus();win.print();},500);
