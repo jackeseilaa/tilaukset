@@ -1846,6 +1846,13 @@ table{width:100%;border-collapse:collapse}
         render();
         return;
       }
+      if(a==="make-credit-invoice"){
+        const x=state.invoices.find(z=>z.id===itemId);if(!x)return;
+        state.invoice={mode:x.mode||"customer",source:x.source||"sailing",sailingId:!x.eventName||"",tutkintoId:x.itype==="tutkinto"?(x.eventId||""):"",customerId:x.customerId||state.customers.find(c=>c.name===x.payerName)?.id||"",companyId:x.companyId||state.companies.find(c=>c.name===x.payerName)?.id||"",invoiceDate:today(),type:"credit",partialAmount:"",creditRefId:x.id||"",issuer:x.issuer||"tmi"};
+        state.editInvoiceId=null;
+        state.tab="invoicing";
+        render();return;
+      }
       if(a==="cancel-edit-invoice"){state.editInvoiceId=null;render();return;}
       if(a==="delete-register"){if(!confirm("Poistetaanko lasku rekisteristä?"))return;await fsDel("invoices",itemId);render();return;}
       if(a==="reskontra-mark-paid"){
