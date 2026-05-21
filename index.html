@@ -205,7 +205,7 @@ import{getAuth,GoogleAuthProvider,signInWithPopup,signOut,onAuthStateChanged}fro
 import{getFirestore,collection,doc,addDoc,setDoc,deleteDoc,onSnapshot,serverTimestamp}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 const FIREBASE_CONFIG={apiKey:"AIzaSyB7Dp5_5fN0Iko-4Jn1D2Dp6NNNih63UO0",authDomain:"jsailing-f716c.firebaseapp.com",projectId:"jsailing-f716c",storageBucket:"jsailing-f716c.firebasestorage.app",messagingSenderId:"543523103696",appId:"1:543523103696:web:439a312efa6aec398a8fd5"};
 const ALLOWED_EMAIL="jacke.seilaa@gmail.com";
-const APP_VERSION="V9.45";const UPDATE_DATE=(()=>{const n=new Date();return n.toLocaleDateString("fi-FI")+' klo '+String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0');})();
+const APP_VERSION="V9.46";const UPDATE_DATE=(()=>{const n=new Date();return n.toLocaleDateString("fi-FI")+' klo '+String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0');})();
 const ISSUERS={
   tmi:{name:"J Sailing",businessId:"1728993-9",address:"Kontiontie 55, 11120 Riihimäki",iban:"FI62 1132 3000 4277 43",bic:"NDEAFIHH"},
   oy:{name:"AJarmo Oy",businessId:"3432355-3",address:"Kontiontie 55, 11120 Riihimäki",iban:"FI73 7997 7994 4257 05",bic:"HOLVFIHH"}
@@ -975,8 +975,8 @@ function renderUnbilledModal(){
     </div>
     <button class="btn btn-primary btn-sm" data-action="start-combined" data-id="${esc(g.key)}">&#128203; Luo yhdistetty lasku</button>
     </div>
-    <table class="table" style="font-size:12px"><thead><tr><th>Tapahtuma</th><th>Asiakas</th><th>Pvm</th><th class="r">Hinta</th></tr></thead>
-    <tbody>${g.items.map(x=>`<tr><td>${esc(x.evName)}</td><td>${esc(x.customer.name)}</td><td style="white-space:nowrap">${fmtDate(x.evDate)}</td><td class="r">${x.price>0?x.price.toFixed(0)+" €":"—"}</td></tr>`).join("")}</tbody></table>
+    <table class="table" style="font-size:12px"><thead><tr><th>Tapahtuma</th><th>Asiakas</th><th>Pvm</th><th class="r">Hinta</th><th></th></tr></thead>
+    <tbody>${g.items.map(x=>`<tr><td>${esc(x.evName)}</td><td>${esc(x.customer.name)}</td><td style="white-space:nowrap">${fmtDate(x.evDate)}</td><td class="r">${x.price>0?x.price.toFixed(0)+" €":"—"}</td><td><button class="btn btn-secondary btn-sm" style="font-size:11px;white-space:nowrap" data-action="quick-invoice" data-cid="${x.customer.id}" data-eid="${x.eventId}" data-sailing="${x.isSailing?'1':'0'}">&#128203; Laskuta</button></td></tr>`).join("")}</tbody></table>
    </div>`;
   }).join("")}
   </div>
@@ -2043,6 +2043,26 @@ table{width:100%;border-collapse:collapse}
     for(const inv of state.invoices){await fsDel("invoices",inv.id);n++;}
     alert("✓ "+n+" laskua poistettu. Aloita laskutus alusta.");
     render();return;
+  }
+  if(a==="quick-invoice"){
+    const cid=el.dataset.cid,eid=el.dataset.eid,isSail=el.dataset.sailing==="1";
+    state.invoice={
+      mode:"customer",
+      source:isSail?"sailing":"tutkinto",
+      sailingId:isSail?eid:"",
+      tutkintoId:isSail?"":eid,
+      customerId:cid,
+      companyId:"",
+      invoiceDate:today(),
+      type:"full",
+      partialAmount:"",
+      creditRefId:"",
+      issuer:"tmi"
+    };
+    state.modal=null;
+    state.tab="invoicing";
+    render();
+    return;
   }
   if(a==="open-register"){state.modal="register";render();return;}
   if(a==="open-unbilled"){state.unbilledFilter="";state.modal="unbilled";render();return;}
