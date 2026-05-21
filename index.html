@@ -205,7 +205,7 @@ import{getAuth,GoogleAuthProvider,signInWithPopup,signOut,onAuthStateChanged}fro
 import{getFirestore,collection,doc,addDoc,setDoc,deleteDoc,onSnapshot,serverTimestamp}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 const FIREBASE_CONFIG={apiKey:"AIzaSyB7Dp5_5fN0Iko-4Jn1D2Dp6NNNih63UO0",authDomain:"jsailing-f716c.firebaseapp.com",projectId:"jsailing-f716c",storageBucket:"jsailing-f716c.firebasestorage.app",messagingSenderId:"543523103696",appId:"1:543523103696:web:439a312efa6aec398a8fd5"};
 const ALLOWED_EMAIL="jacke.seilaa@gmail.com";
-const APP_VERSION="V9.43";const UPDATE_DATE=(()=>{const n=new Date();return n.toLocaleDateString("fi-FI")+' klo '+String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0');})();
+const APP_VERSION="V9.44";const UPDATE_DATE=(()=>{const n=new Date();return n.toLocaleDateString("fi-FI")+' klo '+String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0');})();
 const ISSUERS={
   tmi:{name:"J Sailing",businessId:"1728993-9",address:"Kontiontie 55, 11120 Riihimäki",iban:"FI62 1132 3000 4277 43",bic:"NDEAFIHH"},
   oy:{name:"AJarmo Oy",businessId:"3432355-3",address:"Kontiontie 55, 11120 Riihimäki",iban:"FI73 7997 7994 4257 05",bic:"HOLVFIHH"}
@@ -1076,6 +1076,65 @@ function renderAddSessionModal(){
  </div></div>`;
 }
 
+function renderCustomerDetailModal(){
+ const c=state.customers.find(x=>x.id===state.customerDetailId);
+ if(!c)return"";
+ const eventId=c.sailingId||c.tutkintoId||"";
+ const isSailing=!!c.sailingId;
+ const ev=isSailing?state.sailings.find(x=>x.id===eventId):state.tutkinnot.find(x=>x.id===eventId);
+ const evName=ev?(isSailing?(ev.name||""):(c.tutkintoTypeOverride||(ev.type+(ev.boatType?" ("+ev.boatType+")":"")))):"\u2014";
+ const invs=state.invoices.filter(x=>
+  (x.coveredCustomerIds&&x.coveredCustomerIds.includes(c.id))||
+  (x.payerName===c.name&&(x.eventId===c.sailingId||x.eventId===c.tutkintoId||x.eventId==="COMBINED"))
+ ).sort((a,b)=>(b.invoiceDate||"").localeCompare(a.invoiceDate||""));
+ const totalGross=invs.reduce((s,x)=>s+Number(x.grossTotal||0),0);
+ const totalPaid=invs.filter(x=>x.paid).reduce((s,x)=>s+Number(x.grossTotal||0),0);
+ const totalOpen=totalGross-totalPaid;
+ const osio=c.laskutusosio||"";
+ const isInvoiced=state.invoices.some(x=>
+  (x.coveredCustomerIds&&x.coveredCustomerIds.includes(c.id))||
+  (x.payerName===c.name&&x.eventId===eventId&&(x.laskutusosio||"")===osio)
+ );
+ return`<div class="overlay" data-action="close-modal"><div class="modal" style="max-width:620px" onclick="event.stopPropagation()">
+  <div class="modal-head"><div class="row-between">
+   <div>
+    <div class="modal-title">${esc(c.name||"")}</div>
+    <div class="card-sub">${evName}${c.laskutusosio?` &bull; <span class="badge badge-navy" style="font-size:10px">${esc(c.laskutusosio)}</span>`:""}</div>
+   </div>
+   <div class="row">
+    <button class="btn btn-secondary btn-sm" data-action="edit-customer" data-id="${c.id}">&#9998; Muokkaa</button>
+    <button class="btn btn-secondary btn-sm" data-action="close-modal">&times;</button>
+   </div>
+  </div></div>
+  <div class="modal-body">
+   <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:16px">
+    <div class="stat-card"><div class="stat-label">Laskutettu</div><div class="stat-val" style="font-size:24px">${totalGross.toFixed(0)} &#8364;</div></div>
+    <div class="stat-card"><div class="stat-label">Maksettu</div><div class="stat-val" style="font-size:24px;color:#166534">${totalPaid.toFixed(0)} &#8364;</div></div>
+    <div class="stat-card"><div class="stat-label">Avoin</div><div class="stat-val" style="font-size:24px;color:${totalOpen>0?"#991b1b":"#166534"}">${totalOpen.toFixed(0)} &#8364;</div></div>
+   </div>
+   <div class="infobox infobox-blue" style="margin-bottom:14px">
+    ${c.phone?`<a href="tel:${esc(c.phone.replace(/\s/g,''))}" style="color:#1e3a8a;margin-right:12px">&#128222; ${esc(c.phone)}</a>`:""}
+    ${c.email?`<a href="mailto:${esc(c.email)}" style="color:#1e3a8a">&#9993; ${esc(c.email)}</a>`:""}
+    ${!c.phone&&!c.email?`<span class="muted">Ei yhteystietoja</span>`:""}
+   </div>
+   ${!isInvoiced&&eventId?`<div class="infobox infobox-amber" style="margin-bottom:14px">&#128179; <strong>Laskuttamatta:</strong> ${esc(evName)}${c.priceOverride!=null&&c.priceOverride!==""?` &mdash; ${Number(c.priceOverride).toFixed(0)} &euro;`:""}</div>`:""}
+   <div style="font-weight:700;font-size:12px;text-transform:uppercase;letter-spacing:.5px;color:#374151;margin-bottom:8px">Laskuhistoria</div>
+   ${invs.length===0?`<div class="muted small">Ei laskuja.</div>`:`
+   <table class="table">
+    <thead><tr><th>Pvm</th><th>Nro</th><th>Tapahtuma</th><th class="r">Summa</th><th>Tila</th></tr></thead>
+    <tbody>${invs.map(x=>`<tr>
+     <td style="white-space:nowrap;font-size:12px">${esc(x.invoiceDate||"")}</td>
+     <td><button class="btn btn-secondary btn-sm" data-action="preview-invoice" data-id="${x.id}" style="font-size:11px;padding:2px 7px;font-weight:700;color:#0a4272">${esc(x.invoiceNo||"")}</button></td>
+     <td class="small muted">${esc(x.eventName||"")}</td>
+     <td class="r" style="font-weight:700;color:${Number(x.grossTotal||0)<0?"#991b1b":"#0a4272"}">${Number(x.grossTotal||0).toFixed(2)} &euro;</td>
+     <td>${x.paid?`<span class="badge badge-green" style="font-size:10px">&#10003; ${esc(x.paidDate||"maksettu")}</span>`:`<span class="badge badge-red" style="font-size:10px">&#9679; Avoin</span>`}</td>
+    </tr>`).join("")}
+    </tbody>
+   </table>`}
+  </div>
+ </div></div>`;
+}
+
 function renderModal(){
   if(!state.modal)return"";
   if(state.modal==="pending-list")return renderPendingListModal();
@@ -1091,6 +1150,7 @@ function renderModal(){
   if(state.modal==="invoice-preview")return renderInvoicePreviewModal();
   if(state.modal==="unbilled")return renderUnbilledModal();
   if(state.modal==="add-sessions")return renderAddSessionModal();
+  if(state.modal==="customer-detail")return renderCustomerDetailModal();
   if(state.modal==="combined-invoice")return renderCombinedInvoiceModal();
   return"";
 }
