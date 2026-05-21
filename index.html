@@ -205,7 +205,7 @@ import{getAuth,GoogleAuthProvider,signInWithPopup,signOut,onAuthStateChanged}fro
 import{getFirestore,collection,doc,addDoc,setDoc,deleteDoc,onSnapshot,serverTimestamp}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 const FIREBASE_CONFIG={apiKey:"AIzaSyB7Dp5_5fN0Iko-4Jn1D2Dp6NNNih63UO0",authDomain:"jsailing-f716c.firebaseapp.com",projectId:"jsailing-f716c",storageBucket:"jsailing-f716c.firebasestorage.app",messagingSenderId:"543523103696",appId:"1:543523103696:web:439a312efa6aec398a8fd5"};
 const ALLOWED_EMAIL="jacke.seilaa@gmail.com";
-const APP_VERSION="V9.37";const UPDATE_DATE=(()=>{const n=new Date();return n.toLocaleDateString("fi-FI")+' klo '+String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0');})();
+const APP_VERSION="V9.38";const UPDATE_DATE=(()=>{const n=new Date();return n.toLocaleDateString("fi-FI")+' klo '+String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0');})();
 const ISSUERS={
   tmi:{name:"J Sailing",businessId:"1728993-9",address:"Kontiontie 55, 11120 Riihimäki",iban:"FI62 1132 3000 4277 43",bic:"NDEAFIHH"},
   oy:{name:"AJarmo Oy",businessId:"3432355-3",address:"Kontiontie 55, 11120 Riihimäki",iban:"FI73 7997 7994 4257 05",bic:"HOLVFIHH"}
@@ -921,7 +921,11 @@ function getUnbilledGroups(){
   const isSailing=!!c.sailingId;
   const ev=isSailing?state.sailings.find(x=>x.id===eventId):state.tutkinnot.find(x=>x.id===eventId);
   if(!ev)continue;
-  const hasInv=state.invoices.some(x=>x.payerName===c.name&&x.eventId===eventId);
+  const osio=c.laskutusosio||"";
+  const hasInv=state.invoices.some(x=>
+   (x.coveredCustomerIds&&x.coveredCustomerIds.includes(c.id))||
+   (x.payerName===c.name&&x.eventId===eventId&&(x.laskutusosio||"")===osio)
+  );
   if(hasInv)continue;
   const price=c.priceOverride!=null&&c.priceOverride!==""?Number(c.priceOverride):(isSailing?Number(ev.pricePerPerson||0):Number(ev.pricePerPerson||0));
   const evName=isSailing?(ev.name||""):(ev.type+(ev.boatType?" ("+ev.boatType+")":""));
@@ -952,7 +956,7 @@ function renderUnbilledModal(){
    const gTotal=g.items.reduce((s,x)=>s+x.price,0);
    return`<div style="margin-bottom:16px;border:1px solid #e5e7eb;border-radius:12px;padding:14px">
     <div class="row-between" style="margin-bottom:8px"><div>
-     <div style="font-weight:700;font-size:15px">${esc(g.label)}${g.isCompany?` <span class="badge badge-silver">Yritys</span>`:""}</div>
+     <div style="font-weight:700;font-size:15px">${esc(g.payerLabel||g.label)}${g.isCompany?` <span class="badge badge-silver">Yritys</span>`:""}${g.osio?` <span class="badge badge-navy">${esc(g.osio)}</span>`:""}</div>
      <div class="small muted">${g.items.length} tapahtumaa &bull; ${gTotal.toFixed(0)} €</div>
     </div>
     <button class="btn btn-primary btn-sm" data-action="start-combined" data-id="${esc(g.key)}">&#128203; Luo yhdistetty lasku</button>
@@ -980,7 +984,7 @@ function renderCombinedInvoiceModal(){
  return`<div class="overlay" data-action="close-modal"><div class="modal" style="max-width:740px" onclick="event.stopPropagation()">
   <div class="modal-head"><div class="row-between">
    <div><div class="modal-title">&#128203; Yhdistetty lasku</div>
-   <div class="card-sub">${esc(ci.label)}</div></div>
+   <div class="card-sub">${esc(ci.payerLabel||ci.label)}${ci.osio?` <span class="badge badge-navy" style="font-size:11px">${esc(ci.osio)}</span>`:""}</div></div>
    <div class="row">
     <button class="btn btn-teal btn-sm" data-action="save-combined-invoice">+ Tallenna lasku</button>
     <button class="btn btn-secondary btn-sm" data-action="close-modal">&times;</button>
@@ -2034,7 +2038,7 @@ table{width:100%;border-collapse:collapse}
     const lns=sel.map(x=>({title:x.evName+" \u2014 "+x.customer.name+" ("+fmtDate(x.evDate)+")",qty:1,unit:x.price,total:x.price}));
     const payerName=ci.isCompany?(state.companies.find(x=>x.id===ci.companyId)?.name||ci.label):ci.label;
     const payerEmail=ci.isCompany?(state.companies.find(x=>x.id===ci.companyId)?.email||""):(state.customers.find(x=>x.name===ci.label)?.email||"");
-    const rec={issuer:ci.issuer||"tmi",issuerName:issr2.name,mode:ci.isCompany?"company":"customer",source:"combined",eventId:"COMBINED",laskutusosio:ci.osio||"",eventName:"Yhdistetty lasku \u2014 "+payerName+(ci.osio?" / "+ci.osio:""),vatRatePct:Number((rate*100).toFixed(1)),net,vat,grossTotal,lines:lns,invoiceDate:ci.invoiceDate||today(),invoiceNo:invNo,reference:finnishReference(invNo.replace(/[^0-9]/g,"")),payerName,payerEmail,itype:"full",paid:false,paidDate:""};
+    const rec={issuer:ci.issuer||"tmi",issuerName:issr2.name,mode:ci.isCompany?"company":"customer",source:"combined",eventId:"COMBINED",laskutusosio:ci.osio||"",coveredCustomerIds:sel.map(x=>x.customer.id),eventName:"Yhdistetty lasku \u2014 "+payerName+(ci.osio?" / "+ci.osio:""),vatRatePct:Number((rate*100).toFixed(1)),net,vat,grossTotal,lines:lns,invoiceDate:ci.invoiceDate||today(),invoiceNo:invNo,reference:finnishReference(invNo.replace(/[^0-9]/g,"")),payerName,payerEmail,itype:"full",paid:false,paidDate:""};
     await fsAdd("invoices",rec);
     alert("Yhdistetty lasku tallennettu!\nNro: "+invNo);
     state.modal=null;render();return;
