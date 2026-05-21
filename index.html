@@ -205,7 +205,7 @@ import{getAuth,GoogleAuthProvider,signInWithPopup,signOut,onAuthStateChanged}fro
 import{getFirestore,collection,doc,addDoc,setDoc,deleteDoc,onSnapshot,serverTimestamp}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 const FIREBASE_CONFIG={apiKey:"AIzaSyB7Dp5_5fN0Iko-4Jn1D2Dp6NNNih63UO0",authDomain:"jsailing-f716c.firebaseapp.com",projectId:"jsailing-f716c",storageBucket:"jsailing-f716c.firebasestorage.app",messagingSenderId:"543523103696",appId:"1:543523103696:web:439a312efa6aec398a8fd5"};
 const ALLOWED_EMAIL="jacke.seilaa@gmail.com";
-const APP_VERSION="V9.53";const UPDATE_DATE=(()=>{const n=new Date();return n.toLocaleDateString("fi-FI")+' klo '+String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0');})();
+const APP_VERSION="V9.54";const UPDATE_DATE=(()=>{const n=new Date();return n.toLocaleDateString("fi-FI")+' klo '+String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0');})();
 const ISSUERS={
   tmi:{name:"J Sailing",businessId:"1728993-9",address:"Kontiontie 55, 11120 Riihimäki",iban:"FI62 1132 3000 4277 43",bic:"NDEAFIHH"},
   oy:{name:"AJarmo Oy",businessId:"3432355-3",address:"Kontiontie 55, 11120 Riihimäki",iban:"FI73 7997 7994 4257 05",bic:"HOLVFIHH"}
@@ -1178,11 +1178,19 @@ function renderCombinedInvoiceModal(){
    <div class="hr"></div>
    <!-- Muokattavat rivit -->
    <div style="font-weight:700;font-size:12px;text-transform:uppercase;letter-spacing:.5px;color:#374151;margin-bottom:8px">Laskun rivit</div>
-   ${ci.editLines.map((l,li)=>`<div style="display:grid;grid-template-columns:1fr 110px 32px;gap:6px;margin-bottom:6px;align-items:center">
-    <input data-action="ci-line-title" data-idx="${li}" value="${esc(l.title)}" placeholder="Kuvaus" style="font-size:12px;padding:6px 10px;border:1.5px solid ${l.isProvisio?"#f59e0b":l.custom?"#93c5fd":"#e5e7eb"};border-radius:6px;background:${l.isProvisio?"#fef3c7":l.custom?"#dbeafe":"#f9fafb"};color:#111827;font-family:Outfit,sans-serif">
-    <input type="number" data-action="ci-line-amount" data-idx="${li}" value="${l.amount}" step="0.01" style="font-size:12px;padding:6px 8px;border:1.5px solid ${l.amount<0?"#fca5a5":"#e5e7eb"};border-radius:6px;text-align:right;font-weight:700;color:${l.amount<0?"#991b1b":"#0a4272"};font-family:Outfit,sans-serif">
-    ${l.custom?`<button class="btn btn-danger btn-sm" data-action="ci-remove-line" data-idx="${li}" style="padding:5px 8px">&times;</button>`:`<div></div>`}
-   </div>`).join("")}
+   ${(()=>{
+    const _co2=ci.isCompany?state.companies.find(x=>x.id===ci.companyId):null;
+    const _prov2=_co2?Number(_co2.commissionPct||0):0;
+    // Auto-update provisio amount before render
+    const _baseSum=ci.editLines.filter(l=>!l.isProvisio).reduce((s,l)=>s+l.amount,0);
+    const _pl=ci.editLines.find(l=>l.isProvisio);
+    if(_pl&&_prov2>0){_pl.amount=Math.round(-_baseSum*_prov2/100*100)/100;}
+    return ci.editLines.map((l,li)=>`<div style="display:grid;grid-template-columns:1fr 110px 32px;gap:6px;margin-bottom:6px;align-items:center">
+     <input data-action="ci-line-title" data-idx="${li}" value="${esc(l.title)}" placeholder="Kuvaus" style="font-size:12px;padding:6px 10px;border:1.5px solid ${l.isProvisio?"#f59e0b":l.custom?"#93c5fd":"#e5e7eb"};border-radius:6px;background:${l.isProvisio?"#fef3c7":l.custom?"#dbeafe":"#f9fafb"};color:#111827;font-family:Outfit,sans-serif;width:100%">
+     ${l.isProvisio?`<div style="font-size:12px;padding:6px 8px;border:1.5px solid #f59e0b;border-radius:6px;text-align:right;font-weight:700;color:#991b1b;background:#fef9c3">${l.amount.toFixed(2)}</div>`:`<input type="number" data-action="ci-line-amount" data-idx="${li}" value="${l.amount}" step="0.01" style="font-size:12px;padding:6px 8px;border:1.5px solid ${l.amount<0?"#fca5a5":"#e5e7eb"};border-radius:6px;text-align:right;font-weight:700;color:${l.amount<0?"#991b1b":"#0a4272"};font-family:Outfit,sans-serif">`}
+     ${l.custom?`<button class="btn btn-danger btn-sm" data-action="ci-remove-line" data-idx="${li}" style="padding:5px 8px">&times;</button>`:`<div></div>`}
+    </div>`).join("");
+   })()}
    <div class="row" style="margin-bottom:12px;gap:8px">
     <button class="btn btn-secondary btn-sm" data-action="ci-add-line">+ Lisää rivi / alennus</button>
    </div>
