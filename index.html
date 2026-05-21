@@ -205,7 +205,7 @@ import{getAuth,GoogleAuthProvider,signInWithPopup,signOut,onAuthStateChanged}fro
 import{getFirestore,collection,doc,addDoc,setDoc,deleteDoc,onSnapshot,serverTimestamp}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 const FIREBASE_CONFIG={apiKey:"AIzaSyB7Dp5_5fN0Iko-4Jn1D2Dp6NNNih63UO0",authDomain:"jsailing-f716c.firebaseapp.com",projectId:"jsailing-f716c",storageBucket:"jsailing-f716c.firebasestorage.app",messagingSenderId:"543523103696",appId:"1:543523103696:web:439a312efa6aec398a8fd5"};
 const ALLOWED_EMAIL="jacke.seilaa@gmail.com";
-const APP_VERSION="V9.62";const UPDATE_DATE=(()=>{const n=new Date();return n.toLocaleDateString("fi-FI")+' klo '+String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0');})();
+const APP_VERSION="V9.63";const UPDATE_DATE=(()=>{const n=new Date();return n.toLocaleDateString("fi-FI")+' klo '+String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0');})();
 const ISSUERS={
   tmi:{name:"J Sailing",businessId:"1728993-9",address:"Kontiontie 55, 11120 Riihimäki",iban:"FI62 1132 3000 4277 43",bic:"NDEAFIHH"},
   oy:{name:"AJarmo Oy",businessId:"3432355-3",address:"Kontiontie 55, 11120 Riihimäki",iban:"FI73 7997 7994 4257 05",bic:"HOLVFIHH"}
@@ -565,170 +565,162 @@ function renderTab(){
 }
 
 function buildFinnishBarcode(iban,amountEur,reference,dueDateYYMMDD){
- const ibanDigits=iban.replace(/\s/g,'').slice(2);
- const cents=Math.round(amountEur*100);
- const amountStr=String(cents).padStart(8,'0');
- const refDigits=reference.replace(/\D/g,'').padStart(20,'0');
- const dueStr=dueDateYYMMDD||'000000';
- return '4'+ibanDigits+amountStr+'000'+refDigits+dueStr;
+ const d=iban.replace(/\s/g,'').slice(2);
+ const c=String(Math.round(amountEur*100)).padStart(8,'0');
+ const r=reference.replace(/\D/g,'').padStart(20,'0');
+ return '4'+d+c+'000'+r+(dueDateYYMMDD||'000000');
 }
-function addDays(dateStr,days){const d=new Date(dateStr+'T12:00:00');d.setDate(d.getDate()+days);return d.toISOString().slice(0,10);}
-function fmtFi(s){if(!s)return'';const[y,m,d]=s.split('-');return d+'.'+m+'.'+y;}
-function toYYMMDD(s){if(!s)return'000000';const[y,m,d]=s.split('-');return y.slice(2)+m+d;}
+function addDays(s,n){const d=new Date(s+'T12:00:00');d.setDate(d.getDate()+n);return d.toISOString().slice(0,10);}
+function fi(s){if(!s)return'';const[y,m,d]=s.split('-');return d+'.'+m+'.'+y;}
+function yymmdd(s){if(!s)return'000000';const[y,m,d]=s.split('-');return y.slice(2)+m+d;}
 
 function printInvoiceFull(inv){
- const issuer=inv.issuer==='oy'
-  ?{name:'AJarmo Oy',bid:'3432355-3',addr:'Kontiontie 55, 11120 Riihimäki',iban:'FI73 7997 7994 4257 05',bic:'HOLVFIHH',phone:'+358 443 808 569',email:'jacke.seilaa@gmail.com'}
-  :{name:'J Sailing',bid:'1728993-9',addr:'Kontiontie 55, 11120 Riihimäki',iban:'FI62 1132 3000 4277 43',bic:'NDEAFIHH',phone:'+358 443 808 569',email:'jacke.seilaa@gmail.com'};
- const invDate=inv.invoiceDate||today();
+ const I=inv.issuer==='oy'
+  ?{name:'AJarmo Oy',bid:'3432355-3',addr:'Kontiontie 55',city:'11120 Riihimäki',iban:'FI73 7997 7994 4257 05',bic:'HOLVFIHH',phone:'+358 443 808 569',email:'jacke.seilaa@gmail.com'}
+  :{name:'J Sailing',bid:'1728993-9',addr:'Kontiontie 55',city:'11120 Riihimäki',iban:'FI62 1132 3000 4277 43',bic:'NDEAFIHH',phone:'+358 443 808 569',email:'jacke.seilaa@gmail.com'};
+ const iDate=inv.invoiceDate||today();
  const pd=inv.paymentDays!=null?Number(inv.paymentDays):7;
- const dueDate=pd===0?invDate:addDays(invDate,pd);
- const barcodeStr=buildFinnishBarcode(issuer.iban,Math.abs(Number(inv.grossTotal||0)),inv.reference||'',toYYMMDD(dueDate));
+ const due=pd===0?iDate:addDays(iDate,pd);
+ const bar=buildFinnishBarcode(I.iban,Math.abs(Number(inv.grossTotal||0)),inv.reference||'',yymmdd(due));
  const net=Number(inv.net||0),vat=Number(inv.vat||0),gross=Number(inv.grossTotal||0);
- const vatPct=Number(inv.vatRatePct||25.5).toFixed(1);
- const isCredit=gross<0;
+ const vp=Number(inv.vatRatePct||25.5).toFixed(1);
+ const isC=gross<0;
 
- const linesHtml=(inv.lines||[]).map(l=>`<tr>
-  <td style="padding:4px 8px;border-bottom:1px solid #e5e7eb;font-size:11px">${l.title||''}</td>
-  <td style="padding:4px 8px;border-bottom:1px solid #e5e7eb;font-size:11px;text-align:right;width:40px">${l.qty||1}</td>
-  <td style="padding:4px 8px;border-bottom:1px solid #e5e7eb;font-size:11px;text-align:right;width:85px">${Number(l.unit||0).toFixed(2)}</td>
-  <td style="padding:4px 8px;border-bottom:1px solid #e5e7eb;font-size:11px;text-align:right;width:85px;font-weight:${Number(l.total||0)<0?700:400};color:${Number(l.total||0)<0?'#991b1b':'#111'}">${Number(l.total||0).toFixed(2)}</td>
+ const rows=(inv.lines||[]).map(l=>`<tr>
+  <td style="padding:4px 8px;border-bottom:1px solid #e8eaed;font-size:10.5px">${l.title||''}</td>
+  <td style="padding:4px 8px;border-bottom:1px solid #e8eaed;font-size:10.5px;text-align:center;width:36px">${l.qty||1}</td>
+  <td style="padding:4px 8px;border-bottom:1px solid #e8eaed;font-size:10.5px;text-align:right;width:80px">${Number(l.unit||0).toFixed(2)}</td>
+  <td style="padding:4px 8px;border-bottom:1px solid #e8eaed;font-size:10.5px;text-align:right;width:80px;font-weight:${Number(l.total||0)<0?700:400};color:${Number(l.total||0)<0?'#b91c1c':'#111'}">${Number(l.total||0).toFixed(2)}</td>
  </tr>`).join('');
 
- const html=`<!DOCTYPE html><html lang="fi"><head><meta charset="UTF-8">
-<title>Lasku ${inv.invoiceNo||''}</title>
+ const doc=`<!DOCTYPE html><html lang="fi"><head><meta charset="UTF-8">
+<title>${inv.invoiceNo||'Lasku'}</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jsbarcode/3.11.6/JsBarcode.all.min.js"><\/script>
 <style>
-*{box-sizing:border-box;margin:0;padding:0}
-html,body{font-family:Arial,Helvetica,sans-serif;font-size:12px;color:#111;background:#fff}
-table{border-collapse:collapse}
-/* Toolbar - only on screen */
-#toolbar{position:fixed;top:0;left:0;right:0;background:#1f2937;padding:8px 16px;display:flex;gap:8px;align-items:center;z-index:100;box-shadow:0 2px 8px rgba(0,0,0,.3)}
-#toolbar button{padding:7px 16px;border:none;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;font-family:Arial,sans-serif}
-#saveinfo{font-size:11px;color:#86efac;display:none;margin-left:8px}
-/* Invoice body */
-#invoice{margin-top:52px;padding:14mm 16mm;max-width:210mm;margin-left:auto;margin-right:auto}
-/* Print */
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Helvetica Neue',Arial,Helvetica,sans-serif;font-size:11px;color:#1a1a1a;background:#f1f5f9}
+#bar{position:fixed;top:0;left:0;right:0;padding:8px 14px;background:#1e293b;display:flex;gap:8px;align-items:center;z-index:9}
+#bar button{padding:6px 16px;font-size:12px;font-weight:600;border:none;border-radius:5px;cursor:pointer;font-family:inherit}
+#sheet{background:#fff;width:210mm;margin:52px auto 24px;padding:18mm 18mm 14mm;box-shadow:0 4px 24px rgba(0,0,0,.12)}
+h1{font-size:26px;font-weight:700;letter-spacing:-.5px}
+.lbl{font-size:8px;text-transform:uppercase;letter-spacing:.6px;color:#888;margin-bottom:2px}
+th{font-size:9px;text-transform:uppercase;letter-spacing:.4px;color:#555;font-weight:700;padding:5px 8px;background:#f8fafc;border-bottom:2px solid #cbd5e1;text-align:left}
+th.r{text-align:right}
 @media print{
- @page{size:A4 portrait;margin:12mm 14mm 10mm}
- #toolbar{display:none!important}
- #invoice{margin:0;padding:0;max-width:none}
- html,body{font-size:11px}
+ @page{size:A4;margin:14mm 16mm 10mm}
+ body{background:#fff}
+ #bar{display:none!important}
+ #sheet{margin:0;padding:0;box-shadow:none;width:auto}
 }
 </style></head><body>
 
-<div id="toolbar">
- <button onclick="window.print()" style="background:#3b82f6;color:#fff">&#128438; Tulosta</button>
- <button onclick="window.close()" style="background:#6b7280;color:#fff">&#10006; Sulje</button>
- <span id="saveinfo"></span>
+<div id="bar">
+ <button onclick="window.print()" style="background:#3b82f6;color:#fff">Tulosta</button>
+ <button onclick="window.close()" style="background:#64748b;color:#fff">Sulje</button>
 </div>
 
-<div id="invoice">
+<div id="sheet">
 
-<!-- LÄHETTÄJÄ + LASKU-OTSIKKO -->
-<table style="width:100%;margin-bottom:10px">
-<tr>
- <td style="vertical-align:top;width:55%">
-  <div style="font-size:20px;font-weight:700;color:#0a4272;margin-bottom:4px">${issuer.name}</div>
-  <div style="font-size:10px;color:#555;line-height:1.8">
-   ${issuer.addr}<br>
-   Puh: ${issuer.phone}<br>
-   ${issuer.email}<br>
-   Y-tunnus: ${issuer.bid} &nbsp;·&nbsp; ALV-rekisteröity
+<!-- ROW 1: LÄHETTÄJÄ + LASKU-OTSIKKO -->
+<table style="width:100%;margin-bottom:14px"><tr>
+ <td style="vertical-align:top;width:52%">
+  <div style="font-size:17px;font-weight:700;color:#0a4272;margin-bottom:5px">${I.name}</div>
+  <div style="font-size:10px;color:#555;line-height:1.9">
+   ${I.addr}<br>${I.city}<br>
+   Y-tunnus: <strong>${I.bid}</strong> &nbsp;&nbsp; ALV-rekisteröity<br>
+   Puh: ${I.phone}<br>
+   ${I.email}
   </div>
  </td>
  <td style="vertical-align:top;text-align:right">
-  <div style="font-size:22px;font-weight:700;color:${isCredit?'#991b1b':'#111'};margin-bottom:6px">${isCredit?'HYVITYSLASKU':'LASKU'}</div>
-  <table style="margin-left:auto;font-size:10.5px">
-   <tr><td style="color:#888;text-align:right;padding:1px 8px 1px 0">Laskunumero</td><td style="font-weight:700;font-size:13px;white-space:nowrap">${inv.invoiceNo||''}</td></tr>
-   <tr><td style="color:#888;text-align:right;padding:1px 8px 1px 0">Päivämäärä</td><td>${fmtFi(invDate)}</td></tr>
-   <tr><td style="color:#888;text-align:right;padding:1px 8px 1px 0">Maksuehto</td><td>${pd===0?'Heti':pd+' vrk netto'}</td></tr>
-   <tr><td style="color:#888;text-align:right;padding:1px 8px 1px 0">Eräpäivä</td><td style="font-weight:700;color:#991b1b">${fmtFi(dueDate)}</td></tr>
-   <tr><td style="color:#888;text-align:right;padding:1px 8px 1px 0">Viitenumero</td><td style="font-weight:700;font-size:13px">${inv.reference||''}</td></tr>
+  <h1 style="color:${isC?'#b91c1c':'#0a4272'};margin-bottom:10px">${isC?'HYVITYSLASKU':'LASKU'}</h1>
+  <table style="margin-left:auto;border-collapse:collapse;font-size:10.5px">
+   <tr><td style="color:#888;padding:2px 10px 2px 0;text-align:right">Laskunumero</td><td style="font-weight:700;font-size:14px">${inv.invoiceNo||''}</td></tr>
+   <tr><td style="color:#888;padding:2px 10px 2px 0;text-align:right">Laskupäivä</td><td>${fi(iDate)}</td></tr>
+   <tr><td style="color:#888;padding:2px 10px 2px 0;text-align:right">Maksuehto</td><td>${pd===0?'Heti':pd+' vrk netto'}</td></tr>
+   <tr><td style="color:#888;padding:2px 10px 2px 0;text-align:right">Eräpäivä</td><td style="font-weight:700;color:#b91c1c">${fi(due)}</td></tr>
+   <tr><td style="color:#888;padding:2px 10px 2px 0;text-align:right">Viitenumero</td><td style="font-weight:700;font-size:13px;letter-spacing:.5px">${inv.reference||''}</td></tr>
   </table>
  </td>
-</tr>
-</table>
+</tr></table>
 
-<div style="border-top:2.5px solid #0a4272;margin-bottom:10px"></div>
+<div style="border-top:2px solid #0a4272;margin-bottom:12px"></div>
 
-<!-- LASKUTETAAN -->
-<div style="margin-bottom:12px">
- <div style="font-size:8.5px;text-transform:uppercase;letter-spacing:.5px;color:#888;margin-bottom:3px">Laskutetaan</div>
- <div style="font-size:14px;font-weight:700">${inv.payerName||'—'}</div>
- ${inv.payerBusinessId?`<div style="font-size:10px;color:#555;margin-top:1px">Y-tunnus: ${inv.payerBusinessId}</div>`:''}
- ${inv.payerEmail?`<div style="font-size:10px;color:#1e40af;margin-top:1px">${inv.payerEmail}</div>`:''}
+<!-- ROW 2: LASKUTETAAN -->
+<div style="margin-bottom:14px">
+ <div class="lbl">Laskutetaan</div>
+ <div style="font-size:14px;font-weight:700;margin-bottom:2px">${inv.payerName||'—'}</div>
+ ${inv.payerBusinessId?`<div style="font-size:10px;color:#555">Y-tunnus: ${inv.payerBusinessId}</div>`:''}
+ ${inv.payerEmail?`<div style="font-size:10px;color:#2563eb">${inv.payerEmail}</div>`:''}
 </div>
 
-<div style="border-top:1px solid #d1d5db;margin-bottom:8px"></div>
+<div style="border-top:1px solid #e2e8f0;margin-bottom:10px"></div>
 
-<!-- RIVIT -->
-<table style="width:100%;margin-bottom:6px">
- <thead>
-  <tr style="background:#f0f4f8">
-   <th style="padding:5px 8px;font-size:9.5px;text-align:left;font-weight:700;text-transform:uppercase;letter-spacing:.3px">Kuvaus</th>
-   <th style="padding:5px 8px;font-size:9.5px;text-align:right;width:40px;font-weight:700">Kpl</th>
-   <th style="padding:5px 8px;font-size:9.5px;text-align:right;width:85px;font-weight:700">€/kpl</th>
-   <th style="padding:5px 8px;font-size:9.5px;text-align:right;width:85px;font-weight:700">Yhteensä</th>
-  </tr>
- </thead>
- <tbody>${linesHtml}</tbody>
+<!-- ROW 3: LASKURIVIT -->
+<table style="width:100%;border-collapse:collapse;margin-bottom:4px">
+ <thead><tr>
+  <th>Kuvaus</th>
+  <th class="r" style="width:36px">Kpl</th>
+  <th class="r" style="width:80px">Á-hinta €</th>
+  <th class="r" style="width:80px">Yhteensä €</th>
+ </tr></thead>
+ <tbody>${rows}</tbody>
 </table>
 
-<!-- YHTEENVETO -->
-<table style="width:220px;margin-left:auto;margin-bottom:20px">
- <tr><td style="padding:2px 8px;font-size:11px;color:#555">Veroton</td><td style="padding:2px 8px;font-size:11px;text-align:right">${net.toFixed(2)} €</td></tr>
- <tr><td style="padding:2px 8px;font-size:11px;color:#555">ALV ${vatPct}%</td><td style="padding:2px 8px;font-size:11px;text-align:right">${vat.toFixed(2)} €</td></tr>
- <tr style="border-top:2px solid #111">
-  <td style="padding:5px 8px;font-size:13px;font-weight:700">Maksettava yhteensä</td>
-  <td style="padding:5px 8px;font-size:15px;font-weight:700;text-align:right;color:${isCredit?'#991b1b':'#0a4272'}">${Math.abs(gross).toFixed(2)} €</td>
+<!-- ROW 4: YHTEENVETO -->
+<table style="width:200px;margin-left:auto;margin-top:8px;border-collapse:collapse;font-size:10.5px">
+ <tr><td style="padding:2px 8px;color:#555">Veroton</td><td style="padding:2px 8px;text-align:right">${net.toFixed(2)} €</td></tr>
+ <tr><td style="padding:2px 8px;color:#555">ALV ${vp} %</td><td style="padding:2px 8px;text-align:right">${vat.toFixed(2)} €</td></tr>
+ <tr style="border-top:2px solid #1a1a1a">
+  <td style="padding:5px 8px;font-weight:700;font-size:12px;white-space:nowrap">Maksettava yhteensä</td>
+  <td style="padding:5px 8px;text-align:right;font-weight:700;font-size:15px;color:${isC?'#b91c1c':'#0a4272'};white-space:nowrap">${Math.abs(gross).toFixed(2)} €</td>
  </tr>
 </table>
 
-<!-- MAKSUKUITTI -->
-<div style="border-top:1.5px solid #d1d5db;padding-top:10px;margin-top:8px">
- <table style="width:100%;border:1.5px solid #bbb;border-radius:4px;font-size:10px">
-  <thead>
-   <tr style="background:#f8f9fa;border-bottom:1px solid #ccc">
-    <th style="padding:4px 8px;text-align:left;font-weight:600;color:#555;font-size:9px;width:30%">Saaja / Mottagare</th>
-    <th style="padding:4px 8px;text-align:left;font-weight:600;color:#555;font-size:9px;width:28%">IBAN &amp; BIC</th>
-    <th style="padding:4px 8px;text-align:left;font-weight:600;color:#555;font-size:9px;width:20%">Viitenumero</th>
-    <th style="padding:4px 8px;text-align:left;font-weight:600;color:#555;font-size:9px;width:12%">Eräpäivä</th>
-    <th style="padding:4px 8px;text-align:right;font-weight:600;color:#555;font-size:9px;width:10%">Euroa</th>
-   </tr>
-  </thead>
-  <tbody>
-   <tr>
-    <td style="padding:5px 8px;font-weight:700;font-size:11px;vertical-align:top">${issuer.name}</td>
-    <td style="padding:5px 8px;vertical-align:top">
-     <span style="font-weight:700;font-size:10.5px;display:block">${issuer.iban}</span>
-     <span style="color:#555;font-size:9.5px">${issuer.bic}</span>
-    </td>
-    <td style="padding:5px 8px;font-weight:700;font-size:12px;vertical-align:top">${inv.reference||''}</td>
-    <td style="padding:5px 8px;font-weight:700;color:#991b1b;font-size:11px;vertical-align:top">${fmtFi(dueDate)}</td>
-    <td style="padding:5px 8px;font-weight:700;font-size:16px;color:#0a4272;text-align:right;vertical-align:top">${Math.abs(gross).toFixed(2)}</td>
-   </tr>
-  </tbody>
- </table>
- <div style="margin-top:8px">
-  <div style="font-size:8.5px;color:#888;margin-bottom:3px">Virtuaaliviivakoodinumero</div>
-  <svg id="barcode"></svg>
-  <div style="font-family:monospace;font-size:8.5px;color:#555;letter-spacing:.5px;margin-top:2px">${barcodeStr}</div>
- </div>
+<div style="border-top:1px solid #cbd5e1;margin:20px 0 12px"></div>
+
+<!-- ROW 5: MAKSUTIEDOT -->
+<div class="lbl" style="margin-bottom:8px">Maksutiedot</div>
+<table style="width:100%;border-collapse:collapse;border:1px solid #cbd5e1;font-size:10.5px">
+ <thead>
+  <tr style="background:#f8fafc">
+   <th style="padding:5px 10px;text-align:left;font-size:9px;color:#555;font-weight:700;text-transform:uppercase;letter-spacing:.4px;width:28%;border-bottom:1px solid #e2e8f0">Saajan nimi</th>
+   <th style="padding:5px 10px;text-align:left;font-size:9px;color:#555;font-weight:700;text-transform:uppercase;letter-spacing:.4px;width:28%;border-bottom:1px solid #e2e8f0">Tilinumero (IBAN) / BIC</th>
+   <th style="padding:5px 10px;text-align:left;font-size:9px;color:#555;font-weight:700;text-transform:uppercase;letter-spacing:.4px;width:18%;border-bottom:1px solid #e2e8f0">Viitenumero</th>
+   <th style="padding:5px 10px;text-align:left;font-size:9px;color:#555;font-weight:700;text-transform:uppercase;letter-spacing:.4px;width:13%;border-bottom:1px solid #e2e8f0">Eräpäivä</th>
+   <th style="padding:5px 10px;text-align:right;font-size:9px;color:#555;font-weight:700;text-transform:uppercase;letter-spacing:.4px;width:13%;border-bottom:1px solid #e2e8f0">Summa €</th>
+  </tr>
+ </thead>
+ <tbody>
+  <tr>
+   <td style="padding:7px 10px;font-weight:600">${I.name}</td>
+   <td style="padding:7px 10px"><span style="font-weight:600;display:block">${I.iban}</span><span style="color:#666;font-size:9.5px">${I.bic}</span></td>
+   <td style="padding:7px 10px;font-weight:700;font-size:12px;letter-spacing:.3px">${inv.reference||''}</td>
+   <td style="padding:7px 10px;font-weight:700;color:#b91c1c">${fi(due)}</td>
+   <td style="padding:7px 10px;font-weight:700;font-size:14px;color:#0a4272;text-align:right">${Math.abs(gross).toFixed(2)}</td>
+  </tr>
+ </tbody>
+</table>
+
+<!-- ROW 6: VIIVAKOODI -->
+<div style="margin-top:10px">
+ <div class="lbl" style="margin-bottom:4px">Virtuaaliviivakoodinumero</div>
+ <svg id="barcode"></svg>
+ <div style="font-family:'Courier New',monospace;font-size:9px;color:#555;letter-spacing:.5px;margin-top:3px">${bar}</div>
 </div>
 
-</div><!-- /invoice -->
+</div><!-- /sheet -->
 
 <script>
 window.onload=function(){
- try{JsBarcode('#barcode','${barcodeStr}',{format:'CODE128',width:1.5,height:42,displayValue:false,margin:0});}
- catch(e){var b=document.getElementById('barcode');if(b)b.style.display='none';}
+ try{JsBarcode('#barcode','${bar}',{format:'CODE128',width:1.5,height:44,displayValue:false,margin:0});}
+ catch(e){var el=document.getElementById('barcode');if(el)el.style.display='none';}
 };
 <\/script>
 </body></html>`;
 
- const w=window.open('','_blank','width=900,height=950');
- w.document.write(html);
+ const w=window.open('','_blank','width=900,height=960');
+ w.document.write(doc);
  w.document.close();
 }
 
