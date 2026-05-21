@@ -205,7 +205,7 @@ import{getAuth,GoogleAuthProvider,signInWithPopup,signOut,onAuthStateChanged}fro
 import{getFirestore,collection,doc,addDoc,setDoc,deleteDoc,onSnapshot,serverTimestamp}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 const FIREBASE_CONFIG={apiKey:"AIzaSyB7Dp5_5fN0Iko-4Jn1D2Dp6NNNih63UO0",authDomain:"jsailing-f716c.firebaseapp.com",projectId:"jsailing-f716c",storageBucket:"jsailing-f716c.firebasestorage.app",messagingSenderId:"543523103696",appId:"1:543523103696:web:439a312efa6aec398a8fd5"};
 const ALLOWED_EMAIL="jacke.seilaa@gmail.com";
-const APP_VERSION="V9.50";const UPDATE_DATE=(()=>{const n=new Date();return n.toLocaleDateString("fi-FI")+' klo '+String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0');})();
+const APP_VERSION="V9.51";const UPDATE_DATE=(()=>{const n=new Date();return n.toLocaleDateString("fi-FI")+' klo '+String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0');})();
 const ISSUERS={
   tmi:{name:"J Sailing",businessId:"1728993-9",address:"Kontiontie 55, 11120 Riihimäki",iban:"FI62 1132 3000 4277 43",bic:"NDEAFIHH"},
   oy:{name:"AJarmo Oy",businessId:"3432355-3",address:"Kontiontie 55, 11120 Riihimäki",iban:"FI73 7997 7994 4257 05",bic:"HOLVFIHH"}
@@ -991,8 +991,8 @@ function renderCombinedInvoiceModal(){
  const ci=state.combinedInvoice;
  if(!ci||!ci.key)return"";
  const selected=ci.items.filter(x=>x.included);
- const grossTotal=selected.reduce((s,x)=>s+x.price,0);
- const isCharter=selected.some(x=>x.isSailing&&x.ev?.type==="Charter");
+ const grossTotal=ci.editLines.reduce((s,l)=>s+l.amount,0);
+ const isCharter=ci.items.some(x=>x.included&&x.isSailing&&x.ev?.type==="Charter");
  const rate=isCharter?0.135:0.255;
  const ratePct=(rate*100).toFixed(1);
  const net=grossTotal/(1+rate),vat=grossTotal-net;
@@ -1022,6 +1022,17 @@ function renderCombinedInvoiceModal(){
     <div style="font-weight:700;color:#0a4272">${x.price>0?x.price.toFixed(0)+" €":"—"}</div>
    </div>`).join("")}
    <div class="hr"></div>
+   <!-- Muokattavat rivit -->
+   <div style="font-weight:700;font-size:12px;text-transform:uppercase;letter-spacing:.5px;color:#374151;margin-bottom:8px">Laskun rivit</div>
+   ${ci.editLines.map((l,li)=>`<div style="display:grid;grid-template-columns:1fr 110px 32px;gap:6px;margin-bottom:6px;align-items:center">
+    <input data-action="ci-line-title" data-idx="${li}" value="${esc(l.title)}" placeholder="Kuvaus" style="font-size:12px;padding:6px 10px;border:1.5px solid ${l.isProvisio?"#f59e0b":l.custom?"#93c5fd":"#e5e7eb"};border-radius:6px;background:${l.isProvisio?"#fef3c7":l.custom?"#dbeafe":"#f9fafb"};color:#111827;font-family:Outfit,sans-serif">
+    <input type="number" data-action="ci-line-amount" data-idx="${li}" value="${l.amount}" step="0.01" style="font-size:12px;padding:6px 8px;border:1.5px solid ${l.amount<0?"#fca5a5":"#e5e7eb"};border-radius:6px;text-align:right;font-weight:700;color:${l.amount<0?"#991b1b":"#0a4272"};font-family:Outfit,sans-serif">
+    ${l.custom?`<button class="btn btn-danger btn-sm" data-action="ci-remove-line" data-idx="${li}" style="padding:5px 8px">&times;</button>`:`<div></div>`}
+   </div>`).join("")}
+   <div class="row" style="margin-bottom:12px;gap:8px">
+    <button class="btn btn-secondary btn-sm" data-action="ci-add-line">+ Lisää rivi / alennus</button>
+   </div>
+   <div class="hr"></div>
    <div class="invoice-box" style="margin-top:8px">
     <div class="row-between">
      <div style="font-size:13px;line-height:1.7"><strong>LASKU &mdash; LOPPULASKU</strong><br>${esc(issr.name)}<br>Y-tunnus ${esc(issr.businessId)}<br>${esc(issr.address)}</div>
@@ -1031,7 +1042,7 @@ function renderCombinedInvoiceModal(){
     <div style="font-size:13px"><strong>Maksaja:</strong> ${esc(ci.label)}</div>
     <div class="hr"></div>
     <table class="table"><thead><tr><th>Kuvaus</th><th class="r">Yht €</th></tr></thead>
-    <tbody>${selected.length===0?`<tr><td colspan="2" class="muted">Valitse tapahtumat yllä</td></tr>`:selected.map(x=>`<tr><td>${esc(x.evName)} &mdash; ${esc(x.customer.name)} (${fmtDate(x.evDate)})</td><td class="r">${x.price.toFixed(2)}</td></tr>`).join("")}</tbody></table>
+    <tbody>${ci.editLines.length===0?`<tr><td colspan="2" class="muted">Lisää rivejä yllä</td></tr>`:ci.editLines.map(l=>`<tr><td style="color:${l.amount<0?"#991b1b":"inherit"}">${esc(l.title)}</td><td class="r" style="color:${l.amount<0?"#991b1b":"#0a4272"};font-weight:700">${l.amount.toFixed(2)}</td></tr>`).join("")}</tbody></table>
     <div class="hr"></div>
     <table class="table" style="max-width:260px;margin-left:auto">
      <tr><td>Netto</td><td class="r">${net.toFixed(2)} €</td></tr>
@@ -1762,6 +1773,8 @@ function bind(){
   document.querySelector('[data-action="tutkinto-type-changed"]')?.addEventListener("change",()=>{const typeEl=document.querySelector('[data-field="tutkinto-type"]');if(typeEl){state.tutkintoDraft.type=typeEl.value;render();}});
   document.querySelector('[data-action="ci-issuer"]')?.addEventListener('change',e=>{state.combinedInvoice.issuer=e.target.value;render();});
   document.querySelector('[data-action="ci-date"]')?.addEventListener('change',e=>{state.combinedInvoice.invoiceDate=e.target.value;render();});
+  document.querySelectorAll('[data-action="ci-line-title"]').forEach(inp=>{inp.oninput=()=>{const _i=Number(inp.dataset.idx);if(state.combinedInvoice.editLines[_i])state.combinedInvoice.editLines[_i].title=inp.value;};});
+  document.querySelectorAll('[data-action="ci-line-amount"]').forEach(inp=>{inp.oninput=()=>{const _i=Number(inp.dataset.idx);if(state.combinedInvoice.editLines[_i]){state.combinedInvoice.editLines[_i].amount=parseFloat(inp.value)||0;render();}};});
   document.querySelectorAll('[data-action="asd-date"],[data-action="asd-start"],[data-action="asd-end"]').forEach(inp=>{
     inp.onchange=()=>{
       const i=Number(inp.dataset.idx),a2=inp.dataset.action;
@@ -2076,11 +2089,38 @@ table{width:100%;border-collapse:collapse}
     render();
     return;
   }
-  if(a==="ci-toggle"){const _i=Number(el.dataset.idx);if(state.combinedInvoice.items[_i]!=null)state.combinedInvoice.items[_i].included=!state.combinedInvoice.items[_i].included;render();return;}
+  if(a==="ci-toggle"){
+    const _i=Number(el.dataset.idx);const ci=state.combinedInvoice;
+    if(ci.items[_i]!=null){ci.items[_i].included=!ci.items[_i].included;
+    // Rebuild editLines from selected items + custom lines
+    const _co=ci.isCompany?state.companies.find(x=>x.id===ci.companyId):null;
+    const _provPct=_co?Number(_co.commissionPct||0):0;
+    const _sel=ci.items.filter(x=>x.included);
+    const _customs=ci.editLines.filter(l=>l.custom&&!l.isProvisio);
+    const _newLines=_sel.map(x=>({id:x.customer.id+"_"+x.eventId,title:x.evName+" \u2014 "+x.customer.name,amount:x.price,custom:false}));
+    _newLines.push(..._customs);
+    if(_provPct>0){const _bt=_newLines.reduce((s,l)=>s+l.amount,0);_newLines.push({id:"provisio",title:"Provisio "+_provPct.toFixed(0)+"%",amount:-Math.round(_bt*_provPct/100*100)/100,custom:true,isProvisio:true});}
+    ci.editLines=_newLines;}
+    render();return;
+  }
+  if(a==="ci-remove-line"){
+    const _idx=Number(el.dataset.idx);
+    state.combinedInvoice.editLines.splice(_idx,1);
+    render();return;
+  }
+  if(a==="ci-add-line"){
+    state.combinedInvoice.editLines.push({id:"custom_"+Date.now(),title:"",amount:0,custom:true});
+    render();return;
+  }
   if(a==="open-register"){state.modal="register";render();return;}
   if(a==="open-unbilled"){state.unbilledFilter="";state.modal="unbilled";render();return;}
   if(a==="open-unbilled-event"){state.unbilledFilter=itemId;state.modal="unbilled";render();return;}
-  if(a==="start-combined"){const _grps=getUnbilledGroups();const _grp=_grps.find(g=>g.key===itemId);if(!_grp)return;state.combinedInvoice={key:_grp.key,label:_grp.label,payerLabel:_grp.payerLabel||_grp.label,osio:_grp.osio||"",isCompany:_grp.isCompany,companyId:_grp.companyId,issuer:"tmi",invoiceDate:today(),items:_grp.items.map(x=>({...x,included:true}))};state.modal="combined-invoice";render();return;}
+  if(a==="start-combined"){const _grps=getUnbilledGroups();const _grp=_grps.find(g=>g.key===itemId);if(!_grp)return;const _co=_grp.isCompany?state.companies.find(x=>x.id===_grp.companyId):null;
+    const _provPct=_co?Number(_co.commissionPct||0):0;
+    const _baseItems=_grp.items.map(x=>({...x,included:true}));
+    const _editLines=_baseItems.map(x=>({id:x.customer.id+"_"+x.eventId,title:x.evName+" \u2014 "+x.customer.name,amount:x.price,custom:false}));
+    if(_provPct>0){const _baseTotal=_editLines.reduce((s,l)=>s+l.amount,0);_editLines.push({id:"provisio",title:"Provisio "+_provPct.toFixed(0)+"%",amount:-Math.round(_baseTotal*_provPct/100*100)/100,custom:true,isProvisio:true});}
+    state.combinedInvoice={key:_grp.key,label:_grp.label,payerLabel:_grp.payerLabel||_grp.label,osio:_grp.osio||"",isCompany:_grp.isCompany,companyId:_grp.companyId,issuer:"tmi",invoiceDate:today(),items:_baseItems,editLines:_editLines};state.modal="combined-invoice";render();return;}
       if(a==="new-tutkinto"){state.modal="tutkinto";state.editId=null;state.tutkintoDraft={};render();return;}
       if(a==="edit-tutkinto"){state.modal="tutkinto";state.editId=itemId;state.tutkintoDraft={};render();return;}
       if(a==="delete-tutkinto"){if(!confirm("Poistetaanko tutkinto?"))return;await fsDel("tutkinnot",itemId);render();return;}
@@ -2223,11 +2263,11 @@ table{width:100%;border-collapse:collapse}
     const sel=ci.items.filter(x=>x.included);
     if(!sel.length)return alert("Valitse v\u00e4hint\u00e4\u00e4n yksi tapahtuma.");
     const issr2=ISSUERS[ci.issuer||"tmi"]||ISSUERS.tmi;
-    const grossTotal=sel.reduce((s,x)=>s+x.price,0);
+    const grossTotal=ci.editLines.reduce((s,l)=>s+l.amount,0);
     const rate=sel.some(x=>x.isSailing&&x.ev?.type==="Charter")?0.135:0.255;
     const net=grossTotal/(1+rate),vat=grossTotal-net;
     const invNo=nextInvoiceNumber();
-    const lns=sel.map(x=>({title:x.evName+" \u2014 "+x.customer.name+" ("+fmtDate(x.evDate)+")",qty:1,unit:x.price,total:x.price}));
+    const lns=ci.editLines.map(l=>({title:l.title,qty:1,unit:l.amount,total:l.amount}));
     const payerName=ci.isCompany?(state.companies.find(x=>x.id===ci.companyId)?.name||ci.label):ci.label;
     const payerEmail=ci.isCompany?(state.companies.find(x=>x.id===ci.companyId)?.email||""):(state.customers.find(x=>x.name===ci.label)?.email||"");
     const rec={issuer:ci.issuer||"tmi",issuerName:issr2.name,mode:ci.isCompany?"company":"customer",source:"combined",eventId:"COMBINED",laskutusosio:ci.osio||"",coveredCustomerIds:sel.map(x=>x.customer.id),eventName:"Yhdistetty lasku \u2014 "+payerName+(ci.osio?" / "+ci.osio:""),vatRatePct:Number((rate*100).toFixed(1)),net,vat,grossTotal,lines:lns,invoiceDate:ci.invoiceDate||today(),invoiceNo:invNo,reference:finnishReference(invNo.replace(/[^0-9]/g,"")),payerName,payerEmail,itype:"full",paid:false,paidDate:""};
