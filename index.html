@@ -205,7 +205,7 @@ import{getAuth,GoogleAuthProvider,signInWithPopup,signOut,onAuthStateChanged}fro
 import{getFirestore,collection,doc,addDoc,setDoc,deleteDoc,onSnapshot,serverTimestamp}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 const FIREBASE_CONFIG={apiKey:"AIzaSyB7Dp5_5fN0Iko-4Jn1D2Dp6NNNih63UO0",authDomain:"jsailing-f716c.firebaseapp.com",projectId:"jsailing-f716c",storageBucket:"jsailing-f716c.firebasestorage.app",messagingSenderId:"543523103696",appId:"1:543523103696:web:439a312efa6aec398a8fd5"};
 const ALLOWED_EMAIL="jacke.seilaa@gmail.com";
-const APP_VERSION="V9.48";const UPDATE_DATE=(()=>{const n=new Date();return n.toLocaleDateString("fi-FI")+' klo '+String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0');})();
+const APP_VERSION="V9.49";const UPDATE_DATE=(()=>{const n=new Date();return n.toLocaleDateString("fi-FI")+' klo '+String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0');})();
 const ISSUERS={
   tmi:{name:"J Sailing",businessId:"1728993-9",address:"Kontiontie 55, 11120 Riihimäki",iban:"FI62 1132 3000 4277 43",bic:"NDEAFIHH"},
   oy:{name:"AJarmo Oy",businessId:"3432355-3",address:"Kontiontie 55, 11120 Riihimäki",iban:"FI73 7997 7994 4257 05",bic:"HOLVFIHH"}
@@ -915,11 +915,15 @@ function renderReskontra(){
 function getUnbilledCountForEvent(eventId){
  return state.customers.filter(c=>{
   if((c.sailingId||c.tutkintoId||"")!==eventId)return false;
-  const osio=c.laskutusosio||"";
-  return!state.invoices.some(x=>
+  const isSailing=!!c.sailingId;
+  const ev=isSailing?state.sailings.find(x=>x.id===eventId):state.tutkinnot.find(x=>x.id===eventId);
+  const expectedPrice=c.priceOverride!=null&&c.priceOverride!==""?Number(c.priceOverride):(ev?Number(ev.pricePerPerson||0):0);
+  const invoiced=state.invoices.filter(x=>
    (x.coveredCustomerIds&&x.coveredCustomerIds.includes(c.id))||
-   (x.payerName===c.name&&x.eventId===eventId&&(x.laskutusosio||"")===osio)
-  );
+   (x.payerName===c.name&&x.eventId===eventId)
+  ).reduce((s,x)=>s+Number(x.grossTotal||0),0);
+  if(expectedPrice>0)return invoiced<expectedPrice;
+  return invoiced===0;
  }).length;
 }
 
@@ -1082,19 +1086,26 @@ function renderCustomerDetailModal(){
  const eventId=c.sailingId||c.tutkintoId||"";
  const isSailing=!!c.sailingId;
  const ev=isSailing?state.sailings.find(x=>x.id===eventId):state.tutkinnot.find(x=>x.id===eventId);
- const evName=ev?(isSailing?(ev.name||""):(c.tutkintoTypeOverride||(ev.type+(ev.boatType?" ("+ev.boatType+")":"")))):"\u2014";
+ const evName=ev?(isSailing?(ev.name||""):(c.tutkintoTypeOverride||(ev.type+(ev.boatType?" ("+ev.boatType+")":"")))):"—";
  const invs=state.invoices.filter(x=>
   (x.coveredCustomerIds&&x.coveredCustomerIds.includes(c.id))||
   (x.payerName===c.name&&(x.eventId===c.sailingId||x.eventId===c.tutkintoId||x.eventId==="COMBINED"))
  ).sort((a,b)=>(b.invoiceDate||"").localeCompare(a.invoiceDate||""));
  const totalGross=invs.reduce((s,x)=>s+Number(x.grossTotal||0),0);
  const totalPaid=invs.filter(x=>x.paid).reduce((s,x)=>s+Number(x.grossTotal||0),0);
- const totalOpen=totalGross-totalPaid;
+ // Expected total price for this customer
+ const expectedPrice=c.priceOverride!=null&&c.priceOverride!==""
+  ?Number(c.priceOverride)
+  :(ev?Number(ev.pricePerPerson||0):0);
+ // Remaining = expected - already invoiced
+ const remaining=Math.max(0,expectedPrice-totalGross);
+ const fullyInvoiced=expectedPrice>0?remaining===0:invs.length>0;
  const osio=c.laskutusosio||"";
- const isInvoiced=state.invoices.some(x=>
+ const anyInvoiced=state.invoices.some(x=>
   (x.coveredCustomerIds&&x.coveredCustomerIds.includes(c.id))||
   (x.payerName===c.name&&x.eventId===eventId&&(x.laskutusosio||"")===osio)
  );
+ const showLaskuta=!fullyInvoiced&&eventId;
  return`<div class="overlay" data-action="close-modal"><div class="modal" style="max-width:620px" onclick="event.stopPropagation()">
   <div class="modal-head"><div class="row-between">
    <div>
@@ -1102,23 +1113,25 @@ function renderCustomerDetailModal(){
     <div class="card-sub">${evName}${c.laskutusosio?` &bull; <span class="badge badge-navy" style="font-size:10px">${esc(c.laskutusosio)}</span>`:""}</div>
    </div>
    <div class="row">
-    ${!isInvoiced&&eventId?`<button class="btn btn-teal btn-sm" data-action="open-unbilled-event" data-id="${eventId}">&#129534; Laskuta</button>`:""}
+    ${showLaskuta?`<button class="btn btn-teal btn-sm" data-action="open-unbilled-event" data-id="${eventId}">&#129534; Laskuta</button>`:""}
     <button class="btn btn-secondary btn-sm" data-action="edit-customer" data-id="${c.id}">&#9998; Muokkaa</button>
     <button class="btn btn-secondary btn-sm" data-action="close-modal">&times;</button>
    </div>
   </div></div>
   <div class="modal-body">
-   <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:16px">
-    <div class="stat-card"><div class="stat-label">Laskutettu</div><div class="stat-val" style="font-size:24px">${totalGross.toFixed(0)} &#8364;</div></div>
-    <div class="stat-card"><div class="stat-label">Maksettu</div><div class="stat-val" style="font-size:24px;color:#166534">${totalPaid.toFixed(0)} &#8364;</div></div>
-    <div class="stat-card"><div class="stat-label">Avoin</div><div class="stat-val" style="font-size:24px;color:${totalOpen>0?"#991b1b":"#166534"}">${totalOpen.toFixed(0)} &#8364;</div></div>
+   <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px;margin-bottom:16px">
+    ${expectedPrice>0?`<div class="stat-card"><div class="stat-label">Kurssin hinta</div><div class="stat-val" style="font-size:20px">${expectedPrice.toFixed(0)} &#8364;</div></div>`:""}
+    <div class="stat-card"><div class="stat-label">Laskutettu</div><div class="stat-val" style="font-size:20px">${totalGross.toFixed(0)} &#8364;</div></div>
+    <div class="stat-card"><div class="stat-label">Maksettu</div><div class="stat-val" style="font-size:20px;color:#166534">${totalPaid.toFixed(0)} &#8364;</div></div>
+    <div class="stat-card"><div class="stat-label">${remaining>0?"Laskuttamatta":"Avoin lasku"}</div><div class="stat-val" style="font-size:20px;color:${remaining>0||totalGross-totalPaid>0?"#991b1b":"#166534"}">${remaining>0?remaining.toFixed(0):(totalGross-totalPaid).toFixed(0)} &#8364;</div></div>
    </div>
    <div class="infobox infobox-blue" style="margin-bottom:14px">
     ${c.phone?`<a href="tel:${esc(c.phone.replace(/\s/g,''))}" style="color:#1e3a8a;margin-right:12px">&#128222; ${esc(c.phone)}</a>`:""}
     ${c.email?`<a href="mailto:${esc(c.email)}" style="color:#1e3a8a">&#9993; ${esc(c.email)}</a>`:""}
     ${!c.phone&&!c.email?`<span class="muted">Ei yhteystietoja</span>`:""}
    </div>
-   ${!isInvoiced&&eventId?`<div class="infobox infobox-amber" style="margin-bottom:14px">&#128179; <strong>Laskuttamatta:</strong> ${esc(evName)}${c.priceOverride!=null&&c.priceOverride!==""?` &mdash; ${Number(c.priceOverride).toFixed(0)} &euro;`:""}</div>`:""}
+   ${remaining>0?`<div class="infobox infobox-amber" style="margin-bottom:14px">&#128179; <strong>Laskuttamatta:</strong> ${esc(evName)} &mdash; loppulasku ${remaining.toFixed(0)} &euro;</div>`:""}
+   ${!anyInvoiced&&eventId?`<div class="infobox infobox-amber" style="margin-bottom:14px">&#128179; <strong>Ei yhtään laskua:</strong> ${esc(evName)}${expectedPrice>0?` &mdash; ${expectedPrice.toFixed(0)} &euro;`:""}</div>`:""}
    <div style="font-weight:700;font-size:12px;text-transform:uppercase;letter-spacing:.5px;color:#374151;margin-bottom:8px">Laskuhistoria</div>
    ${invs.length===0?`<div class="muted small">Ei laskuja.</div>`:`
    <table class="table">
