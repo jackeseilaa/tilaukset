@@ -205,7 +205,7 @@ import{getAuth,GoogleAuthProvider,signInWithPopup,signOut,onAuthStateChanged}fro
 import{getFirestore,collection,doc,addDoc,setDoc,deleteDoc,onSnapshot,serverTimestamp}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 const FIREBASE_CONFIG={apiKey:"AIzaSyB7Dp5_5fN0Iko-4Jn1D2Dp6NNNih63UO0",authDomain:"jsailing-f716c.firebaseapp.com",projectId:"jsailing-f716c",storageBucket:"jsailing-f716c.firebasestorage.app",messagingSenderId:"543523103696",appId:"1:543523103696:web:439a312efa6aec398a8fd5"};
 const ALLOWED_EMAIL="jacke.seilaa@gmail.com";
-const APP_VERSION="V9.76";const UPDATE_DATE=(()=>{const n=new Date();return n.toLocaleDateString("fi-FI")+' klo '+String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0');})();
+const APP_VERSION="V9.77";const UPDATE_DATE=(()=>{const n=new Date();return n.toLocaleDateString("fi-FI")+' klo '+String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0');})();
 const ISSUERS={
   tmi:{name:"J Sailing",businessId:"1728993-9",address:"Kontiontie 55, 11120 Riihimäki",iban:"FI62 1132 3000 4277 43",bic:"NDEAFIHH"},
   oy:{name:"AJarmo Oy",businessId:"3432355-3",address:"Kontiontie 55, 11120 Riihimäki",iban:"FI73 7997 7994 4257 05",bic:"HOLVFIHH"}
@@ -391,8 +391,14 @@ function computeInvoice(overrideState){
     const invCust=state.customers.find(x=>x.id===inv.customerId);
     const custType=invCust?.tutkintoTypeOverride||"";
     eventName=(custType||t.type)+(t.boatType&&!custType?" ("+t.boatType+")":"");
-    let price=parseFloat(inv.partialAmount||0)||0;
     const c=state.customers.find(x=>x.id===inv.customerId);
+    let price=0;
+    if(isPartial||itype==="reservation"){
+     price=parseFloat(inv.partialAmount||0)||0;
+    }else{
+     price=c&&c.priceOverride!=null&&c.priceOverride!==""?Number(c.priceOverride):Number(t.pricePerPerson||0);
+     if(!price)price=parseFloat(inv.partialAmount||0)||0;
+    }
     if(c){payerName=c.name||"";payerEmail=c.email||"";let amt=isCredit?-Math.abs(price):price;lines.push({title:`${eventName} — ${invTypeLabel(itype)} — ${c.name}`,qty:1,unit:amt,total:amt});grossTotal=amt;}
   }else if(s){
     eventName=s.name||"";
