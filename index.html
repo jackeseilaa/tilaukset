@@ -205,7 +205,7 @@ import{getAuth,GoogleAuthProvider,signInWithPopup,signOut,onAuthStateChanged}fro
 import{getFirestore,collection,doc,addDoc,setDoc,deleteDoc,onSnapshot,serverTimestamp}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 const FIREBASE_CONFIG={apiKey:"AIzaSyB7Dp5_5fN0Iko-4Jn1D2Dp6NNNih63UO0",authDomain:"jsailing-f716c.firebaseapp.com",projectId:"jsailing-f716c",storageBucket:"jsailing-f716c.firebasestorage.app",messagingSenderId:"543523103696",appId:"1:543523103696:web:439a312efa6aec398a8fd5"};
 const ALLOWED_EMAIL="jacke.seilaa@gmail.com";
-const APP_VERSION="V9.94";const UPDATE_DATE=(()=>{const n=new Date();return n.toLocaleDateString("fi-FI")+' klo '+String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0');})();
+const APP_VERSION="V9.95";const UPDATE_DATE=(()=>{const n=new Date();return n.toLocaleDateString("fi-FI")+' klo '+String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0');})();
 const ISSUERS={
   tmi:{name:"J Sailing",businessId:"1728993-9",address:"Kontiontie 55, 11120 Riihimäki",iban:"FI62 1132 3000 4277 43",bic:"NDEAFIHH"},
   oy:{name:"AJarmo Oy",businessId:"3432355-3",address:"Kontiontie 55, 11120 Riihimäki",iban:"FI73 7997 7994 4257 05",bic:"HOLVFIHH"}
@@ -441,20 +441,17 @@ function computeInvoice(overrideState){
   }
   if(isCredit&&inv.creditRefId){const origInv=state.invoices.find(x=>x.id===inv.creditRefId);if(origInv&&origInv.lines){lines.unshift({title:`📋 ALKUPERÄISEN LASKUN RIVIT (${origInv.invoiceNo}):`,qty:"",unit:"",total:"",isHeader:true},...origInv.lines);}}
   const creditRef=isCredit?state.invoices.find(x=>x.id===inv.creditRefId):null;
-  const net=(grossTotal||0)/(1+rate),vat=(grossTotal||0)-net;
-  const invNo=nextInvoiceNumber();
-  // Lisää valitut muut tuoterivit laskun loppuun (toimii kaikille laskulajeille)
+  // Lisää tuoterivit ENNEN net/vat-laskentaa
   if(inv.source!=="tuote"&&(state.tuoteLines||[]).length>0){
    for(const _tl of state.tuoteLines){
     const _tp=(state.muutTuotteet||[]).find(x=>x.id===_tl.id);
-    if(_tp){
-     const _tqty=_tl.qty||1;
-     const _tamt=Number(_tp.hinta||0)*_tqty;
+    if(_tp){const _tqty=_tl.qty||1;const _tamt=Number(_tp.hinta||0)*_tqty;
      lines.push({title:(_tp.nimi||"")+(_tqty>1?" ×"+_tqty:""),qty:_tqty,unit:Number(_tp.hinta||0),total:_tamt});
-     grossTotal+=_tamt;
-    }
+     grossTotal+=_tamt;}
    }
   }
+  const net=(grossTotal||0)/(1+rate),vat=(grossTotal||0)-net;
+  const invNo=nextInvoiceNumber();
   return{sailing:s,tutkinto:t,isTutkinto,rate,ratePct,payerName,payerEmail,payerBusinessId,lines,grossTotal,net,vat,reference:finnishReference(invNo.replace(/\D/g,"")),invNo,eventName,isReservation:isRes,itype,isCredit,isPartial,creditRef};
 }
 // ── KONFLIKTITARKISTUS ──
