@@ -205,7 +205,7 @@ import{getAuth,GoogleAuthProvider,signInWithPopup,signOut,onAuthStateChanged}fro
 import{getFirestore,collection,doc,addDoc,setDoc,deleteDoc,onSnapshot,serverTimestamp}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 const FIREBASE_CONFIG={apiKey:"AIzaSyB7Dp5_5fN0Iko-4Jn1D2Dp6NNNih63UO0",authDomain:"jsailing-f716c.firebaseapp.com",projectId:"jsailing-f716c",storageBucket:"jsailing-f716c.firebasestorage.app",messagingSenderId:"543523103696",appId:"1:543523103696:web:439a312efa6aec398a8fd5"};
 const ALLOWED_EMAIL="jacke.seilaa@gmail.com";
-const APP_VERSION="V9.84b";const UPDATE_DATE=(()=>{const n=new Date();return n.toLocaleDateString("fi-FI")+' klo '+String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0');})();
+const APP_VERSION="V9.85";const UPDATE_DATE=(()=>{const n=new Date();return n.toLocaleDateString("fi-FI")+' klo '+String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0');})();
 const ISSUERS={
   tmi:{name:"J Sailing",businessId:"1728993-9",address:"Kontiontie 55, 11120 Riihimäki",iban:"FI62 1132 3000 4277 43",bic:"NDEAFIHH"},
   oy:{name:"AJarmo Oy",businessId:"3432355-3",address:"Kontiontie 55, 11120 Riihimäki",iban:"FI73 7997 7994 4257 05",bic:"HOLVFIHH"}
@@ -1012,11 +1012,25 @@ function renderInvoicing(){
       <div class="field"><label class="lbl">Laskutettava kohde</label><select data-action="inv-source"><option value="sailing" ${source==="sailing"?"selected":""}>⛵ Purjehdus / Kurssi</option><option value="tutkinto" ${source==="tutkinto"?"selected":""}>🎓 Tutkinto</option><option value="tuote" ${source==="tuote"?"selected":""}>📦 Muut tuotteet</option></select></div>
       ${source!=="tuote"&&(state.muutTuotteet||[]).length>0?`
   <div style="margin-bottom:14px">
-   <div class="row" style="gap:8px;align-items:center;flex-wrap:wrap">
-    <button class="btn btn-secondary btn-sm" data-action="open-tuote-picker">&#128230; + Lisää tuoterivejä</button>
+   <div class="row" style="gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:${state.tuotePickerOpen?"8px":"0"}">
+    <button class="btn btn-secondary btn-sm" data-action="toggle-tuote-picker">&#128230; ${state.tuotePickerOpen?"&#9650; Sulje tuotevalitsin":"+ Lisää tuoterivejä"}</button>
     ${(state.tuoteLines||[]).length>0?`<span style="font-size:11px;color:#166534;font-weight:600">&#10003; ${(state.tuoteLines||[]).map(l=>{const p=(state.muutTuotteet||[]).find(x=>x.id===l.id);return (p?.nimi||"")+(l.qty>1?" ×"+l.qty:"");}).join(", ")}</span>`:""}
     ${(state.tuoteLines||[]).length>0?`<button class="btn btn-danger btn-sm" data-action="clear-tuote-lines" style="font-size:10px;padding:2px 8px">&#10006; Tyhjennä</button>`:""}
    </div>
+   ${state.tuotePickerOpen?`<div style="border:1.5px solid #86efac;border-radius:10px;padding:10px 14px;background:#f0fdf4">
+    ${(state.muutTuotteet||[]).map(p=>{
+     const line=(state.tuoteLines||[]).find(l=>l.id===p.id);const sel=!!line;
+     return`<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid #dcfce7">
+      <div data-action="tuote-toggle" data-id="${p.id}" style="width:26px;height:26px;border-radius:6px;border:2px solid ${sel?"#166534":"#d1d5db"};background:${sel?"#dcfce7":"#fff"};display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;color:#166534;font-size:15px">${sel?"&#10003;":""}</div>
+      <div data-action="tuote-toggle" data-id="${p.id}" style="flex:1;cursor:pointer">
+       <div style="font-weight:600;font-size:13px;pointer-events:none">${esc(p.nimi||"")}</div>
+       ${p.ryhma?`<div style="font-size:10px;color:#6b7280;pointer-events:none">${esc(p.ryhma)}</div>`:""}
+      </div>
+      ${sel?`<input type="number" min="1" step="1" data-action="tuote-qty" data-id="${p.id}" value="${line.qty||1}" style="width:52px;padding:4px 6px;border:1.5px solid #86efac;border-radius:6px;text-align:center;font-size:13px;font-weight:700">`:"<div></div>"}
+      <div style="text-align:right;min-width:65px;font-weight:700;color:#0a4272;font-size:12px">${Number(p.hinta||0).toFixed(2)} €<div style="font-size:10px;font-weight:400;color:#6b7280">${p.yksikko||"kpl"}</div></div>
+     </div>`;
+    }).join("")}
+   </div>`:""}
   </div>`:""}
   ${source==="tuote"?`<div class="card" style="background:#f0fdf4;border:1.5px solid #86efac;margin-bottom:14px">
    <div style="font-weight:700;font-size:13px;color:#166534;margin-bottom:10px">&#128230; Valitse tuotteet</div>
@@ -1506,7 +1520,6 @@ function renderModal(){
   if(state.modal==="unbilled")return renderUnbilledModal();
   if(state.modal==="add-sessions")return renderAddSessionModal();
   if(state.modal==="customer-detail")return renderCustomerDetailModal();
-  if(state.modal==="tuote-picker")return renderTuotePickerModal();
   if(state.modal==="combined-invoice")return renderCombinedInvoiceModal();
   return"";
 }
@@ -2355,18 +2368,18 @@ table{width:100%;border-collapse:collapse}
         });
         state.dashNewCustomer={name:"",phone:"",email:"",status:"pending"};alert(`${name} lisätty!`);render();return;
       }
-      if(a==="open-tuote-picker"){state.modal="tuote-picker";render();return;}
+      if(a==="toggle-tuote-picker"){state.tuotePickerOpen=!state.tuotePickerOpen;render();return;}
   if(a==="clear-tuote-lines"){state.tuoteLines=[];render();return;}
   if(a==="tuote-toggle"){const pid=itemId;
    const idx=state.tuoteLines.findIndex(l=>l.id===pid);
    if(idx>=0)state.tuoteLines.splice(idx,1);
    else{const p=(state.muutTuotteet||[]).find(x=>x.id===pid);
     if(p)state.tuoteLines.push({id:pid,qty:1});}
-   state.modal="tuote-picker";render();return;}
+   render();return;}
   if(a==="tuote-qty"){const pid=el.dataset.id;
    const line=state.tuoteLines.find(l=>l.id===pid);
    if(line)line.qty=Math.max(1,parseInt(el.value)||1);
-   state.modal="tuote-picker";render();return;}
+   render();return;}
   if(a==="new-muututuote"){state.muuTuoteDraft={id:null,nimi:"",ryhma:"",hinta:"",alv:"25.5",yksikko:"kpl",kuvaus:""};render();return;}
   if(a==="cancel-muututuote"){state.muuTuoteDraft={};render();return;}
   if(a==="edit-muututuote"){const _p=(state.muutTuotteet||[]).find(x=>x.id===itemId);if(!_p)return;state.muuTuoteDraft={..._p};render();return;}
