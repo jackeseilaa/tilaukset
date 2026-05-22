@@ -205,7 +205,7 @@ import{getAuth,GoogleAuthProvider,signInWithPopup,signOut,onAuthStateChanged}fro
 import{getFirestore,collection,doc,addDoc,setDoc,deleteDoc,onSnapshot,serverTimestamp}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 const FIREBASE_CONFIG={apiKey:"AIzaSyB7Dp5_5fN0Iko-4Jn1D2Dp6NNNih63UO0",authDomain:"jsailing-f716c.firebaseapp.com",projectId:"jsailing-f716c",storageBucket:"jsailing-f716c.firebasestorage.app",messagingSenderId:"543523103696",appId:"1:543523103696:web:439a312efa6aec398a8fd5"};
 const ALLOWED_EMAIL="jacke.seilaa@gmail.com";
-const APP_VERSION="V9.66";const UPDATE_DATE=(()=>{const n=new Date();return n.toLocaleDateString("fi-FI")+' klo '+String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0');})();
+const APP_VERSION="V9.68";const UPDATE_DATE=(()=>{const n=new Date();return n.toLocaleDateString("fi-FI")+' klo '+String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0');})();
 const ISSUERS={
   tmi:{name:"J Sailing",businessId:"1728993-9",address:"Kontiontie 55, 11120 Riihimäki",iban:"FI62 1132 3000 4277 43",bic:"NDEAFIHH"},
   oy:{name:"AJarmo Oy",businessId:"3432355-3",address:"Kontiontie 55, 11120 Riihimäki",iban:"FI73 7997 7994 4257 05",bic:"HOLVFIHH"}
@@ -222,7 +222,7 @@ if(CONFIG_READY){app=initializeApp(FIREBASE_CONFIG);auth=getAuth(app);db=getFire
 
 const state={
   tab:"dashboard",user:null,
-  customers:[],sailings:[],companies:[],invoices:[],tutkinnot:[],blockedDays:[],
+  customers:[],sailings:[],companies:[],invoices:[],tutkinnot:[],muutTuotteet:[],blockedDays:[],
   modal:null,editId:null,editSession:null,previewInvoiceId:null,
   searchCustomers:"",searchSailings:"",searchTutkinnot:"",
   openSailingId:null,dashQuickId:null,dashQuickType:null,transferCustomerId:null,
@@ -515,7 +515,7 @@ async function fsDel(col,id){if(!db)return;state.syncing=true;renderSyncIndicato
 function renderSyncIndicator(){const el=document.getElementById("syncDot");if(!el)return;el.className="sync-dot"+(state.syncing?" syncing":"");}
 const unsubscribers=[];
 function startListeners(uid){
-  const cols=["sailings","customers","companies","invoices","tutkinnot"];
+  const cols=["sailings","customers","companies","invoices","tutkinnot","muutTuotteet"];
   for(const col of cols){const unsub=onSnapshot(collection(db,col),snap=>{state[col]=snap.docs.map(d=>({id:d.id,...d.data()}));if(!state.invoice.sailingId&&state.sailings.length>0)state.invoice.sailingId=state.sailings[0].id;render();});unsubscribers.push(unsub);}
   // blockedDays erillinen kokoelma
   const unsubBlocked=onSnapshot(collection(db,"blockedDays"),snap=>{state.blockedDays=snap.docs.map(d=>({id:d.id,...d.data()}));render();});
@@ -549,7 +549,7 @@ function renderTopBar(){
   </div>`;
 }
 function renderNavTabs(){
-  const tabs=[["dashboard","🧭 Dashboard"],["calendar","📅 Kalenteri"],["sailings","⛵ Purjehdukset"],["tutkinnot","🎓 Tutkinnot"],["customers","👤 Asiakkaat"],["companies","🏢 Yritykset"],["invoicing","🧾 Laskutus"],["reskontra","📊 Reskontra"]];
+  const tabs=[["dashboard","🧭 Dashboard"],["calendar","📅 Kalenteri"],["sailings","⛵ Purjehdukset"],["muuttuotteet","📦 Muut tuotteet"],["customers","👤 Asiakkaat"],["companies","🏢 Yritykset"],["invoicing","🧾 Laskutus"],["reskontra","📊 Reskontra"]];
   return`<nav class="nav-tabs">${tabs.map(([id,label])=>`<button class="nav-tab ${state.tab===id?"active":""}" data-tab="${id}">${label}</button>`).join("")}</nav>`;
 }
 function renderTab(){
@@ -560,7 +560,7 @@ function renderTab(){
   if(state.tab==="companies")return renderCompanies();
   if(state.tab==="invoicing")return renderInvoicing();
   if(state.tab==="reskontra")return renderReskontra();
-  if(state.tab==="tutkinnot")return renderTutkinnot();
+  if(state.tab==="muuttuotteet")return renderMuutTuotteet();
   return"";
 }
 
@@ -936,9 +936,33 @@ function renderSailings(){
         return`<div class="item"><div style="flex:1"><h3>${esc(s.name||"")} <span class="pill">${esc(s.type||"")}</span>${isMultiDay?`<span class="badge badge-navy" style="margin-left:6px;font-size:10px">⚓ Merimatka</span>`:""}</h3><div class="meta">${dateLabel}${reittiMeta} · Max ${max}+${rsv} vara · ${Number(s.pricePerPerson||0).toFixed(0)} €/hlö${resFee>0?` · varausmaksu ${resFee} €`:""}</div>${fillUI(s.id,max,rsv)}${gcalUI}${teoriaUI}${sessUI}${attendeesUI}</div><div class="row" style="align-items:flex-start;flex-shrink:0"><button class="btn btn-secondary btn-sm" data-action="toggle-sailing" data-id="${s.id}">${state.openSailingId===s.id?"Piilota":"Osallistujat"}</button><button class="btn btn-secondary btn-sm" data-action="copy-sailing" data-id="${s.id}" title="Kopioi pohjaksi uudelle">📋</button><button class="btn btn-secondary btn-sm" data-action="edit-sailing" data-id="${s.id}">Muokkaa</button><button class="btn btn-danger btn-sm" data-action="delete-sailing" data-id="${s.id}">Poista</button></div></div>`;
       }).join("")}
     `}
-  </div>`;
+  </div>
+  </div>
+  ${state.tutkinnot.length>0?`<div class="card" style="margin-top:0">
+   <div class="row-between" style="margin-bottom:12px">
+    <div><div class="card-title" style="font-size:20px">🎓 Tutkinnot</div>
+    <div class="card-sub">Pätevyystutkinnot ja näyttökokeet</div></div>
+    <button class="btn btn-primary" data-action="new-tutkinto">+ Uusi tutkinto</button>
+   </div>
+   <div class="hr"></div>
+   ${state.tutkinnot.slice().sort((a,b)=>(b.date||"").localeCompare(a.date||"")).slice(0,10).map(t=>{
+    const typeKey=(t.type||"").split(" ")[0];
+    const enrolled=state.customers.filter(c=>c.tutkintoId===t.id).length;
+    const max=Number(t.maxPersons||0);
+    const unbilled=getUnbilledCountForEvent(t.id);
+    return`<div class="item"><div>
+     <h3><span class="tutkinto-type-badge tutkinto-${esc(typeKey)}">${esc(t.type||"")}</span>${t.boatType?` <span class="small muted">${esc(t.boatType)}</span>`:""}</h3>
+     <div class="meta">${fmtDate(t.date)}${t.startTime?" klo "+t.startTime:""} ${t.location?"· "+esc(t.location):""} · ${enrolled}${max>0?"/"+max:""} hlö${unbilled>0?` · <span style="color:#991b1b;font-weight:700">${unbilled} laskuttamatta</span>`:""}</div>
+    </div>
+    <div class="row" style="gap:6px">
+     <button class="btn btn-primary btn-sm" data-action="dash-open" data-id="${t.id}" data-type="tutkinto">Osallistujat</button>
+     <button class="btn btn-secondary btn-sm" data-action="edit-tutkinto" data-id="${t.id}">Muokkaa</button>
+     <button class="btn btn-danger btn-sm" data-action="delete-tutkinto" data-id="${t.id}">Poista</button>
+    </div></div>`;}).join("")}
+   ${state.tutkinnot.length>10?`<div class="muted small" style="text-align:center;padding:8px">...ja ${state.tutkinnot.length-10} muuta tutkintoa</div>`:""}
+  </div>`:""}
+`;
 }
-
 function renderCustomers(){
   const term=(state.searchCustomers||"").toLowerCase();
   const list=state.customers.slice().sort((a,b)=>{const o={pending:0,reserve:1,paid:2};return(o[a.reservationStatus]??1)-(o[b.reservationStatus]??1)||(a.name||"").localeCompare(b.name||"");}).filter(c=>!term||(c.name||"").toLowerCase().includes(term)||(c.phone||"").toLowerCase().includes(term)||(c.email||"").toLowerCase().includes(term));
@@ -1334,6 +1358,58 @@ function renderCustomerDetailModal(){
    </table>`}
   </div>
  </div></div>`;
+}
+
+function renderMuutTuotteet(){
+ const list=(state.muutTuotteet||[]).slice().sort((a,b)=>(a.nimi||"").localeCompare(b.nimi||""));
+ const draft=state.muuTuoteDraft||{};
+ const editing=!!draft.id;
+ return`<div class="card">
+  <div class="row-between">
+   <div><div class="card-title">&#128230; Muut tuotteet ja palvelut</div>
+   <div class="card-sub">Tuotteet ja palvelut joita voi lisätä laskuille</div></div>
+   <button class="btn btn-primary" data-action="new-muututuote">+ Uusi tuote / palvelu</button>
+  </div>
+  <div class="hr"></div>
+  ${editing?`<div class="card" style="background:#f0f9ff;border:1.5px solid #93c5fd;margin-bottom:16px">
+   <div style="font-weight:700;font-size:14px;margin-bottom:12px;color:#0a4272">${editing?"Muokkaa tuotetta":"Uusi tuote"}</div>
+   <div class="grid2">
+    <div class="field"><label class="lbl">Nimi *</label><input data-field="mt-nimi" value="${esc(draft.nimi||"")}" placeholder="esim. Kurssikirja, Vakuutusmaksu"></div>
+    <div class="field"><label class="lbl">Tuoteryhmä</label><input data-field="mt-ryhma" value="${esc(draft.ryhma||"")}" placeholder="esim. Materiaali, Palvelu"></div>
+   </div>
+   <div class="grid3">
+    <div class="field"><label class="lbl">Hinta (€ sis. ALV)</label><input type="number" min="0" step="0.01" data-field="mt-hinta" value="${esc(String(draft.hinta||""))}"></div>
+    <div class="field"><label class="lbl">ALV-%</label>
+     <select data-field="mt-alv">
+      <option value="25.5" ${(draft.alv||"25.5")==="25.5"?"selected":""}>25,5 %</option>
+      <option value="13.5" ${draft.alv==="13.5"?"selected":""}>13,5 %</option>
+      <option value="0" ${draft.alv==="0"?"selected":""}>0 % (veroton)</option>
+     </select>
+    </div>
+    <div class="field"><label class="lbl">Yksikkö</label><input data-field="mt-yksikko" value="${esc(draft.yksikko||"kpl")}" placeholder="kpl, h, pv…"></div>
+   </div>
+   <div class="field"><label class="lbl">Kuvaus / lisätiedot</label><textarea data-field="mt-kuvaus" rows="2" placeholder="Valinnainen lisäkuvaus laskulle">${esc(draft.kuvaus||"")}</textarea></div>
+   <div class="row" style="justify-content:flex-end;gap:8px;margin-top:8px">
+    <button class="btn btn-secondary btn-sm" data-action="cancel-muututuote">Peruuta</button>
+    <button class="btn btn-primary" data-action="save-muututuote">Tallenna</button>
+   </div>
+  </div>`:""}
+  ${list.length===0&&!editing?`<div class="infobox infobox-blue">Ei tuotteita. Lisää ensimmäinen tuote tai palvelu yllä olevalla napilla.</div>`:`
+  <table class="table">
+   <thead><tr><th>Nimi</th><th>Ryhmä</th><th class="r">Hinta</th><th>ALV</th><th>Yksikkö</th><th></th></tr></thead>
+   <tbody>${list.map(p=>`<tr>
+    <td style="font-weight:600">${esc(p.nimi||"")}${p.kuvaus?`<div class="small muted">${esc(p.kuvaus)}</div>`:""}</td>
+    <td class="small muted">${esc(p.ryhma||"—")}</td>
+    <td class="r">${Number(p.hinta||0).toFixed(2)} €</td>
+    <td>${p.alv||"25.5"} %</td>
+    <td class="small muted">${esc(p.yksikko||"kpl")}</td>
+    <td><div class="row" style="gap:4px">
+     <button class="btn btn-secondary btn-sm" data-action="edit-muututuote" data-id="${p.id}">Muokkaa</button>
+     <button class="btn btn-danger btn-sm" data-action="delete-muututuote" data-id="${p.id}">Poista</button>
+    </div></td>
+   </tr>`).join("")}</tbody>
+  </table>`}
+ </div>`;
 }
 
 function renderModal(){
@@ -1963,6 +2039,12 @@ function bind(){
       else if(a2==="asd-start")state.addSessionDraft.rows[i].start=inp.value;
       else state.addSessionDraft.rows[i].end=inp.value;
     };
+  });
+  document.querySelectorAll('[data-field^="mt-"]').forEach(inp=>{
+    const ev=inp.tagName==='SELECT'?'change':'input';
+    inp.addEventListener(ev,()=>{if(!state.muuTuoteDraft)state.muuTuoteDraft={};
+    const f=inp.dataset.field.replace('mt-','');
+    state.muuTuoteDraft[f]=inp.value;});
   });
   document.querySelectorAll("[data-action]").forEach(el=>{
     if(el.tagName==="INPUT"&&el.type==="checkbox")return;
