@@ -205,7 +205,7 @@ import{getAuth,GoogleAuthProvider,signInWithPopup,signOut,onAuthStateChanged}fro
 import{getFirestore,collection,doc,addDoc,setDoc,deleteDoc,onSnapshot,serverTimestamp}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 const FIREBASE_CONFIG={apiKey:"AIzaSyB7Dp5_5fN0Iko-4Jn1D2Dp6NNNih63UO0",authDomain:"jsailing-f716c.firebaseapp.com",projectId:"jsailing-f716c",storageBucket:"jsailing-f716c.firebasestorage.app",messagingSenderId:"543523103696",appId:"1:543523103696:web:439a312efa6aec398a8fd5"};
 const ALLOWED_EMAIL="jacke.seilaa@gmail.com";
-const APP_VERSION="V9.65";const UPDATE_DATE=(()=>{const n=new Date();return n.toLocaleDateString("fi-FI")+' klo '+String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0');})();
+const APP_VERSION="V9.66";const UPDATE_DATE=(()=>{const n=new Date();return n.toLocaleDateString("fi-FI")+' klo '+String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0');})();
 const ISSUERS={
   tmi:{name:"J Sailing",businessId:"1728993-9",address:"Kontiontie 55, 11120 Riihimäki",iban:"FI62 1132 3000 4277 43",bic:"NDEAFIHH"},
   oy:{name:"AJarmo Oy",businessId:"3432355-3",address:"Kontiontie 55, 11120 Riihimäki",iban:"FI73 7997 7994 4257 05",bic:"HOLVFIHH"}
@@ -1009,7 +1009,7 @@ function renderInvoicing(){
     </table>
   </div>
   <div class="hr noPrint"></div>
-  <div class="row noPrint"><button class="btn btn-primary" data-action="print">Tulosta / PDF</button><button class="btn btn-secondary" data-action="email-invoice">Lähetä sähköpostilla</button><button class="btn btn-secondary" data-action="open-register">📋 Laskurekisteri</button><button class="btn btn-teal" data-action="save-invoice">+ Tallenna rekisteriin</button></div>
+  <div class="row noPrint"><button class="btn btn-primary" data-action="print-and-save">&#128438; Tulosta / PDF</button><button class="btn btn-secondary" data-action="email-invoice">Sähköpostilla</button><button class="btn btn-secondary" data-action="open-register">Laskurekisteri</button><button class="btn btn-secondary btn-sm" data-action="save-invoice" style="opacity:.7">Tallenna ilman tulostusta</button></div>
   </div>`;
 }
 
@@ -2493,7 +2493,32 @@ if(a==="save-combined-invoice"){
         const lines=rows.map(x=>[x.invoiceDate,x.invoiceNo,x.reference,x.payerName,x.payerBusinessId||"",x.payerEmail||"",x.eventName||"",x.mode==="company"?"Yrityslasku":"Asiakaskohtainen",x.isReservation?"Varausmaksu":x.itype==="partial"?"Osasuoritus":x.itype==="credit"?"Hyvityslasku":"Loppulasku",String(x.vatRatePct||"").replace(".",","),Number(x.net||0).toFixed(2).replace(".",","),Number(x.vat||0).toFixed(2).replace(".",","),Number(x.grossTotal||0).toFixed(2).replace(".",","),x.paid?"Kyllä":"Ei",x.paidDate||""].map(v=>`"${String(v).replace(/"/g,'""')}"`).join(sep));
         const csv=[hdr,...lines].join("\n");const blob=new Blob([csv],{type:"text/csv;charset=utf-8"});const url=URL.createObjectURL(blob);const a2=document.createElement("a");a2.href=url;a2.download=`laskurekisteri_${month}.csv`;a2.click();URL.revokeObjectURL(url);return;
       }
-      if(a==="print"){const _inv=computeInvoice();if(_inv&&_inv.grossTotal!==undefined){const _issr=ISSUERS[state.invoice.issuer||'tmi']||ISSUERS.tmi;printInvoiceFull({..._inv,invoiceDate:state.invoice.invoiceDate,issuer:state.invoice.issuer||'tmi',invoiceNo:_inv.invNo,lines:_inv.lines,reference:_inv.reference,payerBusinessId:_inv.payerBusinessId||''});}return;}
+      if(a==="print-and-save"){
+  const inv2=computeInvoice();
+  if(!inv2.isTutkinto&&!inv2.sailing)return alert("Valitse tapahtuma.");
+  if(!inv2.payerName)return alert("Valitse asiakas.");
+  if(inv2.lines.length===0)return alert("Laskulla ei ole rivejä.");
+  const issr3=ISSUERS[state.invoice.issuer||"tmi"]||ISSUERS.tmi;
+  const rec2={issuer:state.invoice.issuer||"tmi",issuerName:issr3.name,mode:state.invoice.mode,
+   source:state.invoice.source||"sailing",isReservation:!!inv2.isReservation,
+   itype:inv2.itype,isCredit:!!inv2.isCredit,creditRefId:state.invoice.creditRefId||"",
+   creditRefNo:inv2.creditRef?.invoiceNo||"",invoiceNo:inv2.invNo,
+   invoiceDate:state.invoice.invoiceDate,reference:inv2.reference,
+   payerName:inv2.payerName,payerBusinessId:inv2.payerBusinessId||"",
+   payerEmail:inv2.payerEmail||"",
+   eventId:inv2.isTutkinto?(state.invoice.tutkintoId||""):(inv2.sailing?.id||""),
+   eventName:inv2.eventName,vatRatePct:Number(inv2.ratePct),
+   net:Number(inv2.net||0),vat:Number(inv2.vat||0),grossTotal:Number(inv2.grossTotal||0),
+   lines:inv2.lines||[],paid:false,paidDate:"",paymentDays:7};
+  const id3=await fsAdd("invoices",rec2);
+  if(id3)state.invoices.push({id:id3,...rec2});
+  const keepIssuer2=state.invoice.issuer||"tmi";
+  const keepMode2=state.invoice.mode||"customer";
+  state.invoice={mode:keepMode2,source:"sailing",sailingId:state.sailings[0]?.id||"",tutkintoId:"",customerId:"",companyId:"",invoiceDate:today(),type:"full",partialAmount:"",creditRefId:"",issuer:keepIssuer2};
+  printInvoiceFull({...rec2});
+  render();return;
+}
+if(a==="print"){const _inv=computeInvoice();if(_inv&&_inv.grossTotal!==undefined){const _issr=ISSUERS[state.invoice.issuer||'tmi']||ISSUERS.tmi;printInvoiceFull({..._inv,invoiceDate:state.invoice.invoiceDate,issuer:state.invoice.issuer||'tmi',invoiceNo:_inv.invNo,lines:_inv.lines,reference:_inv.reference,payerBusinessId:_inv.payerBusinessId||''});}return;}
       if(a==="print-register"){
         const area=document.getElementById("reg-print-area");
         if(!area)return;
