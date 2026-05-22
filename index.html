@@ -205,7 +205,7 @@ import{getAuth,GoogleAuthProvider,signInWithPopup,signOut,onAuthStateChanged}fro
 import{getFirestore,collection,doc,addDoc,setDoc,deleteDoc,onSnapshot,serverTimestamp}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 const FIREBASE_CONFIG={apiKey:"AIzaSyB7Dp5_5fN0Iko-4Jn1D2Dp6NNNih63UO0",authDomain:"jsailing-f716c.firebaseapp.com",projectId:"jsailing-f716c",storageBucket:"jsailing-f716c.firebasestorage.app",messagingSenderId:"543523103696",appId:"1:543523103696:web:439a312efa6aec398a8fd5"};
 const ALLOWED_EMAIL="jacke.seilaa@gmail.com";
-const APP_VERSION="V9.95";const UPDATE_DATE=(()=>{const n=new Date();return n.toLocaleDateString("fi-FI")+' klo '+String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0');})();
+const APP_VERSION="V9.96";const UPDATE_DATE=(()=>{const n=new Date();return n.toLocaleDateString("fi-FI")+' klo '+String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0');})();
 const ISSUERS={
   tmi:{name:"J Sailing",businessId:"1728993-9",address:"Kontiontie 55, 11120 Riihimäki",iban:"FI62 1132 3000 4277 43",bic:"NDEAFIHH"},
   oy:{name:"AJarmo Oy",businessId:"3432355-3",address:"Kontiontie 55, 11120 Riihimäki",iban:"FI73 7997 7994 4257 05",bic:"HOLVFIHH"}
@@ -367,7 +367,7 @@ async function markGcalAddedTutkinto(tutkintoId){
  await fsSet("tutkinnot",tutkintoId,t);render();
 }
 
-const INV_TYPE_LABELS={full:"Loppulasku",reservation:"Varausmaksu",partial:"Osasuoritus",credit:"Hyvityslasku"};
+const INV_TYPE_LABELS={full:"Lasku",reservation:"Varausmaksu",partial:"Osasuoritus",credit:"Hyvityslasku"};
 function invTypeLabel(t){return INV_TYPE_LABELS[t]||t;}
 function invTypeBadge(t){
   if(t==="reservation")return`<span class="badge badge-blue" style="font-size:10px">Varausmaksu</span>`;
@@ -386,7 +386,7 @@ function computeInvoice(overrideState){
   const rate=isForeign?0:isCharter?0.135:0.255;
   const ratePct=(rate*100).toFixed(1);
   const itype=inv.type||"full",isRes=itype==="reservation",isPartial=itype==="partial",isCredit=itype==="credit";
-  let payerName="",payerEmail="",payerBusinessId="",lines=[],grossTotal=0,eventName="";
+  let payerName="",payerEmail="",payerBusinessId="",lines=[],grossTotal=0,eventName="",alreadyInvoicedResFee=0;
   if(isTutkinto&&t){
     const invCust=state.customers.find(x=>x.id===inv.customerId);
     const custType=invCust?.tutkintoTypeOverride||"";
@@ -399,7 +399,7 @@ function computeInvoice(overrideState){
      price=c&&c.priceOverride!=null&&c.priceOverride!==""?Number(c.priceOverride):Number(t.pricePerPerson||0);
      if(!price)price=parseFloat(inv.partialAmount||0)||0;
     }
-    if(c){payerName=c.name||"";payerEmail=c.email||"";let amt=isCredit?-Math.abs(price):price;lines.push({title:`${eventName} — ${invTypeLabel(itype)} — ${c.name}`,qty:1,unit:amt,total:amt});grossTotal=amt;}
+    if(c){payerName=c.name||"";payerEmail=c.email||"";let amt=isCredit?-Math.abs(price):price;lines.push({title:`${eventName} — ${alreadyInvoicedResFee>0?"Loppulasku":invTypeLabel(itype)} — ${c.name}`,qty:1,unit:amt,total:amt});grossTotal=amt;}
   }else if(s){
     eventName=s.name||"";
     let price=isRes?Number(s.reservationFee||0):Number(s.pricePerPerson||0);
@@ -2773,7 +2773,7 @@ if(a==="save-combined-invoice"){
   const keepIssuer2=state.invoice.issuer||"tmi";
   const keepMode2=state.invoice.mode||"customer";
   state.invoice={mode:keepMode2,source:"sailing",sailingId:state.sailings[0]?.id||"",tutkintoId:"",customerId:"",companyId:"",invoiceDate:today(),type:"full",partialAmount:"",creditRefId:"",issuer:keepIssuer2};
-  printInvoiceFull({...rec2,_isLoppulasku:!!(rec2.lines&&rec2.lines.some(l=>l.title&&l.title.includes("Varausmaksu")))});
+  printInvoiceFull({...rec2,_isLoppulasku:!!(rec2.lines&&rec2.lines.some(l=>l.total<0&&l.title&&l.title.includes("maksettu")))});
   render();return;
 }
 if(a==="preview-only"){
