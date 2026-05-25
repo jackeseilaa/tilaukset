@@ -2655,7 +2655,7 @@ table{width:100%;border-collapse:collapse}
         inv.emailedAt=new Date().toISOString();
         syncToFirebase();
         render();
-        window.location.href=`mailto:${encodeURIComponent(to)}?subject=${encodeURIComponent("Lasku "+(inv.invNo||""))}&body=${encodeURIComponent(body)}`;
+        openMailto(to,"Lasku "+(inv.invNo||""),body);
         return;
       }
       if(a==="open-participant-report"){state.modal="participant-report";render();return;}
@@ -2991,7 +2991,7 @@ hr{border-top:1.5px solid #e5e7eb;margin:10px 0}
           state.invoice.emailedAt=new Date().toISOString();
           render();
         }
-        window.location.href=`mailto:${encodeURIComponent(to)}?subject=${encodeURIComponent("Lasku "+inv.invNo)}&body=${encodeURIComponent(box.innerText)}`;return;
+        openMailto(to,"Lasku "+inv.invNo,box.innerText);return;
       }
     };
   });
