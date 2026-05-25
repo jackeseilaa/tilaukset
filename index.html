@@ -205,7 +205,7 @@ import{getAuth,GoogleAuthProvider,signInWithPopup,signOut,onAuthStateChanged}fro
 import{getFirestore,collection,doc,addDoc,setDoc,deleteDoc,onSnapshot,serverTimestamp}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 const FIREBASE_CONFIG={apiKey:"AIzaSyB7Dp5_5fN0Iko-4Jn1D2Dp6NNNih63UO0",authDomain:"jsailing-f716c.firebaseapp.com",projectId:"jsailing-f716c",storageBucket:"jsailing-f716c.firebasestorage.app",messagingSenderId:"543523103696",appId:"1:543523103696:web:439a312efa6aec398a8fd5"};
 const ALLOWED_EMAIL="jacke.seilaa@gmail.com";
-const APP_VERSION="V9.111";const UPDATE_DATE=(()=>{const n=new Date();return n.toLocaleDateString("fi-FI")+' klo '+String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0');})();
+const APP_VERSION="V9.112";const UPDATE_DATE=(()=>{const n=new Date();return n.toLocaleDateString("fi-FI")+' klo '+String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0');})();
 const ISSUERS={
   tmi:{name:"J Sailing",businessId:"1728993-9",address:"Kontiontie 55, 11120 Riihimäki",iban:"FI62 1132 3000 4277 43",bic:"NDEAFIHH"},
   oy:{name:"AJarmo Oy",businessId:"3432355-3",address:"Kontiontie 55, 11120 Riihimäki",iban:"FI73 7997 7994 4257 05",bic:"HOLVFIHH"}
@@ -1648,7 +1648,7 @@ function renderInvoicePreviewModal(){
 
   const vatPct=Number(inv.vatRatePct||25.5).toFixed(1);
   return`<div class="overlay" data-action="close-modal"><div class="modal" onclick="event.stopPropagation()">
-    <div class="modal-head"><div class="row-between"><div><div class="modal-title">Lasku ${esc(inv.invoiceNo||"")}</div><div class="card-sub">${esc(inv.payerName||"")} · ${fmtDate(inv.invoiceDate)}</div></div><div class="row"><button class="btn btn-primary btn-sm" data-action="print-preview">🖨️ Tulosta</button><button class="btn btn-secondary btn-sm" data-action="close-modal">✕</button></div></div></div>
+    <div class="modal-head"><div class="row-between"><div><div class="modal-title">Lasku ${esc(inv.invoiceNo||"")}</div><div class="card-sub">${esc(inv.payerName||"")} · ${fmtDate(inv.invoiceDate)}</div></div><div class="row"><button class="btn btn-primary btn-sm" data-action="print-preview">🖨️ Tulosta</button>${(()=>{const emailed=inv.emailedAt;return emailed?`<button class="btn btn-sm" style="background:#16a34a;color:#fff;border-color:#16a34a;font-size:12px" data-action="email-preview-invoice">✅ Lähetetty ${new Date(emailed).toLocaleDateString("fi-FI")}</button>`:`<button class="btn btn-sm" style="background:#dc2626;color:#fff;border-color:#dc2626;font-size:12px" data-action="email-preview-invoice">📧 Lähetä sähköpostilla</button>`;})()} <button class="btn btn-secondary btn-sm" data-action="close-modal">✕</button></div></div></div>
     <div class="modal-body"><div class="invoice-box" id="invoicePreviewBox">
       <div class="row-between"><div style="line-height:1.7;font-size:14px"><strong style="font-size:16px;color:${isCredit?"#991b1b":"#111827"}">${invTitle}</strong><br>${esc(ISSUER.name)}<br>Y-tunnus ${esc(ISSUER.businessId)}<br><span style="color:#6b7280;font-size:12px">IBAN</span> ${esc(BANK.iban)}<br><span style="color:#6b7280;font-size:12px">BIC</span> ${esc(BANK.bic)}</div>
         <div style="text-align:right;line-height:1.7;font-size:14px"><strong style="color:#0a4272;font-size:15px">Nro: ${esc(inv.invoiceNo||"")}</strong><br>Päivä: ${esc(inv.invoiceDate||"")}<br>Viite: <strong>${esc(inv.reference||"")}</strong>${inv.creditRefNo?`<br><span style="font-size:12px;color:#6b7280">Hyvittää: ${esc(inv.creditRefNo)}</span>`:""}</div>
@@ -2634,7 +2634,18 @@ table{width:100%;border-collapse:collapse}
     render();return;
   }
   if(a==="open-register"){state.modal="register";render();return;}
-  if(a==="email-invoice-from-reskontra"){
+  if(a==="email-preview-invoice"){
+        const inv=state.invoices.find(x=>x.id===state.previewInvoiceId);
+        if(!inv)return;
+        const to=inv.payerEmail||"";
+        const nl="\n";
+        const body="Lasku "+(inv.invNo||"")+nl+"Päivämäärä: "+(inv.invoiceDate||"")+nl+nl+(inv.lines||[]).map(l=>(l.title||"")+": "+Number(l.total||0).toFixed(2)+" €").join(nl)+nl+nl+"Yhteensä: "+Number(inv.grossTotal||0).toFixed(2)+" €";
+        inv.emailedAt=new Date().toISOString();
+        syncToFirebase();render();
+        window.location.href="mailto:"+encodeURIComponent(to)+"?subject="+encodeURIComponent("Lasku "+(inv.invNo||""))+"&body="+encodeURIComponent(body);
+        return;
+      }
+      if(a==="email-invoice-from-reskontra"){
         const invId=el.dataset.id;
         const inv=state.invoices.find(x=>x.id===invId);
         if(!inv)return;
