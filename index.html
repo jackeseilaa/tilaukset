@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
 <meta name="apple-mobile-web-app-title" content="J Sailing"/>
 <meta name="theme-color" content="#0a1628"/>
-<title>J Sailing V9.137 — Hallintapaneeli</title>
+<title>J Sailing V9.138 — Hallintapaneeli</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400;1,600&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -207,7 +207,7 @@ import{getAuth,GoogleAuthProvider,signInWithPopup,signOut,onAuthStateChanged}fro
 import{getFirestore,collection,doc,addDoc,setDoc,deleteDoc,onSnapshot,serverTimestamp}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 const FIREBASE_CONFIG={apiKey:"AIzaSyB7Dp5_5fN0Iko-4Jn1D2Dp6NNNih63UO0",authDomain:"jsailing-f716c.firebaseapp.com",projectId:"jsailing-f716c",storageBucket:"jsailing-f716c.firebasestorage.app",messagingSenderId:"543523103696",appId:"1:543523103696:web:439a312efa6aec398a8fd5"};
 const ALLOWED_EMAIL="jacke.seilaa@gmail.com";
-const APP_VERSION="V9.137";const UPDATE_DATE=(()=>{const n=new Date();return n.toLocaleDateString("fi-FI")+' klo '+String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0');})();
+const APP_VERSION="V9.138";const UPDATE_DATE=(()=>{const n=new Date();return n.toLocaleDateString("fi-FI")+' klo '+String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0');})();
 const ISSUERS={
   tmi:{name:"J Sailing",businessId:"1728993-9",address:"Kontiontie 55, 11120 Riihimäki",iban:"FI62 1132 3000 4277 43",bic:"NDEAFIHH"},
   oy:{name:"AJarmo Oy",businessId:"3432355-3",address:"Kontiontie 55, 11120 Riihimäki",iban:"FI73 7997 7994 4257 05",bic:"HOLVFIHH"}
@@ -400,7 +400,7 @@ function gcalButton(sailing,sessionIdx){
     const gcKey=`gcal_${sailing.id}_${sessionIdx}`;
     const added=sailing[gcKey],addedDate=sailing[gcKey+"_date"]||"";
     const url=gcalUrl(`${sailing.name} — päivä ${sessionIdx+1}${sess.note?" ("+sess.note+")":""}`,sess.date,sess.start,sess.end,`${sailing.name} · J Sailing · Absolut 37`);
-    if(added)return`<span class="badge badge-gcal" style="font-size:11px">✅ Kalenterissa ${addedDate?fmtDate(addedDate):""}</span><a href="${esc(url)}" target="_blank" class="btn btn-secondary btn-sm" data-action="gcal-mark" data-id="${sailing.id}" data-idx="${sessionIdx}" style="font-size:11px">🔄 Päivitä</a><button class="btn btn-danger btn-sm" data-action="gcal-unmark" data-id="${sailing.id}" data-idx="${sessionIdx}" style="font-size:11px">🗑️</button>`;
+    if(added)return`<span class="badge badge-gcal" style="font-size:11px">✅ Kalenterissa ${addedDate?fmtDate(addedDate):""}</span><a href="${esc(url)}" target="_blank" class="btn btn-secondary btn-sm" data-action="gcal-mark" data-id="${sailing.id}" data-idx="${sessionIdx}" style="font-size:11px">🔄 Päivitä</a><button class="btn btn-danger btn-sm" data-action="gcal-unmark" data-id="${sailing.id}" data-idx="${sessionIdx}" style="font-size:11px" title="Poista kalenterimerkintä">🗑️ Poista kalenterista</button>`;
     return`<a href="${esc(url)}" target="_blank" class="btn btn-gcal btn-sm" data-action="gcal-mark" data-id="${sailing.id}" data-idx="${sessionIdx}"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" style="flex-shrink:0"><rect x="3" y="4" width="18" height="18" rx="2" stroke="#4285F4" stroke-width="2"/><line x1="16" y1="2" x2="16" y2="6" stroke="#4285F4" stroke-width="2"/><line x1="8" y1="2" x2="8" y2="6" stroke="#4285F4" stroke-width="2"/><line x1="3" y1="10" x2="21" y2="10" stroke="#4285F4" stroke-width="2"/></svg>Lisää kalenteriin</a>`;
   }else{
     const gcKey=`gcal_${sailing.id}`;
@@ -2429,8 +2429,15 @@ function bind(){
       const sailingId=el.dataset.id,idxRaw=el.dataset.idx;
       const s=state.sailings.find(x=>x.id===sailingId);if(!s)return;
       const gcKey=idxRaw!==""?`gcal_${sailingId}_${idxRaw}`:`gcal_${sailingId}`;
+      const evName=idxRaw!==""?`${s.name} — päivä ${Number(idxRaw)+1}`:(s.name||"tapahtuma");
+      const ok=confirm(`Poistetaan "${evName}" kalenterimerkinnästä.
+
+Haluatko myös avata Google Kalenterin poistaaksesi tapahtuman sieltä?`);
+      if(!ok)return;
       delete s[gcKey];delete s[gcKey+"_date"];
       await fsSet("sailings",sailingId,s);render();
+      const gcalSearch="https://calendar.google.com/calendar/r/search?q="+encodeURIComponent(evName);
+      window.open(gcalSearch,"_blank");
     };return;}
   if(el.tagName==="A"&&el.dataset.action==="gcal-mark-tutkinto"){el.onclick=async()=>{
     const tutkintoId=el.dataset.id;setTimeout(()=>markGcalAddedTutkinto(tutkintoId),300);};return;}
@@ -2438,6 +2445,9 @@ function bind(){
     const tutkintoId=el.dataset.id;
     const t=state.tutkinnot.find(x=>x.id===tutkintoId);if(!t)return;
     const gcKey=`gcal_${tutkintoId}`;
+        const evName2=t.type||(t.name||"tutkinto");
+    const ok2=confirm(`Poistetaan "${evName2}" kalenterimerkinnästä.\n\nHaluatko myös avata Google Kalenterin poistaaksesi tapahtuman sieltä?`);
+    if(!ok2)return;
     delete t[gcKey];delete t[gcKey+"_date"];
     await fsSet("tutkinnot",tutkintoId,t);render();
   };return;}
