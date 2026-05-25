@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
 <meta name="apple-mobile-web-app-title" content="J Sailing"/>
 <meta name="theme-color" content="#0a1628"/>
-<title>J Sailing V9.115 — Hallintapaneeli</title>
+<title>J Sailing V9.116 — Hallintapaneeli</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400;1,600&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -205,7 +205,7 @@ import{getAuth,GoogleAuthProvider,signInWithPopup,signOut,onAuthStateChanged}fro
 import{getFirestore,collection,doc,addDoc,setDoc,deleteDoc,onSnapshot,serverTimestamp}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 const FIREBASE_CONFIG={apiKey:"AIzaSyB7Dp5_5fN0Iko-4Jn1D2Dp6NNNih63UO0",authDomain:"jsailing-f716c.firebaseapp.com",projectId:"jsailing-f716c",storageBucket:"jsailing-f716c.firebasestorage.app",messagingSenderId:"543523103696",appId:"1:543523103696:web:439a312efa6aec398a8fd5"};
 const ALLOWED_EMAIL="jacke.seilaa@gmail.com";
-const APP_VERSION="V9.115";const UPDATE_DATE=(()=>{const n=new Date();return n.toLocaleDateString("fi-FI")+' klo '+String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0');})();
+const APP_VERSION="V9.116";const UPDATE_DATE=(()=>{const n=new Date();return n.toLocaleDateString("fi-FI")+' klo '+String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0');})();
 const ISSUERS={
   tmi:{name:"J Sailing",businessId:"1728993-9",address:"Kontiontie 55, 11120 Riihimäki",iban:"FI62 1132 3000 4277 43",bic:"NDEAFIHH"},
   oy:{name:"AJarmo Oy",businessId:"3432355-3",address:"Kontiontie 55, 11120 Riihimäki",iban:"FI73 7997 7994 4257 05",bic:"HOLVFIHH"}
@@ -1530,7 +1530,7 @@ function renderCustomerDetailModal(){
      <td class="small muted">${esc(x.eventName||"")}</td>
      <td class="r" style="font-weight:700;color:${Number(x.grossTotal||0)<0?"#991b1b":"#0a4272"}">${Number(x.grossTotal||0).toFixed(2)} &euro;</td>
      <td>${x.paid?`<span class="badge badge-green" style="font-size:10px">&#10003; ${esc(x.paidDate||"maksettu")}</span>`:`<span class="badge badge-red" style="font-size:10px">&#9679; Avoin</span>`}</td>
-     <td>${x.emailedAt?`<span style="color:#16a34a;font-size:12px;font-weight:700">✅ ${new Date(x.emailedAt).toLocaleDateString("fi-FI")}</span>`:`<a class="btn btn-sm" style="background:#dc2626;color:#fff;border-color:#dc2626;font-size:11px;padding:2px 8px;text-decoration:none" href="${buildMailtoHref(x.payerEmail||\"\",\"Lasku \"+(x.invNo||\"\")+\"\",x.lines,x.grossTotal,x.invNo,x.invoiceDate)}" data-action="mark-emailed" data-id="${x.id}">📧 Lähetä</a>`}</td>
+     <td>${x.emailedAt?`<span style="color:#16a34a;font-size:12px;font-weight:700">✅ ${new Date(x.emailedAt).toLocaleDateString("fi-FI")}</span>`:(()=>{const _h=buildMailtoHref(x.payerEmail||"","",x.lines,x.grossTotal,x.invNo,x.invoiceDate);return`<a class="btn btn-sm" style="background:#dc2626;color:#fff;border-color:#dc2626;font-size:11px;padding:2px 8px;text-decoration:none" href="${_h}" data-action="mark-emailed" data-id="${x.id}">📧 Lähetä</a>`;})()}</td>
     </tr>`).join("")}
     </tbody>
    </table>`}
