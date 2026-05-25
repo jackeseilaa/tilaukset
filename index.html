@@ -272,8 +272,7 @@ window.popupOpenInMail=async function(sheet,to,subj,btn,msg){
     const fname=(subj||"Lasku").replace(/[^a-zA-Z0-9_-]/g,"_")+".pdf";
     const bd="----=_Part_"+Date.now();
     const bodyTxt=sheet.innerText.substring(0,800);
-    const nl="
-";
+    const nl="\r\n";
     const eml=[
       "MIME-Version: 1.0","From: ","To: "+(to||""),
       "Subject: "+(subj||"Lasku"),
