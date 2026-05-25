@@ -196,6 +196,8 @@ select option{background:#ffffff;color:#111827}
   .row-between .row{width:100%}
 }
 </style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
 <body>
 <div id="app"><div class="loader"><div class="loader-ring"></div><div class="loader-text">Ladataan…</div></div></div>
@@ -242,6 +244,46 @@ function markInvoiceEmailed(invId){
   if(inv&&!inv.emailedAt){inv.emailedAt=new Date().toISOString();fsSet("invoices",inv.id,{emailedAt:inv.emailedAt});setTimeout(()=>render(),200);}
 }
 window.markInvoiceEmailed=markInvoiceEmailed;
+
+window.popupDownloadPDF=async function(sheet,title,btn,msg){
+  if(btn){btn.textContent="⏳ Luodaan...";btn.disabled=true;}
+  try{
+    const canvas=await html2canvas(sheet,{scale:2,useCORS:true,backgroundColor:"#ffffff"});
+    const {jsPDF}=window.jspdf;
+    const pdf=new jsPDF({orientation:"portrait",unit:"mm",format:"a4"});
+    const imgW=210;const imgH=(canvas.height*imgW)/canvas.width;
+    if(imgH<=297){pdf.addImage(canvas.toDataURL("image/jpeg",0.95),"JPEG",0,0,imgW,imgH);}
+    else{let y=0;while(y<canvas.height){const pH=Math.min(297*(canvas.width/imgW),canvas.height-y);const tc=document.createElement("canvas");tc.width=canvas.width;tc.height=pH;tc.getContext("2d").drawImage(canvas,0,y,canvas.width,pH,0,0,canvas.width,pH);if(y>0)pdf.addPage();pdf.addImage(tc.toDataURL("image/jpeg",0.95),"JPEG",0,0,imgW,pH*(imgW/canvas.width));y+=pH;}}
+    pdf.save("Lasku_"+(title||"lasku").replace(/[^a-zA-Z0-9_-]/g,"_")+".pdf");
+    if(btn){btn.textContent="⬇️ Lataa PDF";btn.disabled=false;}
+    if(msg){msg.textContent="✓ PDF ladattu!";msg.style.display="inline";setTimeout(()=>msg.style.display="none",3000);}
+  }catch(e){alert("PDF-virhe: "+e.message);if(btn){btn.textContent="⬇️ Lataa PDF";btn.disabled=false;}}
+};
+
+window.popupOpenInMail=async function(sheet,to,subj,btn,msg){
+  if(btn){btn.textContent="⏳ Luodaan...";btn.disabled=true;}
+  try{
+    const canvas=await html2canvas(sheet,{scale:2,useCORS:true,backgroundColor:"#ffffff"});
+    const {jsPDF}=window.jspdf;
+    const pdf=new jsPDF({orientation:"portrait",unit:"mm",format:"a4"});
+    const imgW=210;const imgH=(canvas.height*imgW)/canvas.width;
+    pdf.addImage(canvas.toDataURL("image/jpeg",0.95),"JPEG",0,0,imgW,Math.min(imgH,297));
+    const pdfB64=pdf.output("datauristring").split(",")[1];
+    const fname=(subj||"Lasku").replace(/[^a-zA-Z0-9_-]/g,"_")+".pdf";
+    const bd="----=_Part_"+Date.now();
+    const bodyTxt=sheet.innerText.substring(0,800);
+    const eml=["MIME-Version: 1.0","From: ","To: "+(to||""),"Subject: "+(subj||"Lasku"),'Content-Type: multipart/mixed; boundary="'+bd+'"',"","--"+bd,"Content-Type: text/plain; charset=UTF-8","Content-Transfer-Encoding: 8bit","",bodyTxt,"","--"+bd,'Content-Type: application/pdf; name="'+fname+'"','Content-Disposition: attachment; filename="'+fname+'"',"Content-Transfer-Encoding: base64","",pdfB64.match(/.{1,76}/g).join("
+"),"","--"+bd+"--"].join("
+");
+    const blob=new Blob([eml],{type:"message/rfc822"});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement("a");a.href=url;a.download=fname.replace(".pdf",".eml");
+    document.body.appendChild(a);a.click();
+    setTimeout(()=>{URL.revokeObjectURL(url);document.body.removeChild(a);},1000);
+    if(btn){btn.textContent="📧 Avaa Mailissa";btn.disabled=false;}
+    if(msg){msg.textContent="✓ Tuplaklikkaa ladattua .eml-tiedostoa → Mail aukeaa PDF-liitteen kanssa";msg.style.display="inline";}
+  }catch(e){alert("Virhe: "+e.message);if(btn){btn.textContent="📧 Avaa Mailissa";btn.disabled=false;}}
+};
 function buildMailtoHref(to,subject,lines,total,invNo,invoiceDate){
   const nl="%0A";
   const bodyLines=(lines||[]).map(l=>encodeURIComponent((l.title||"")+": "+Number(l.total||0).toFixed(2)+" €")).join(nl);
@@ -648,7 +690,7 @@ function printInvoiceFull(inv){
 <meta http-equiv="Expires" content="0">
 <title>${inv.invoiceNo||'Lasku'}</title>
 <meta name="invoice-to" content="${esc(inv.payerEmail||'')}"><meta name="invoice-subj" content="${esc('Lasku '+(inv.invoiceNo||''))}">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jsbarcode/3.11.6/JsBarcode.all.min.js"><\/script>\n<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"><\/script>\n<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"><\/script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jsbarcode/3.11.6/JsBarcode.all.min.js"><\/script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:'Helvetica Neue',Arial,Helvetica,sans-serif;font-size:11px;color:#1a1a1a;background:#f1f5f9}
@@ -674,91 +716,15 @@ th.r{text-align:right}
  <button onclick="window.close()" style="background:#6b7280;color:#fff;padding:8px 16px;border:none;border-radius:6px;font-size:14px;cursor:pointer">✕ Sulje</button>
  <span id="dlMsg" style="font-size:12px;color:#d1fae5;margin-left:8px;display:none">✓ Valmis!</span>
 <script>
-async function openInMail(){
-  const btn=document.getElementById("mailBtn");
-  const msg=document.getElementById("dlMsg");
-  btn.textContent="⏳ Luodaan...";btn.disabled=true;
-  try{
-    const sheet=document.getElementById("sheet");
-    const canvas=await html2canvas(sheet,{scale:2,useCORS:true,backgroundColor:"#ffffff"});
-    const {jsPDF}=window.jspdf;
-    const pdf=new jsPDF({orientation:"portrait",unit:"mm",format:"a4"});
-    const imgW=210;const imgH=(canvas.height*imgW)/canvas.width;
-    pdf.addImage(canvas.toDataURL("image/jpeg",0.95),"JPEG",0,0,imgW,Math.min(imgH,297));
-    const pdfB64=pdf.output("datauristring").split(",")[1];
-    const fname=document.title.replace(/[^a-zA-Z0-9_-]/g,"_")+".pdf";
-    const to=document.querySelector("meta[name=invoice-to]")?.content||"";
-    const subj=document.querySelector("meta[name=invoice-subj]")?.content||document.title;
-    const bodyText=document.getElementById("sheet")?.innerText||"";
-    const boundary="----=_Part_"+Date.now();
-    const eml=[
-      "MIME-Version: 1.0",
-      "From: ",
-      "To: "+to,
-      "Subject: "+subj,
-      'Content-Type: multipart/mixed; boundary="'+boundary+'"',
-      "",
-      "--"+boundary,
-      "Content-Type: text/plain; charset=UTF-8",
-      "Content-Transfer-Encoding: 8bit",
-      "",
-      bodyText.substring(0,1000),
-      "",
-      "--"+boundary,
-      'Content-Type: application/pdf; name="'+fname+'"',
-      'Content-Disposition: attachment; filename="'+fname+'"',
-      "Content-Transfer-Encoding: base64",
-      "",
-      pdfB64.match(/.{1,76}/g).join("\r\n"),
-      "",
-      "--"+boundary+"--"
-    ].join("\r\n");
-    const blob=new Blob([eml],{type:"message/rfc822"});
-    const url=URL.createObjectURL(blob);
-    const a=document.createElement("a");
-    a.href=url;a.download=fname.replace(".pdf",".eml");
-    document.body.appendChild(a);a.click();
-    setTimeout(()=>{URL.revokeObjectURL(url);document.body.removeChild(a);},1000);
-    btn.textContent="📧 Avaa Mailissa";btn.disabled=false;
-    msg.textContent="✓ Avaa ladattu .eml-tiedosto → Mail aukeaa liitteen kanssa!";
-    msg.style.display="inline";
-  }catch(e){
-    alert("Virhe: "+e.message);
-    btn.textContent="📧 Avaa Mailissa";btn.disabled=false;
-  }
+function openInMail(){
+  if(window.opener&&window.opener.popupOpenInMail){
+    window.opener.popupOpenInMail(document.getElementById("sheet"),document.querySelector("meta[name=invoice-to]")?.content||"",document.querySelector("meta[name=invoice-subj]")?.content||document.title,document.getElementById("mailBtn"),document.getElementById("dlMsg"));
+  }else{alert("Päivitä pääsivu ja yritä uudelleen.");}
 }
-async function downloadPDF(){
-  const btn=document.getElementById("dlBtn");
-  const msg=document.getElementById("dlMsg");
-  btn.textContent="⏳ Luodaan...";btn.disabled=true;
-  try{
-    const sheet=document.getElementById("sheet");
-    const canvas=await html2canvas(sheet,{scale:2,useCORS:true,backgroundColor:"#ffffff"});
-    const {jsPDF}=window.jspdf;
-    const pdf=new jsPDF({orientation:"portrait",unit:"mm",format:"a4"});
-    const imgW=210;const imgH=(canvas.height*imgW)/canvas.width;
-    if(imgH<=297){
-      pdf.addImage(canvas.toDataURL("image/jpeg",0.95),"JPEG",0,0,imgW,imgH);
-    } else {
-      let y=0;
-      while(y<canvas.height){
-        const pageH=Math.min(297*(canvas.width/imgW),canvas.height-y);
-        const tmpC=document.createElement("canvas");
-        tmpC.width=canvas.width;tmpC.height=pageH;
-        tmpC.getContext("2d").drawImage(canvas,0,y,canvas.width,pageH,0,0,canvas.width,pageH);
-        if(y>0)pdf.addPage();
-        pdf.addImage(tmpC.toDataURL("image/jpeg",0.95),"JPEG",0,0,imgW,pageH*(imgW/canvas.width));
-        y+=pageH;
-      }
-    }
-    const fname="Lasku_"+((document.title||"lasku").replace(/[^a-zA-Z0-9_-]/g,"_"))+".pdf";
-    pdf.save(fname);
-    btn.textContent="⬇️ Lataa PDF";btn.disabled=false;
-    msg.style.display="inline";setTimeout(()=>msg.style.display="none",3000);
-  }catch(e){
-    alert("PDF-luonti epäonnistui: "+e.message);
-    btn.textContent="⬇️ Lataa PDF";btn.disabled=false;
-  }
+function downloadPDF(){
+  if(window.opener&&window.opener.popupDownloadPDF){
+    window.opener.popupDownloadPDF(document.getElementById("sheet"),document.title,document.getElementById("dlBtn"),document.getElementById("dlMsg"));
+  }else{alert("Päivitä pääsivu ja yritä uudelleen.");}
 }
 <\/script>
  </div>
