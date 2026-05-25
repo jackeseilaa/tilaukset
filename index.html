@@ -205,7 +205,7 @@ import{getAuth,GoogleAuthProvider,signInWithPopup,signOut,onAuthStateChanged}fro
 import{getFirestore,collection,doc,addDoc,setDoc,deleteDoc,onSnapshot,serverTimestamp}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 const FIREBASE_CONFIG={apiKey:"AIzaSyB7Dp5_5fN0Iko-4Jn1D2Dp6NNNih63UO0",authDomain:"jsailing-f716c.firebaseapp.com",projectId:"jsailing-f716c",storageBucket:"jsailing-f716c.firebasestorage.app",messagingSenderId:"543523103696",appId:"1:543523103696:web:439a312efa6aec398a8fd5"};
 const ALLOWED_EMAIL="jacke.seilaa@gmail.com";
-const APP_VERSION="V9.107";const UPDATE_DATE=(()=>{const n=new Date();return n.toLocaleDateString("fi-FI")+' klo '+String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0');})();
+const APP_VERSION="V9.108";const UPDATE_DATE=(()=>{const n=new Date();return n.toLocaleDateString("fi-FI")+' klo '+String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0');})();
 const ISSUERS={
   tmi:{name:"J Sailing",businessId:"1728993-9",address:"Kontiontie 55, 11120 Riihimäki",iban:"FI62 1132 3000 4277 43",bic:"NDEAFIHH"},
   oy:{name:"AJarmo Oy",businessId:"3432355-3",address:"Kontiontie 55, 11120 Riihimäki",iban:"FI73 7997 7994 4257 05",bic:"HOLVFIHH"}
@@ -232,7 +232,8 @@ const state={
   registerMonth:today().slice(0,7),registerIssuerFilter:"all",
   syncing:false,
   sailingDraft:{},
-  invoice:{mode:"customer",source:"sailing",sailingId:"",tutkintoId:"",customerId:"",companyId:"",invoiceDate:today(),type:"full",partialAmount:"",creditRefId:"",issuer:"tmi"}
+  invoice:{mode:"customer",source:"sailing",sailingId:"",tutkintoId:"",customerId:"",companyId:"",invoiceDate:today(),type:"full",partialAmount:"",creditRefId:"",issuer:"tmi"},
+  partRep:{from:"",to:"",type:""}
 };
 function today(){return new Date().toISOString().slice(0,10);}
 function esc(s){return String(s||"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));}
@@ -1160,6 +1161,67 @@ function renderTutkinnot(){
       </tr>`;}).join("")}</tbody></table>`}
   </div>`;
 }
+
+function renderParticipantReport(){
+  const pr=state.partRep;
+  const allTypes=[...new Set(state.sailings.map(s=>s.type||"").filter(Boolean))].sort();
+  let sailings=state.sailings;
+  if(pr.from) sailings=sailings.filter(s=>{const d=s.date||s.startDate||"";return d>=pr.from;});
+  if(pr.to) sailings=sailings.filter(s=>{const d=s.date||s.startDate||"";return d<=pr.to;});
+  if(pr.type) sailings=sailings.filter(s=>(s.type||"")==pr.type);
+  sailings=sailings.slice().sort((a,b)=>(a.date||a.startDate||"").localeCompare(b.date||b.startDate||""));
+  const rows=[];
+  for(const s of sailings){
+    const custs=state.customers.filter(c=>c.sailingId===s.id).sort((a,b)=>(a.name||"").localeCompare(b.name||""));
+    for(const c of custs) rows.push({sailing:s,customer:c});
+  }
+  const dateLabel=pr.from&&pr.to?`${pr.from} – ${pr.to}`:pr.from?`${pr.from} →`:pr.to?`→ ${pr.to}`:"Kaikki päivät";
+  return`<div class="overlay" data-action="close-modal"><div class="modal" style="max-width:780px;width:95%" onclick="event.stopPropagation()">
+  <div class="modal-head"><div class="row-between">
+   <div><div class="modal-title">👥 Osallistujalista</div>
+   <div class="card-sub">${dateLabel}${pr.type?" · "+pr.type:""} · ${rows.length} osallistujaa</div></div>
+   <button class="btn btn-secondary btn-sm" data-action="close-modal">&times;</button>
+  </div></div>
+  <div style="padding:16px;border-bottom:1px solid #e5e7eb;display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
+   <div class="field" style="margin:0;flex:1;min-width:130px"><label class="lbl">Alkaen</label>
+    <input type="date" id="pr-from" value="${pr.from}" style="border:1.5px solid #d1d5db;border-radius:8px;padding:8px 10px;width:100%;font-size:14px"></div>
+   <div class="field" style="margin:0;flex:1;min-width:130px"><label class="lbl">Päättyen</label>
+    <input type="date" id="pr-to" value="${pr.to}" style="border:1.5px solid #d1d5db;border-radius:8px;padding:8px 10px;width:100%;font-size:14px"></div>
+   <div class="field" style="margin:0;flex:1;min-width:150px"><label class="lbl">Tyyppi</label>
+    <select id="pr-type" style="border:1.5px solid #d1d5db;border-radius:8px;padding:8px 10px;width:100%;font-size:14px">
+     <option value="">Kaikki tyypit</option>
+     ${allTypes.map(t=>`<option value="${esc(t)}" ${pr.type===t?"selected":""}>${esc(t)}</option>`).join("")}
+    </select></div>
+   <button class="btn btn-primary" data-action="pr-filter" style="height:38px">Hae</button>
+   <button class="btn btn-secondary" data-action="pr-copy" style="height:38px">📋 Kopioi</button>
+  </div>
+  <div style="overflow-y:auto;max-height:55vh;padding:0 16px 16px">
+  ${rows.length===0?`<div class="infobox" style="margin-top:16px">Ei osallistujia valituilla suodattimilla.</div>`:`
+   <table class="table" style="margin-top:12px">
+    <thead><tr><th>Pvm</th><th>Tapahtuma</th><th>Tyyppi</th><th>Osallistuja</th><th>Puhelin</th><th>Sähköposti</th><th>Tila</th></tr></thead>
+    <tbody>
+    ${rows.map(r=>{
+      const s=r.sailing,c=r.customer;
+      const d=s.date||s.startDate||"";
+      const status=c.status==="confirmed"?"✓ Vahvistettu":c.status==="pending"?"⏳ Odottaa":c.status==="waitlist"?"⚠ Vara":c.status||"";
+      const sc=c.status==="confirmed"?"#166534":c.status==="pending"?"#92400e":c.status==="waitlist"?"#1e40af":"#374151";
+      return`<tr>
+       <td style="white-space:nowrap;font-weight:600">${esc(d)}</td>
+       <td>${esc(s.name||"")}</td>
+       <td><span class="badge badge-blue">${esc(s.type||"")}</span></td>
+       <td style="font-weight:600">${esc(c.name||"")}</td>
+       <td><a href="tel:${esc(c.phone||"")}" style="color:#1e40af">${esc(c.phone||"—")}</a></td>
+       <td><a href="mailto:${esc(c.email||"")}" style="color:#1e40af">${esc(c.email||"—")}</a></td>
+       <td style="color:${sc};font-weight:600;font-size:12px">${status}</td>
+      </tr>`;
+    }).join("")}
+    </tbody>
+   </table>`}
+  </div>
+  <div id="pr-copy-confirm" style="display:none;padding:8px 16px;background:#f0fdf4;color:#166534;font-weight:600;font-size:13px">✓ Kopioitu leikepöydälle!</div>
+ </div></div>`;
+}
+
 function renderReskontra(){
   const customerMap={};
   for(const inv of state.invoices){const key=inv.payerName||"—";if(!customerMap[key])customerMap[key]={name:key,email:inv.payerEmail||"",invoices:[],totalGross:0,totalPaid:0};customerMap[key].invoices.push(inv);const g=Number(inv.grossTotal||0);customerMap[key].totalGross+=g;if(inv.paid)customerMap[key].totalPaid+=g;}
@@ -1565,6 +1627,7 @@ function renderModal(){
   if(state.modal==="tutkinto")return renderTutkintoModal();
   if(state.modal==="invoice-preview")return renderInvoicePreviewModal();
   if(state.modal==="unbilled")return renderUnbilledModal();
+  if(state.modal==="participant-report")return renderParticipantReport();
   if(state.modal==="add-sessions")return renderAddSessionModal();
   if(state.modal==="customer-detail")return renderCustomerDetailModal();
   if(state.modal==="combined-invoice")return renderCombinedInvoiceModal();
@@ -2564,7 +2627,35 @@ table{width:100%;border-collapse:collapse}
     render();return;
   }
   if(a==="open-register"){state.modal="register";render();return;}
-  if(a==="open-unbilled"){state.unbilledFilter="";state.modal="unbilled";render();return;}
+  if(a==="open-participant-report"){state.modal="participant-report";render();return;}
+      if(a==="pr-filter"){
+        state.partRep.from=document.getElementById("pr-from")?.value||"";
+        state.partRep.to=document.getElementById("pr-to")?.value||"";
+        state.partRep.type=document.getElementById("pr-type")?.value||"";
+        render();return;
+      }
+      if(a==="pr-copy"){
+        const pr=state.partRep;
+        let sailings=state.sailings;
+        if(pr.from) sailings=sailings.filter(s=>{const d=s.date||s.startDate||"";return d>=pr.from;});
+        if(pr.to) sailings=sailings.filter(s=>{const d=s.date||s.startDate||"";return d<=pr.to;});
+        if(pr.type) sailings=sailings.filter(s=>(s.type||"")==pr.type);
+        sailings=sailings.slice().sort((a,b)=>(a.date||a.startDate||"").localeCompare(b.date||b.startDate||""));
+        const lines=["Pvm	Tapahtuma	Osallistuja	Puhelin	Sähköposti	Tila"];
+        for(const s of sailings){
+          const custs=state.customers.filter(c=>c.sailingId===s.id).sort((a,b)=>(a.name||"").localeCompare(b.name||""));
+          for(const c of custs){
+            const status=c.status==="confirmed"?"Vahvistettu":c.status==="pending"?"Odottaa":c.status==="waitlist"?"Varapaikka":c.status||"";
+            lines.push(`${s.date||s.startDate||""}	${s.name||""}	${c.name||""}	${c.phone||""}	${c.email||""}	${status}`);
+          }
+        }
+        navigator.clipboard.writeText(lines.join("\n")).then(()=>{
+          const el=document.getElementById("pr-copy-confirm");
+          if(el){el.style.display="block";setTimeout(()=>{el.style.display="none";},2500);}
+        });
+        return;
+      }
+      if(a==="open-unbilled"){state.unbilledFilter="";state.modal="unbilled";render();return;}
   if(a==="open-unbilled-event"){state.unbilledFilter=itemId;state.modal="unbilled";render();return;}
   if(a==="start-combined"){const _grps=getUnbilledGroups();const _grp=_grps.find(g=>g.key===itemId);if(!_grp)return;const _co=_grp.isCompany?state.companies.find(x=>x.id===_grp.companyId):null;
     const _provPct=_co?Number(_co.commissionPct||0):0;
