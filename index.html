@@ -205,7 +205,7 @@ import{getAuth,GoogleAuthProvider,signInWithPopup,signOut,onAuthStateChanged}fro
 import{getFirestore,collection,doc,addDoc,setDoc,deleteDoc,onSnapshot,serverTimestamp}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 const FIREBASE_CONFIG={apiKey:"AIzaSyB7Dp5_5fN0Iko-4Jn1D2Dp6NNNih63UO0",authDomain:"jsailing-f716c.firebaseapp.com",projectId:"jsailing-f716c",storageBucket:"jsailing-f716c.firebasestorage.app",messagingSenderId:"543523103696",appId:"1:543523103696:web:439a312efa6aec398a8fd5"};
 const ALLOWED_EMAIL="jacke.seilaa@gmail.com";
-const APP_VERSION="V9.106";const UPDATE_DATE=(()=>{const n=new Date();return n.toLocaleDateString("fi-FI")+' klo '+String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0');})();
+const APP_VERSION="V9.107";const UPDATE_DATE=(()=>{const n=new Date();return n.toLocaleDateString("fi-FI")+' klo '+String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0');})();
 const ISSUERS={
   tmi:{name:"J Sailing",businessId:"1728993-9",address:"Kontiontie 55, 11120 Riihimäki",iban:"FI62 1132 3000 4277 43",bic:"NDEAFIHH"},
   oy:{name:"AJarmo Oy",businessId:"3432355-3",address:"Kontiontie 55, 11120 Riihimäki",iban:"FI73 7997 7994 4257 05",bic:"HOLVFIHH"}
@@ -1191,11 +1191,14 @@ function getUnbilledCountForEvent(eventId){
   const isSailing=!!c.sailingId;
   const ev=isSailing?state.sailings.find(x=>x.id===eventId):state.tutkinnot.find(x=>x.id===eventId);
   const expectedPrice=c.priceOverride!=null&&c.priceOverride!==""?Number(c.priceOverride):(ev?Number(ev.pricePerPerson||0):0);
-  const invoiced=state.invoices.filter(x=>
+  const directHit=state.invoices.some(x=>
    (x.coveredCustomerIds&&x.coveredCustomerIds.includes(c.id))||
    (x.customerId===c.id&&x.eventId===eventId)||
-   (x.payerName===c.name&&x.eventId===eventId)||
    (x.mode==="customer-company"&&x.eventId===eventId&&(x.lines||[]).some(l=>(l.title||"").includes(c.name)))
+  );
+  if(directHit)return false;
+  const invoiced=state.invoices.filter(x=>
+   (x.payerName===c.name&&x.eventId===eventId)
   ).reduce((s,x)=>s+Number(x.grossTotal||0),0);
   if(expectedPrice>0)return invoiced<expectedPrice;
   return invoiced===0;
@@ -1214,13 +1217,15 @@ function getUnbilledGroups(filterEventId){
   const osio=c.laskutusosio||"";
   // Tarkista onko KAIKKI laskutettu (ei pelkästään onko yksikin lasku)
   const expectedPrice=c.priceOverride!=null&&c.priceOverride!==""?Number(c.priceOverride):(ev?Number(ev.pricePerPerson||0):0);
-  const totalInvoiced=state.invoices.filter(x=>
+  const directMatch=state.invoices.some(x=>
    (x.coveredCustomerIds&&x.coveredCustomerIds.includes(c.id))||
    (x.customerId===c.id&&x.eventId===eventId)||
-   (x.payerName===c.name&&x.eventId===eventId&&(x.laskutusosio||"")===osio)||
    (x.mode==="customer-company"&&x.eventId===eventId&&(x.lines||[]).some(l=>(l.title||"").includes(c.name)))
+  );
+  const totalInvoiced=directMatch?expectedPrice:state.invoices.filter(x=>
+   (x.payerName===c.name&&x.eventId===eventId&&(x.laskutusosio||"")===osio)
   ).reduce((s,x)=>s+Number(x.grossTotal||0),0);
-  const fullyInvoiced=expectedPrice>0?totalInvoiced>=expectedPrice:totalInvoiced>0;
+  const fullyInvoiced=directMatch||(expectedPrice>0?totalInvoiced>=expectedPrice:totalInvoiced>0);
   if(fullyInvoiced)continue;
   const price=c.priceOverride!=null&&c.priceOverride!==""?Number(c.priceOverride):(isSailing?Number(ev.pricePerPerson||0):Number(ev.pricePerPerson||0));
   const evName=isSailing
