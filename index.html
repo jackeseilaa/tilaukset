@@ -205,7 +205,7 @@ import{getAuth,GoogleAuthProvider,signInWithPopup,signOut,onAuthStateChanged}fro
 import{getFirestore,collection,doc,addDoc,setDoc,deleteDoc,onSnapshot,serverTimestamp}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 const FIREBASE_CONFIG={apiKey:"AIzaSyB7Dp5_5fN0Iko-4Jn1D2Dp6NNNih63UO0",authDomain:"jsailing-f716c.firebaseapp.com",projectId:"jsailing-f716c",storageBucket:"jsailing-f716c.firebasestorage.app",messagingSenderId:"543523103696",appId:"1:543523103696:web:439a312efa6aec398a8fd5"};
 const ALLOWED_EMAIL="jacke.seilaa@gmail.com";
-const APP_VERSION="V9.103";const UPDATE_DATE=(()=>{const n=new Date();return n.toLocaleDateString("fi-FI")+' klo '+String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0');})();
+const APP_VERSION="V9.104";const UPDATE_DATE=(()=>{const n=new Date();return n.toLocaleDateString("fi-FI")+' klo '+String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0');})();
 const ISSUERS={
   tmi:{name:"J Sailing",businessId:"1728993-9",address:"Kontiontie 55, 11120 Riihimäki",iban:"FI62 1132 3000 4277 43",bic:"NDEAFIHH"},
   oy:{name:"AJarmo Oy",businessId:"3432355-3",address:"Kontiontie 55, 11120 Riihimäki",iban:"FI73 7997 7994 4257 05",bic:"HOLVFIHH"}
@@ -429,6 +429,12 @@ function computeInvoice(overrideState){
           lines.push({title:`Aiemmin laskutettu varausmaksu`,qty:1,unit:-alreadyInvoicedResFee,total:-alreadyInvoicedResFee});
         }
         grossTotal=amt-alreadyInvoicedResFee;
+        if(inv.mode==="customer-company"){
+          const co=state.companies.find(x=>x.id===inv.companyId);
+          const comm=Math.abs(grossTotal)*(Number(co?.commissionPct||0)/100);
+          if(comm>0&&!isCredit)lines.push({title:"Välitysprovisio",qty:1,unit:-comm,total:-comm});
+          grossTotal=isCredit?grossTotal:grossTotal-comm;
+        }
       }
     }else{
       const co=state.companies.find(x=>x.id===inv.companyId);
