@@ -412,10 +412,15 @@ function computeInvoice(overrideState){
            x.payerName===(state.companies.find(c=>c.id===inv.companyId)?.name||"__")))
         .reduce((sum,x)=>sum+Number(x.grossTotal||0),0)
       :0;
-    if(inv.mode==="customer"){
+    if(inv.mode==="customer"||inv.mode==="customer-company"){
       const c=state.customers.find(x=>x.id===inv.customerId);
       if(c){
-        payerName=c.name||"";payerEmail=c.email||"";
+        if(inv.mode==="customer-company"){
+          const co=state.companies.find(x=>x.id===inv.companyId);
+          payerName=co?.name||c.name||"";payerEmail=co?.email||c.email||"";payerBusinessId=co?.businessId||"";
+        }else{
+          payerName=c.name||"";payerEmail=c.email||"";
+        }
         const effectivePrice=(c.priceOverride!=null&&c.priceOverride!=="")?Number(c.priceOverride):price;
         let amt=isCredit?-Math.abs(effectivePrice):effectivePrice;
         const priceNote=(c.priceOverride!=null&&c.priceOverride!=="")?" (yksilollinen hinta)":"";
@@ -1080,7 +1085,7 @@ function renderInvoicing(){
   ${isTutkinto?`<div class="field"><label class="lbl">Tutkinto *</label><select data-action="inv-tutkinto"><option value="">-- valitse tutkinto --</option>${tutkintoOpts}</select></div>`:`<div class="field"><label class="lbl">Tapahtuma *</label><select data-action="inv-sailing">${evOpts}</select></div>`}
     </div>
     <div class="grid3">
-      <div class="field"><label class="lbl">Malli</label><select data-action="inv-mode"><option value="customer" ${state.invoice.mode==="customer"?"selected":""}>Asiakaskohtainen</option><option value="company" ${state.invoice.mode==="company"?"selected":""}>Yrityslasku</option></select></div>
+      <div class="field"><label class="lbl">Malli</label><select data-action="inv-mode"><option value="customer" ${state.invoice.mode==="customer"?"selected":""}>Asiakaskohtainen</option><option value="customer-company" ${state.invoice.mode==="customer-company"?"selected":""}>Asiakaskohtainen — yritys maksaa</option><option value="company" ${state.invoice.mode==="company"?"selected":""}>Yrityslasku</option></select></div>
       <div class="field"><label class="lbl">Laskulaji</label><select data-action="inv-type"><option value="full" ${itype==="full"?"selected":""}>Loppulasku</option><option value="reservation" ${itype==="reservation"?"selected":""}>Varausmaksu</option><option value="partial" ${itype==="partial"?"selected":""}>Osasuoritus</option><option value="credit" ${itype==="credit"?"selected":""}>Hyvityslasku</option></select></div>
       <div class="field"><label class="lbl">Päivä</label><input type="date" data-action="inv-date" value="${esc(state.invoice.invoiceDate)}"></div>
     </div>
@@ -1088,7 +1093,7 @@ function renderInvoicing(){
     ${isCredit?`<div class="field"><label class="lbl">Kohdistetaan laskulle</label><select data-action="inv-credit-ref"><option value="">-- valitse alkuperäinen lasku --</option>${creditRefOpts}</select>${inv.creditRef?`<div class="infobox infobox-amber" style="margin-top:8px">Hyvitetään lasku ${esc(inv.creditRef.invoiceNo)} · ${Number(inv.creditRef.grossTotal||0).toFixed(2)} €</div>`:""}</div>`:""}
     <div class="row" style="margin-bottom:16px;flex-wrap:wrap;gap:10px">
       <div style="flex:1;min-width:200px" class="field"><label class="lbl">Asiakas</label><select data-action="inv-customer"><option value="">-- valitse --</option>${custOpts}</select></div>
-      ${(state.invoice.mode==="company")?`<div style="flex:1;min-width:200px" class="field"><label class="lbl">Yritys</label><select data-action="inv-company"><option value="">-- valitse --</option>${coOpts}</select></div>`:""}
+      ${(state.invoice.mode==="company"||state.invoice.mode==="customer-company")?`<div style="flex:1;min-width:200px" class="field"><label class="lbl">Yritys</label><select data-action="inv-company"><option value="">-- valitse --</option>${coOpts}</select></div>`:""}
       <div style="min-width:160px" class="field"><label class="lbl">Laskunro (seuraava)</label><div style="padding:10px 13px;border:1.5px solid #d1d5db;border-radius:8px;background:#f0f4f8;font-weight:800;color:#0a4272;font-size:15px">${esc(inv.invNo)}</div><div class="small muted" style="margin-top:4px">Viite: ${esc(inv.reference)}</div></div>
     </div>
   </div>
@@ -2836,7 +2841,7 @@ hr{border-top:1.5px solid #e5e7eb;margin:10px 0}
       }
       if(a==="email-invoice"){
         const box=document.getElementById("invoiceBox");if(!box)return;
-        let to="";if(state.invoice.mode==="customer"){const c=state.customers.find(x=>x.id===state.invoice.customerId);to=c?.email||"";}else{const co=state.companies.find(x=>x.id===state.invoice.companyId);to=co?.email||"";}
+        let to="";if(state.invoice.mode==="customer"){const c=state.customers.find(x=>x.id===state.invoice.customerId);to=c?.email||"";}else if(state.invoice.mode==="customer-company"){const co=state.companies.find(x=>x.id===state.invoice.companyId);const c=state.customers.find(x=>x.id===state.invoice.customerId);to=co?.email||c?.email||"";}else{const co=state.companies.find(x=>x.id===state.invoice.companyId);to=co?.email||"";}
         const inv=computeInvoice();window.location.href=`mailto:${encodeURIComponent(to)}?subject=${encodeURIComponent("Lasku "+inv.invNo)}&body=${encodeURIComponent(box.innerText)}`;return;
       }
     };
