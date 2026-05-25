@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
 <meta name="apple-mobile-web-app-title" content="J Sailing"/>
 <meta name="theme-color" content="#0a1628"/>
-<title>J Sailing V9.127 — Hallintapaneeli</title>
+<title>J Sailing V9.128 — Hallintapaneeli</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400;1,600&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -205,7 +205,7 @@ import{getAuth,GoogleAuthProvider,signInWithPopup,signOut,onAuthStateChanged}fro
 import{getFirestore,collection,doc,addDoc,setDoc,deleteDoc,onSnapshot,serverTimestamp}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 const FIREBASE_CONFIG={apiKey:"AIzaSyB7Dp5_5fN0Iko-4Jn1D2Dp6NNNih63UO0",authDomain:"jsailing-f716c.firebaseapp.com",projectId:"jsailing-f716c",storageBucket:"jsailing-f716c.firebasestorage.app",messagingSenderId:"543523103696",appId:"1:543523103696:web:439a312efa6aec398a8fd5"};
 const ALLOWED_EMAIL="jacke.seilaa@gmail.com";
-const APP_VERSION="V9.127";const UPDATE_DATE=(()=>{const n=new Date();return n.toLocaleDateString("fi-FI")+' klo '+String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0');})();
+const APP_VERSION="V9.128";const UPDATE_DATE=(()=>{const n=new Date();return n.toLocaleDateString("fi-FI")+' klo '+String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0');})();
 const ISSUERS={
   tmi:{name:"J Sailing",businessId:"1728993-9",address:"Kontiontie 55, 11120 Riihimäki",iban:"FI62 1132 3000 4277 43",bic:"NDEAFIHH"},
   oy:{name:"AJarmo Oy",businessId:"3432355-3",address:"Kontiontie 55, 11120 Riihimäki",iban:"FI73 7997 7994 4257 05",bic:"HOLVFIHH"}
@@ -647,6 +647,7 @@ function printInvoiceFull(inv){
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <title>${inv.invoiceNo||'Lasku'}</title>
+<meta name="invoice-to" content="${esc(inv.payerEmail||'')}"><meta name="invoice-subj" content="${esc('Lasku '+(inv.invoiceNo||''))}">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jsbarcode/3.11.6/JsBarcode.all.min.js"><\/script>\n<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"><\/script>\n<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"><\/script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
@@ -667,11 +668,65 @@ th.r{text-align:right}
 </style></head><body>
 
 <div id="bar">
+ <button id="mailBtn" onclick="openInMail()" style="background:#d97706;color:#fff;padding:8px 18px;border:none;border-radius:6px;font-size:14px;font-weight:700;cursor:pointer;margin-right:8px">📧 Avaa Mailissa</button>
  <button id="dlBtn" onclick="downloadPDF()" style="background:#16a34a;color:#fff;padding:8px 18px;border:none;border-radius:6px;font-size:14px;font-weight:700;cursor:pointer;margin-right:8px">⬇️ Lataa PDF</button>
  <button onclick="window.print()" style="background:#3b82f6;color:#fff;padding:8px 16px;border:none;border-radius:6px;font-size:14px;cursor:pointer;margin-right:8px">🖨️ Tulosta</button>
  <button onclick="window.close()" style="background:#6b7280;color:#fff;padding:8px 16px;border:none;border-radius:6px;font-size:14px;cursor:pointer">✕ Sulje</button>
- <span id="dlMsg" style="font-size:12px;color:#d1fae5;margin-left:8px;display:none">✓ PDF ladattu!</span>
+ <span id="dlMsg" style="font-size:12px;color:#d1fae5;margin-left:8px;display:none">✓ Valmis!</span>
 <script>
+async function openInMail(){
+  const btn=document.getElementById("mailBtn");
+  const msg=document.getElementById("dlMsg");
+  btn.textContent="⏳ Luodaan...";btn.disabled=true;
+  try{
+    const sheet=document.getElementById("sheet");
+    const canvas=await html2canvas(sheet,{scale:2,useCORS:true,backgroundColor:"#ffffff"});
+    const {jsPDF}=window.jspdf;
+    const pdf=new jsPDF({orientation:"portrait",unit:"mm",format:"a4"});
+    const imgW=210;const imgH=(canvas.height*imgW)/canvas.width;
+    pdf.addImage(canvas.toDataURL("image/jpeg",0.95),"JPEG",0,0,imgW,Math.min(imgH,297));
+    const pdfB64=pdf.output("datauristring").split(",")[1];
+    const fname=document.title.replace(/[^a-zA-Z0-9_-]/g,"_")+".pdf";
+    const to=document.querySelector("meta[name=invoice-to]")?.content||"";
+    const subj=document.querySelector("meta[name=invoice-subj]")?.content||document.title;
+    const bodyText=document.getElementById("sheet")?.innerText||"";
+    const boundary="----=_Part_"+Date.now();
+    const eml=[
+      "MIME-Version: 1.0",
+      "From: ",
+      "To: "+to,
+      "Subject: "+subj,
+      'Content-Type: multipart/mixed; boundary="'+boundary+'"',
+      "",
+      "--"+boundary,
+      "Content-Type: text/plain; charset=UTF-8",
+      "Content-Transfer-Encoding: 8bit",
+      "",
+      bodyText.substring(0,1000),
+      "",
+      "--"+boundary,
+      'Content-Type: application/pdf; name="'+fname+'"',
+      'Content-Disposition: attachment; filename="'+fname+'"',
+      "Content-Transfer-Encoding: base64",
+      "",
+      pdfB64.match(/.{1,76}/g).join("\r\n"),
+      "",
+      "--"+boundary+"--"
+    ].join("\r\n");
+    const blob=new Blob([eml],{type:"message/rfc822"});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement("a");
+    a.href=url;a.download=fname.replace(".pdf",".eml");
+    document.body.appendChild(a);a.click();
+    setTimeout(()=>{URL.revokeObjectURL(url);document.body.removeChild(a);},1000);
+    btn.textContent="📧 Avaa Mailissa";btn.disabled=false;
+    msg.textContent="✓ Avaa ladattu .eml-tiedosto → Mail aukeaa liitteen kanssa!";
+    msg.style.display="inline";
+  }catch(e){
+    alert("Virhe: "+e.message);
+    btn.textContent="📧 Avaa Mailissa";btn.disabled=false;
+  }
+}
 async function downloadPDF(){
   const btn=document.getElementById("dlBtn");
   const msg=document.getElementById("dlMsg");
