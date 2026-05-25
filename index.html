@@ -272,7 +272,8 @@ window.popupOpenInMail=async function(sheet,to,subj,btn,msg){
     const fname=(subj||"Lasku").replace(/[^a-zA-Z0-9_-]/g,"_")+".pdf";
     const bd="----=_Part_"+Date.now();
     const bodyTxt=sheet.innerText.substring(0,800);
-    const nl="\r\n";
+    const nl="
+";
     const eml=[
       "MIME-Version: 1.0","From: ","To: "+(to||""),
       "Subject: "+(subj||"Lasku"),
@@ -286,8 +287,17 @@ window.popupOpenInMail=async function(sheet,to,subj,btn,msg){
       "Content-Transfer-Encoding: base64","",
       pdfB64.match(/.{1,76}/g).join(nl),"",
       "--"+bd+"--"
-    ].join(nl);const blob=new Blob([csv],{type:"text/csv;charset=utf-8"});const url=URL.createObjectURL(blob);const a2=document.createElement("a");a2.href=url;a2.download=`laskurekisteri_${month}.csv`;a2.click();URL.revokeObjectURL(url);return;
-      }
+    ].join(nl);
+    const blob=new Blob([eml],{type:"message/rfc822"});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement("a");a.href=url;a.download=fname.replace(".pdf",".eml");
+    document.body.appendChild(a);a.click();
+    setTimeout(()=>{URL.revokeObjectURL(url);document.body.removeChild(a);},1000);
+    if(btn){btn.textContent="📧 Avaa Mailissa";btn.disabled=false;}
+    if(msg){msg.textContent="✓ Tuplaklikkaa .eml-tiedostoa → Mail aukeaa PDF-liitteen kanssa";msg.style.display="inline";}
+  }catch(e){alert("Virhe: "+e.message);if(btn){btn.textContent="📧 Avaa Mailissa";btn.disabled=false;}}
+};
+
       if(a==="print-and-save"){
   const inv2=computeInvoice();
   if(!inv2.isTutkinto&&!inv2.sailing)return alert("Valitse tapahtuma.");
