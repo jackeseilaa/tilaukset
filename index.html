@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
 <meta name="apple-mobile-web-app-title" content="J Sailing"/>
 <meta name="theme-color" content="#0a1628"/>
-<title>J Sailing V9.138 — Hallintapaneeli</title>
+<title>J Sailing V9.139 — Hallintapaneeli</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400;1,600&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -207,7 +207,7 @@ import{getAuth,GoogleAuthProvider,signInWithPopup,signOut,onAuthStateChanged}fro
 import{getFirestore,collection,doc,addDoc,setDoc,deleteDoc,onSnapshot,serverTimestamp}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 const FIREBASE_CONFIG={apiKey:"AIzaSyB7Dp5_5fN0Iko-4Jn1D2Dp6NNNih63UO0",authDomain:"jsailing-f716c.firebaseapp.com",projectId:"jsailing-f716c",storageBucket:"jsailing-f716c.firebasestorage.app",messagingSenderId:"543523103696",appId:"1:543523103696:web:439a312efa6aec398a8fd5"};
 const ALLOWED_EMAIL="jacke.seilaa@gmail.com";
-const APP_VERSION="V9.138";const UPDATE_DATE=(()=>{const n=new Date();return n.toLocaleDateString("fi-FI")+' klo '+String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0');})();
+const APP_VERSION="V9.139";const UPDATE_DATE=(()=>{const n=new Date();return n.toLocaleDateString("fi-FI")+' klo '+String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0');})();
 const ISSUERS={
   tmi:{name:"J Sailing",businessId:"1728993-9",address:"Kontiontie 55, 11120 Riihimäki",iban:"FI62 1132 3000 4277 43",bic:"NDEAFIHH"},
   oy:{name:"AJarmo Oy",businessId:"3432355-3",address:"Kontiontie 55, 11120 Riihimäki",iban:"FI73 7997 7994 4257 05",bic:"HOLVFIHH"}
@@ -230,7 +230,7 @@ const state={
   openSailingId:null,dashQuickId:null,dashQuickType:null,transferCustomerId:null,
   dashNewCustomer:{name:"",phone:"",email:"",status:"pending"},
   sailingGroup:"all",tutkintoDraft:{},addSessionDraft:{sailingId:"",rows:[]},combinedInvoice:{key:"",label:"",payerLabel:"",osio:"",isCompany:false,companyId:"",issuer:"tmi",invoiceDate:"",items:[]},
-  calendarMonth:today().slice(0,7),
+  calendarMonth:today().slice(0,7),calView:"month",calDayDate:today(),
   registerMonth:today().slice(0,7),registerIssuerFilter:"all",
   syncing:false,
   sailingDraft:{},
@@ -931,6 +931,63 @@ function renderDashboard(){
   </div>`;
 }
 
+function renderCalendarDay(eventMap,dateStr){
+  const evs=eventMap[dateStr]||[];
+  const d=new Date(dateStr+"T12:00:00");
+  const dayNames2=["Su","Ma","Ti","Ke","To","Pe","La"];
+  const monthNames2=["tammikuuta","helmikuuta","maaliskuuta","huhtikuuta","toukokuuta","kesäkuuta","heinäkuuta","elokuuta","syyskuuta","lokakuuta","marraskuuta","joulukuuta"];
+  const label=dayNames2[d.getDay()]+" "+d.getDate()+". "+monthNames2[d.getMonth()]+" "+d.getFullYear();
+  const prev=addDays(dateStr,-1),next=addDays(dateStr,1);
+  const todayStr=today();
+  const isToday=dateStr===todayStr;
+  const rows=evs.map(ev=>{
+    const isSailing=ev.type==="sailing";
+    const dtype=isSailing?"sailing":"tutkinto";
+    const action=isSailing?"open-sailing":"open-tutkinto";
+    const tc=ev.sailing?.type||ev.type||"";
+    const custs=isSailing
+      ?state.customers.filter(c=>c.sailingId===ev.id)
+      :state.customers.filter(c=>c.tutkintoId===ev.id);
+    const conf=custs.filter(c=>c.reservationStatus==="paid"||c.status==="confirmed").length;
+    const pend=custs.filter(c=>c.reservationStatus==="pending"||c.status==="pending").length;
+    const max=Number(ev.sailing?.maxPersons||ev.maxPersons||0);
+    const timeStr=ev.sailing?.startTime||ev.startTime||"";
+    const endStr=ev.sailing?.endTime||ev.endTime||"";
+    return`<div style="border:1.5px solid #e5e7eb;border-radius:10px;padding:12px 14px;margin-bottom:10px;background:#fff;border-left:4px solid var(--navy)">
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <span class="cal-event type-${tc}" style="font-size:12px;padding:3px 8px;border-radius:6px">${esc(ev.name||ev.sailing?.name||"")}</span>
+        ${timeStr?`<span style="font-size:13px;color:#374151;font-weight:600">🕐 ${esc(timeStr)}${endStr?" – "+esc(endStr):""}</span>`:""}
+        <span class="badge badge-blue" style="font-size:11px">${esc(tc)}</span>
+        <button class="btn btn-secondary btn-sm" data-action="${action}" data-id="${ev.id}" style="font-size:11px;margin-left:auto">Avaa →</button>
+      </div>
+      <div style="margin-top:8px;display:flex;gap:16px;flex-wrap:wrap">
+        <span style="font-size:13px">✓ <b>${conf}</b> vahvistettu</span>
+        <span style="font-size:13px;color:#92400e">⏳ <b>${pend}</b> odottaa</span>
+        ${max>0?`<span style="font-size:13px;color:#6b7280">Max: ${max}</span>`:""}
+      </div>
+      ${custs.length>0?`<div style="margin-top:10px;border-top:1px solid #f3f4f6;padding-top:8px">
+        <div style="font-size:11px;font-weight:700;color:#6b7280;margin-bottom:6px">OSALLISTUJAT (${custs.length})</div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px">
+          ${custs.map(c=>{
+            const st=c.reservationStatus||c.status||"pending";
+            const col=st==="paid"||st==="confirmed"?"#166534":st==="waitlist"||st==="reserve"?"#1e40af":"#92400e";
+            return`<span data-action="edit-customer" data-id="${c.id}" style="cursor:pointer;font-size:12px;background:#f9fafb;border:1px solid #e5e7eb;border-radius:6px;padding:3px 8px;color:${col};font-weight:600">${esc(c.name||"")}</span>`;
+          }).join("")}
+        </div>
+      </div>`:""}
+    </div>`;
+  });
+  const empty=evs.length===0?`<div style="text-align:center;padding:40px;color:#9ca3af;font-size:14px">Ei tapahtumia tänä päivänä</div>`:"";
+  return`<div>
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+      <button class="btn btn-secondary btn-sm" data-action="cal-day-nav" data-date="${prev}">‹</button>
+      <div style="font-size:16px;font-weight:700;color:${isToday?"#0a4272":"#1f2937"};flex:1;text-align:center">${label}${isToday?' <span style="font-size:11px;background:#0a4272;color:#fff;border-radius:10px;padding:2px 8px;margin-left:6px">Tänään</span>':''}</div>
+      <button class="btn btn-secondary btn-sm" data-action="cal-day-nav" data-date="${next}">›</button>
+    </div>
+    ${rows.join("")}${empty}
+  </div>`;
+}
+
 function renderCalendar(){
   const[year,month]=state.calendarMonth.split("-").map(Number);
   const monthNames=["Tammikuu","Helmikuu","Maaliskuu","Huhtikuu","Toukokuu","Kesäkuu","Heinäkuu","Elokuu","Syyskuu","Lokakuu","Marraskuu","Joulukuu"];
@@ -1015,7 +1072,7 @@ function renderCalendar(){
       const gcDot=(sv||tv)&&(sv||tv)[gcKey]?`<span title="Lisätty Google Kalenteriin" style="position:absolute;top:2px;right:2px;width:6px;height:6px;border-radius:50%;background:#4285F4;display:block"></span>`:"";
       return`<button class="cal-event ${tc}" data-action="${action}" data-id="${ev.id}" data-idx="${sidx}" data-type="${dtype}" style="padding:3px 5px;position:relative">${gcDot}<span style="display:block">${esc(ev.name)}${booked}</span>${tl}${rl}</button>`;
     }).join("");
-    const more=evs.length>3?`<div style="font-size:9px;color:#6b7280;padding:1px 4px">+${evs.length-3}</div>`:"";
+    const more=evs.length>3?`<div data-action="cal-day-open" data-date="${ds}" style="font-size:9px;color:#1e40af;padding:1px 4px;cursor:pointer;font-weight:700">+${evs.length-3} lisää →</div>`:"";
     const blockedHTML=blocked?`<div style="font-size:9px;color:#9ca3af;font-style:italic;padding:2px 4px">🚫 Varattu${blockedNote?" · "+esc(blockedNote):""}</div>`:"";
     const toggleBtn=!other?`<button data-action="toggle-block" data-date="${ds}" style="position:absolute;bottom:3px;right:3px;background:none;border:none;cursor:pointer;font-size:10px;opacity:.4;padding:1px" title="${blocked?"Poista varaus":"Merkitse varatuksi"}">${blocked?"🔓":"🔒"}</button>`:"";
     cells+=`<div class="cal-cell${other?" other-month":""}${isToday?" today":""}${blocked?" blocked":""}" style="position:relative"><div class="cal-date">${d}</div>${evHTML}${more}${blockedHTML}${toggleBtn}</div>`;
@@ -1028,11 +1085,15 @@ function renderCalendar(){
       <div class="cal-nav-bar"><button class="btn btn-secondary btn-sm" data-action="cal-nav" data-month="${prev}">‹</button><div class="cal-month-label">${monthNames[month-1]} ${year}</div><button class="btn btn-secondary btn-sm" data-action="cal-nav" data-month="${next}">›</button></div>
       <div class="row">
         <button class="btn btn-secondary btn-sm" data-action="cal-today">Tänään</button>
+        <div style="display:flex;gap:2px;border:1.5px solid #d1d5db;border-radius:8px;overflow:hidden">
+          <button class="btn btn-sm" data-action="cal-view" data-view="month" style="border-radius:0;border:none;padding:5px 10px;font-size:12px;background:${state.calView==='month'?'#0a4272':'#fff'};color:${state.calView==='month'?'#fff':'#374151'}">Kuukausi</button>
+          <button class="btn btn-sm" data-action="cal-view" data-view="day" style="border-radius:0;border:none;padding:5px 10px;font-size:12px;background:${state.calView==='day'?'#0a4272':'#fff'};color:${state.calView==='day'?'#fff':'#374151'}">Päivä</button>
+        </div>
         <button class="btn btn-secondary btn-sm" data-action="print-calendar">🖨️ Tulosta</button>
       </div>
     </div>
     <div class="cal-legend" style="flex-wrap:wrap;gap:6px">${TYPES.map(t=>`<div class="cal-legend-item"><div class="cal-legend-dot cal-event type-${t}"></div>${esc(t)}</div>`).join("")}<div class="cal-legend-item"><div style="width:10px;height:10px;border-radius:50%;background:#4285F4;flex-shrink:0"></div>Google Kalenterissa</div></div>
-    <div class="cal-grid" id="cal-grid-area">${dayNames.map(d=>`<div class="cal-dayname">${d}</div>`).join("")}${cells}</div>
+    ${state.calView==="day"?renderCalendarDay(eventMap,state.calDayDate):`<div class="cal-grid" id="cal-grid-area">${dayNames.map(d=>`<div class="cal-dayname">${d}</div>`).join("")}${cells}</div>`}
   </div>`;
 }
 
@@ -2460,7 +2521,10 @@ Haluatko myös avata Google Kalenterin poistaaksesi tapahtuman sieltä?`);
       if(a==="set-group"){state.sailingGroup=itemId;render();return;}
       if(a==="cal-nav"){state.calendarMonth=el.dataset.month;render();return;}
       if(a==="reg-issuer"){state.registerIssuerFilter=el.dataset.issuer||"all";render();return;}
-      if(a==="cal-today"){state.calendarMonth=today().slice(0,7);render();return;}
+      if(a==="cal-today"){state.calendarMonth=today().slice(0,7);state.calDayDate=today();render();return;}
+      if(a==="cal-view"){state.calView=el.dataset.view;if(state.calView==="day"&&!state.calDayDate)state.calDayDate=today();render();return;}
+      if(a==="cal-day-open"){state.calView="day";state.calDayDate=el.dataset.date;render();return;}
+      if(a==="cal-day-nav"){state.calDayDate=el.dataset.date;state.calendarMonth=el.dataset.date.slice(0,7);render();return;}
       if(a==="toggle-block"){
         const date=el.dataset.date;
         const existing=state.blockedDays.find(b=>b.date===date);
