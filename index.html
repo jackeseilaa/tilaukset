@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
 <meta name="apple-mobile-web-app-title" content="J Sailing"/>
 <meta name="theme-color" content="#0a1628"/>
-<title>J Sailing V9.146 — Hallintapaneeli</title>
+<title>J Sailing V9.147 — Hallintapaneeli</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400;1,600&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -207,7 +207,7 @@ import{getAuth,GoogleAuthProvider,signInWithPopup,signOut,onAuthStateChanged}fro
 import{getFirestore,collection,doc,addDoc,setDoc,deleteDoc,onSnapshot,serverTimestamp}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 const FIREBASE_CONFIG={apiKey:"AIzaSyB7Dp5_5fN0Iko-4Jn1D2Dp6NNNih63UO0",authDomain:"jsailing-f716c.firebaseapp.com",projectId:"jsailing-f716c",storageBucket:"jsailing-f716c.firebasestorage.app",messagingSenderId:"543523103696",appId:"1:543523103696:web:439a312efa6aec398a8fd5"};
 const ALLOWED_EMAIL="jacke.seilaa@gmail.com";
-const APP_VERSION="V9.146";const UPDATE_DATE=(()=>{const n=new Date();return n.toLocaleDateString("fi-FI")+' klo '+String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0');})();
+const APP_VERSION="V9.147";const UPDATE_DATE=(()=>{const n=new Date();return n.toLocaleDateString("fi-FI")+' klo '+String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0');})();
 const ISSUERS={
   tmi:{name:"J Sailing",businessId:"1728993-9",address:"Kontiontie 55, 11120 Riihimäki",iban:"FI62 1132 3000 4277 43",bic:"NDEAFIHH"},
   oy:{name:"AJarmo Oy",businessId:"3432355-3",address:"Kontiontie 55, 11120 Riihimäki",iban:"FI73 7997 7994 4257 05",bic:"HOLVFIHH"}
@@ -3075,17 +3075,18 @@ table{width:100%;border-collapse:collapse}
           const fname="Lasku_"+(inv.invoiceNo||"").replace(/[^a-zA-Z0-9_-]/g,"_")+".pdf";
           const file=new File([blob],fname,{type:"application/pdf"});
           const saateText="Hei,\r\nOhessa lasku "+(inv.invoiceNo||"")+" / "+Number(inv.grossTotal||0).toFixed(2)+" €.\r\n\r\nYstävällisin terveisin,\r\nJ Sailing";
-          // Try Web Share API first (iOS/macOS native share sheet)
-          if(navigator.canShare&&navigator.canShare({files:[file]})){
-            await navigator.share({
-              files:[file],
-              title:"Lasku "+(inv.invoiceNo||""),
-              text:saateText
-            });
-            // Mark as emailed
-            if(!inv.emailedAt){inv.emailedAt=new Date().toISOString();fsSet("invoices",inv.id,{emailedAt:inv.emailedAt});}
-            state.emailModalInvId=null;render();
-          }else{
+          // Step 1: Download PDF automatically
+          const pdfUrl=URL.createObjectURL(blob);
+          const a2=document.createElement("a");a2.href=pdfUrl;a2.download=fname;
+          document.body.appendChild(a2);a2.click();
+          document.body.removeChild(a2);
+          setTimeout(()=>URL.revokeObjectURL(pdfUrl),3000);
+          // Step 2: Open Mail after short delay
+          const mb=encodeURIComponent("Hei,\n\nOhessa lasku "+(inv.invoiceNo||"")+" / "+Number(inv.grossTotal||0).toFixed(2)+" €.\n\nYstävällisin terveisin,\nJ Sailing");
+          setTimeout(()=>{window.location.href="mailto:"+encodeURIComponent(inv.payerEmail||"")+"?subject="+encodeURIComponent("Lasku "+(inv.invoiceNo||""))+"&body="+mb;},400);
+          if(!inv.emailedAt){inv.emailedAt=new Date().toISOString();fsSet("invoices",inv.id,{emailedAt:inv.emailedAt});}
+          state.emailModalInvId=null;
+          setTimeout(()=>render(),600);else{
             // Fallback: download PDF + open mailto
             const pdfUrl=URL.createObjectURL(blob);
             const a2=document.createElement("a");a2.href=pdfUrl;a2.download=fname;
