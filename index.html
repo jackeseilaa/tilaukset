@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
 <meta name="apple-mobile-web-app-title" content="J Sailing"/>
 <meta name="theme-color" content="#0a1628"/>
-<title>J Sailing V9.145 — Hallintapaneeli</title>
+<title>J Sailing V9.146 — Hallintapaneeli</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400;1,600&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -207,7 +207,7 @@ import{getAuth,GoogleAuthProvider,signInWithPopup,signOut,onAuthStateChanged}fro
 import{getFirestore,collection,doc,addDoc,setDoc,deleteDoc,onSnapshot,serverTimestamp}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 const FIREBASE_CONFIG={apiKey:"AIzaSyB7Dp5_5fN0Iko-4Jn1D2Dp6NNNih63UO0",authDomain:"jsailing-f716c.firebaseapp.com",projectId:"jsailing-f716c",storageBucket:"jsailing-f716c.firebasestorage.app",messagingSenderId:"543523103696",appId:"1:543523103696:web:439a312efa6aec398a8fd5"};
 const ALLOWED_EMAIL="jacke.seilaa@gmail.com";
-const APP_VERSION="V9.145";const UPDATE_DATE=(()=>{const n=new Date();return n.toLocaleDateString("fi-FI")+' klo '+String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0');})();
+const APP_VERSION="V9.146";const UPDATE_DATE=(()=>{const n=new Date();return n.toLocaleDateString("fi-FI")+' klo '+String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0');})();
 const ISSUERS={
   tmi:{name:"J Sailing",businessId:"1728993-9",address:"Kontiontie 55, 11120 Riihimäki",iban:"FI62 1132 3000 4277 43",bic:"NDEAFIHH"},
   oy:{name:"AJarmo Oy",businessId:"3432355-3",address:"Kontiontie 55, 11120 Riihimäki",iban:"FI73 7997 7994 4257 05",bic:"HOLVFIHH"}
@@ -3092,12 +3092,7 @@ table{width:100%;border-collapse:collapse}
             document.body.appendChild(a2);a2.click();
             setTimeout(()=>{URL.revokeObjectURL(pdfUrl);document.body.removeChild(a2);},1000);
             // Open Mail after short delay
-            const mailBody=encodeURIComponent("Hei,
-
-Ohessa lasku "+(inv.invoiceNo||"")+" / "+Number(inv.grossTotal||0).toFixed(2)+" €.
-
-Ystävällisin terveisin,
-J Sailing");
+            const mailBody=encodeURIComponent("Hei,\\n\\nOhessa lasku "+(inv.invoiceNo||"")+" / "+Number(inv.grossTotal||0).toFixed(2)+" \xe2\x82\xac.\\n\\nYst\xc3\xa4v\xc3\xa4llisin terveisin,\\nJ Sailing")
             setTimeout(()=>{
               window.location.href="mailto:"+encodeURIComponent(inv.payerEmail||"")+"?subject="+encodeURIComponent("Lasku "+(inv.invoiceNo||""))+"&body="+mailBody;
             },600);
