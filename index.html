@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
 <meta name="apple-mobile-web-app-title" content="J Sailing"/>
 <meta name="theme-color" content="#0a1628"/>
-<title>J Sailing V9.150 — Hallintapaneeli</title>
+<title>J Sailing V9.151 — Hallintapaneeli</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400;1,600&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -207,10 +207,9 @@ select option{background:#ffffff;color:#111827}
 import{initializeApp}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import{getAuth,GoogleAuthProvider,signInWithPopup,signOut,onAuthStateChanged}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 import{getFirestore,collection,doc,addDoc,setDoc,deleteDoc,onSnapshot,serverTimestamp}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-import{getStorage,ref,uploadBytes,getDownloadURL}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js";
 const FIREBASE_CONFIG={apiKey:"AIzaSyB7Dp5_5fN0Iko-4Jn1D2Dp6NNNih63UO0",authDomain:"jsailing-f716c.firebaseapp.com",projectId:"jsailing-f716c",storageBucket:"jsailing-f716c.firebasestorage.app",messagingSenderId:"543523103696",appId:"1:543523103696:web:439a312efa6aec398a8fd5"};
 const ALLOWED_EMAIL="jacke.seilaa@gmail.com";
-const APP_VERSION="V9.150";const UPDATE_DATE=(()=>{const n=new Date();return n.toLocaleDateString("fi-FI")+' klo '+String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0');})();
+const APP_VERSION="V9.151";const UPDATE_DATE=(()=>{const n=new Date();return n.toLocaleDateString("fi-FI")+' klo '+String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0');})();
 const ISSUERS={
   tmi:{name:"J Sailing",businessId:"1728993-9",address:"Kontiontie 55, 11120 Riihimäki",iban:"FI62 1132 3000 4277 43",bic:"NDEAFIHH"},
   oy:{name:"AJarmo Oy",businessId:"3432355-3",address:"Kontiontie 55, 11120 Riihimäki",iban:"FI73 7997 7994 4257 05",bic:"HOLVFIHH"}
@@ -222,8 +221,8 @@ const MULTIDAY_TYPES=["Charter","Purjehdusretki","Iltapurjehdus","Päiväpurjehd
 const SAILING_GROUPS=[{id:"all",label:"Kaikki",types:null},{id:"courses",label:"Kurssit",types:["Kurssi"]},{id:"charter",label:"Charter",types:["Charter"]},{id:"evening",label:"Iltapurjehdukset",types:["Iltapurjehdus"]},{id:"trips",label:"Retket",types:["Purjehdusretki"]},{id:"day",label:"Päiväpurjehdukset",types:["Päiväpurjehdus"]},{id:"other",label:"Muut",types:["Yritystilaisuus","Muu"]}];
 const TUTKINTO_TYPES=["Rannikkopäällikkö","Saaristopäällikkö","ICC näyttökoe","Vuokraveneenkuljettaja näyttökoe","Muu"];
 const CONFIG_READY=!FIREBASE_CONFIG.apiKey.includes("KORVAA");
-let app,auth,db,fns,storage;
-if(CONFIG_READY){app=initializeApp(FIREBASE_CONFIG);auth=getAuth(app);db=getFirestore(app);fns=getFunctions(app,"europe-west1");storage=getStorage(app);}
+let app,auth,db;
+if(CONFIG_READY){app=initializeApp(FIREBASE_CONFIG);auth=getAuth(app);db=getFirestore(app);}
 
 const state={
   tab:"dashboard",user:null,
@@ -3078,26 +3077,27 @@ table{width:100%;border-collapse:collapse}
           const fname="Lasku_"+(inv.invoiceNo||"").replace(/[^a-zA-Z0-9_-]/g,"_")+".pdf";
           const file=new File([blob],fname,{type:"application/pdf"});
           const saateText="Hei,\r\nOhessa lasku "+(inv.invoiceNo||"")+" / "+Number(inv.grossTotal||0).toFixed(2)+" €.\r\n\r\nYstävällisin terveisin,\r\nJ Sailing";
-          btn.textContent="⏳ Ladataan...";
+          btn.textContent="⏳ Lähetetään...";
           try{
-            // Upload PDF to Firebase Storage
-            const storageRef=ref(storage,"laskut/"+(inv.invoiceNo||inv.id)+".pdf");
-            await uploadBytes(storageRef,blob,{contentType:"application/pdf"});
-            const pdfUrl=await getDownloadURL(storageRef);
-            btn.textContent="⏳ Lähetetään...";
-            // Send email via EmailJS with download link
-            const msgText="Hei,\n\nOhessa laskusi "+(inv.invoiceNo||"")+" / "+Number(inv.grossTotal||0).toFixed(2)+" €.\n\n📎 Lataa PDF: "+pdfUrl+"\n\nYstävällisin terveisin,\nJ Sailing\njsailing.fi";
+            // Convert PDF to base64 for EmailJS attachment
+            const b64=await new Promise((res,rej)=>{
+              const fr=new FileReader();
+              fr.onload=()=>res(fr.result.split(",")[1]);
+              fr.onerror=rej;
+              fr.readAsDataURL(blob);
+            });
+            const msgText="Hei,\n\nOhessa laskusi "+(inv.invoiceNo||"")+" / "+Number(inv.grossTotal||0).toFixed(2)+" €.\n\nYstävällisin terveisin,\nJ Sailing\njsailing.fi";
             await emailjs.send("service_4or3p2i","template_nbe3jbl",{
               to_email:inv.payerEmail||"",
               subject:"Lasku "+(inv.invoiceNo||""),
               message:msgText
-            });
+            },{publicKey:"2NWTm5W3F3XXmJDge"});
             if(!inv.emailedAt){inv.emailedAt=new Date().toISOString();fsSet("invoices",inv.id,{emailedAt:inv.emailedAt});}
             state.emailModalInvId=null;
             render();
             alert("✅ Lasku lähetetty: "+(inv.payerEmail||""));
           }catch(err){
-            alert("Virhe: "+err.message);
+            alert("Virhe: "+err.text||err.message);
             console.error(err);
           }
         }catch(e){
