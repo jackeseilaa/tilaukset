@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
 <meta name="apple-mobile-web-app-title" content="J Sailing"/>
 <meta name="theme-color" content="#0a1628"/>
-<title>J Sailing V9.144 — Hallintapaneeli</title>
+<title>J Sailing V9.145 — Hallintapaneeli</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400;1,600&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -207,7 +207,7 @@ import{getAuth,GoogleAuthProvider,signInWithPopup,signOut,onAuthStateChanged}fro
 import{getFirestore,collection,doc,addDoc,setDoc,deleteDoc,onSnapshot,serverTimestamp}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 const FIREBASE_CONFIG={apiKey:"AIzaSyB7Dp5_5fN0Iko-4Jn1D2Dp6NNNih63UO0",authDomain:"jsailing-f716c.firebaseapp.com",projectId:"jsailing-f716c",storageBucket:"jsailing-f716c.firebasestorage.app",messagingSenderId:"543523103696",appId:"1:543523103696:web:439a312efa6aec398a8fd5"};
 const ALLOWED_EMAIL="jacke.seilaa@gmail.com";
-const APP_VERSION="V9.144";const UPDATE_DATE=(()=>{const n=new Date();return n.toLocaleDateString("fi-FI")+' klo '+String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0');})();
+const APP_VERSION="V9.145";const UPDATE_DATE=(()=>{const n=new Date();return n.toLocaleDateString("fi-FI")+' klo '+String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0');})();
 const ISSUERS={
   tmi:{name:"J Sailing",businessId:"1728993-9",address:"Kontiontie 55, 11120 Riihimäki",iban:"FI62 1132 3000 4277 43",bic:"NDEAFIHH"},
   oy:{name:"AJarmo Oy",businessId:"3432355-3",address:"Kontiontie 55, 11120 Riihimäki",iban:"FI73 7997 7994 4257 05",bic:"HOLVFIHH"}
@@ -1546,14 +1546,14 @@ function renderEmailModal(){
     </div>
     <div style="display:flex;flex-direction:column;gap:8px">
       <button class="btn btn-primary" id="shareBtn_${inv.id}" data-action="share-invoice-pdf" data-id="${inv.id}" style="padding:12px;font-size:15px;font-weight:700">
-        📎 Luo sähköposti PDF-liitteellä
+        📎 Lähetä PDF liitteenä
       </button>
       <a class="btn btn-secondary" href="${mailtoHref}" style="text-align:center;text-decoration:none;padding:10px;font-size:13px">
         ✉️ Avaa Mail (vain teksti)
       </a>
     </div>
     <div style="font-size:12px;color:#6b7280;border-top:1px solid #e5e7eb;padding-top:10px">
-      <b>📎 Luo sähköposti PDF-liitteellä</b> — lataa .eml-tiedosto → tuplaklikkaa → Mail aukeaa PDF liitteenä<br>
+      <b>📎 Lähetä PDF liitteenä</b> — avaa jakolevy, valitse Mail → PDF tulee liitteenä<br>
       <b>✉️ Avaa Mail</b> — avaa Mail ilman liitettä
     </div>
   </div>
@@ -3064,51 +3064,46 @@ table{width:100%;border-collapse:collapse}
         const origTxt=btn.textContent;
         btn.textContent="⏳ Luodaan PDF...";btn.disabled=true;
         try{
+          // Verify libraries loaded
+          if(!window.html2canvas||!window.jspdf){
+            throw new Error("PDF-kirjastot eivät latautuneet. Päivitä sivu ja yritä uudelleen.");
+          }
           const blob=await generateInvoicePDF(inv);
+          if(!blob||blob.size<1000){
+            throw new Error("PDF-luonti epäonnistui (tiedosto tyhjä). Yritä uudelleen.");
+          }
           const fname="Lasku_"+(inv.invoiceNo||"").replace(/[^a-zA-Z0-9_-]/g,"_")+".pdf";
           const file=new File([blob],fname,{type:"application/pdf"});
           const saateText="Hei,\r\nOhessa lasku "+(inv.invoiceNo||"")+" / "+Number(inv.grossTotal||0).toFixed(2)+" €.\r\n\r\nYstävällisin terveisin,\r\nJ Sailing";
-          // Convert PDF blob to base64
-          const b64=await new Promise((res,rej)=>{
-            const fr=new FileReader();
-            fr.onload=()=>res(fr.result.split(",")[1]);
-            fr.onerror=rej;
-            fr.readAsDataURL(blob);
-          });
-          // Build .eml with PDF attachment
-          const CRLF="\r\n";
-          const bd="----=_Boundary_"+Date.now();
-          // Build MIME multipart email with CRLF throughout
-          const b64lines=(b64.match(/.{1,76}/g)||[]).join(CRLF);
-          const emlStr=
-            "MIME-Version: 1.0"+CRLF+
-            "From: "+CRLF+
-            "To: "+(inv.payerEmail||"")+CRLF+
-            "Subject: Lasku "+(inv.invoiceNo||"")+CRLF+
-            'Content-Type: multipart/mixed; boundary="'+bd+'"'+CRLF+
-            CRLF+
-            "--"+bd+CRLF+
-            "Content-Type: text/plain; charset=UTF-8"+CRLF+
-            "Content-Transfer-Encoding: 8bit"+CRLF+
-            CRLF+
-            saateText+CRLF+
-            CRLF+
-            "--"+bd+CRLF+
-            'Content-Type: application/pdf; name="'+fname+'"'+CRLF+
-            'Content-Disposition: attachment; filename="'+fname+'"'+CRLF+
-            "Content-Transfer-Encoding: base64"+CRLF+
-            CRLF+
-            b64lines+CRLF+
-            CRLF+
-            "--"+bd+"--"+CRLF;
-          const emlBlob=new Blob([emlStr],{type:"message/rfc822"});
-          const emlUrl=URL.createObjectURL(emlBlob);
-          const emlName=fname.replace(".pdf",".eml");
-          const a3=document.createElement("a");a3.href=emlUrl;a3.download=emlName;
-          document.body.appendChild(a3);a3.click();
-          setTimeout(()=>{URL.revokeObjectURL(emlUrl);document.body.removeChild(a3);},1000);
-          if(!inv.emailedAt){inv.emailedAt=new Date().toISOString();fsSet("invoices",inv.id,{emailedAt:inv.emailedAt});}
-          state.emailModalInvId=null;render();
+          // Try Web Share API first (iOS/macOS native share sheet)
+          if(navigator.canShare&&navigator.canShare({files:[file]})){
+            await navigator.share({
+              files:[file],
+              title:"Lasku "+(inv.invoiceNo||""),
+              text:saateText
+            });
+            // Mark as emailed
+            if(!inv.emailedAt){inv.emailedAt=new Date().toISOString();fsSet("invoices",inv.id,{emailedAt:inv.emailedAt});}
+            state.emailModalInvId=null;render();
+          }else{
+            // Fallback: download PDF + open mailto
+            const pdfUrl=URL.createObjectURL(blob);
+            const a2=document.createElement("a");a2.href=pdfUrl;a2.download=fname;
+            document.body.appendChild(a2);a2.click();
+            setTimeout(()=>{URL.revokeObjectURL(pdfUrl);document.body.removeChild(a2);},1000);
+            // Open Mail after short delay
+            const mailBody=encodeURIComponent("Hei,
+
+Ohessa lasku "+(inv.invoiceNo||"")+" / "+Number(inv.grossTotal||0).toFixed(2)+" €.
+
+Ystävällisin terveisin,
+J Sailing");
+            setTimeout(()=>{
+              window.location.href="mailto:"+encodeURIComponent(inv.payerEmail||"")+"?subject="+encodeURIComponent("Lasku "+(inv.invoiceNo||""))+"&body="+mailBody;
+            },600);
+            if(!inv.emailedAt){inv.emailedAt=new Date().toISOString();fsSet("invoices",inv.id,{emailedAt:inv.emailedAt});}
+            state.emailModalInvId=null;render();
+          }
         }catch(e){
           if(e.name!=="AbortError")alert("Virhe: "+e.message);
         }finally{
