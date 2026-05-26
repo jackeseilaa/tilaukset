@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
 <meta name="apple-mobile-web-app-title" content="J Sailing"/>
 <meta name="theme-color" content="#0a1628"/>
-<title>J Sailing V9.143 — Hallintapaneeli</title>
+<title>J Sailing V9.144 — Hallintapaneeli</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400;1,600&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -207,7 +207,7 @@ import{getAuth,GoogleAuthProvider,signInWithPopup,signOut,onAuthStateChanged}fro
 import{getFirestore,collection,doc,addDoc,setDoc,deleteDoc,onSnapshot,serverTimestamp}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 const FIREBASE_CONFIG={apiKey:"AIzaSyB7Dp5_5fN0Iko-4Jn1D2Dp6NNNih63UO0",authDomain:"jsailing-f716c.firebaseapp.com",projectId:"jsailing-f716c",storageBucket:"jsailing-f716c.firebasestorage.app",messagingSenderId:"543523103696",appId:"1:543523103696:web:439a312efa6aec398a8fd5"};
 const ALLOWED_EMAIL="jacke.seilaa@gmail.com";
-const APP_VERSION="V9.143";const UPDATE_DATE=(()=>{const n=new Date();return n.toLocaleDateString("fi-FI")+' klo '+String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0');})();
+const APP_VERSION="V9.144";const UPDATE_DATE=(()=>{const n=new Date();return n.toLocaleDateString("fi-FI")+' klo '+String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0');})();
 const ISSUERS={
   tmi:{name:"J Sailing",businessId:"1728993-9",address:"Kontiontie 55, 11120 Riihimäki",iban:"FI62 1132 3000 4277 43",bic:"NDEAFIHH"},
   oy:{name:"AJarmo Oy",businessId:"3432355-3",address:"Kontiontie 55, 11120 Riihimäki",iban:"FI73 7997 7994 4257 05",bic:"HOLVFIHH"}
@@ -3067,7 +3067,7 @@ table{width:100%;border-collapse:collapse}
           const blob=await generateInvoicePDF(inv);
           const fname="Lasku_"+(inv.invoiceNo||"").replace(/[^a-zA-Z0-9_-]/g,"_")+".pdf";
           const file=new File([blob],fname,{type:"application/pdf"});
-          const saateText="Hei,\n\nOhessa lasku "+(inv.invoiceNo||"")+" / "+Number(inv.grossTotal||0).toFixed(2)+" €.\n\nYstävällisin terveisin,\nJ Sailing";
+          const saateText="Hei,\r\nOhessa lasku "+(inv.invoiceNo||"")+" / "+Number(inv.grossTotal||0).toFixed(2)+" €.\r\n\r\nYstävällisin terveisin,\r\nJ Sailing";
           // Convert PDF blob to base64
           const b64=await new Promise((res,rej)=>{
             const fr=new FileReader();
@@ -3078,28 +3078,29 @@ table{width:100%;border-collapse:collapse}
           // Build .eml with PDF attachment
           const CRLF="\r\n";
           const bd="----=_Boundary_"+Date.now();
-          const emlLines=[
-            "MIME-Version: 1.0",
-            "From: ",
-            "To: "+(inv.payerEmail||""),
-            "Subject: Lasku "+(inv.invoiceNo||""),
-            "Content-Type: multipart/mixed; boundary=\""+bd+"\"",
-            "",
-            "--"+bd,
-            "Content-Type: text/plain; charset=UTF-8",
-            "Content-Transfer-Encoding: 8bit",
-            "",
-            saateText,
-            "",
-            "--"+bd,
-            "Content-Type: application/pdf; name=\""+fname+"\"",
-            "Content-Disposition: attachment; filename=\""+fname+"\"",
-            "Content-Transfer-Encoding: base64",
-            ""
-          ];
-          // Add base64 lines (max 76 chars each per RFC)
-          const b64lines=b64.match(/.{1,76}/g)||[];
-          const emlStr=emlLines.join(CRLF)+CRLF+b64lines.join(CRLF)+CRLF+CRLF+"--"+bd+"--"+CRLF;
+          // Build MIME multipart email with CRLF throughout
+          const b64lines=(b64.match(/.{1,76}/g)||[]).join(CRLF);
+          const emlStr=
+            "MIME-Version: 1.0"+CRLF+
+            "From: "+CRLF+
+            "To: "+(inv.payerEmail||"")+CRLF+
+            "Subject: Lasku "+(inv.invoiceNo||"")+CRLF+
+            'Content-Type: multipart/mixed; boundary="'+bd+'"'+CRLF+
+            CRLF+
+            "--"+bd+CRLF+
+            "Content-Type: text/plain; charset=UTF-8"+CRLF+
+            "Content-Transfer-Encoding: 8bit"+CRLF+
+            CRLF+
+            saateText+CRLF+
+            CRLF+
+            "--"+bd+CRLF+
+            'Content-Type: application/pdf; name="'+fname+'"'+CRLF+
+            'Content-Disposition: attachment; filename="'+fname+'"'+CRLF+
+            "Content-Transfer-Encoding: base64"+CRLF+
+            CRLF+
+            b64lines+CRLF+
+            CRLF+
+            "--"+bd+"--"+CRLF;
           const emlBlob=new Blob([emlStr],{type:"message/rfc822"});
           const emlUrl=URL.createObjectURL(emlBlob);
           const emlName=fname.replace(".pdf",".eml");
