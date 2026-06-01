@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>OP Kipparit — täydellinen korjaus</title>
+<title>OP Kipparit — La/Su korjaus</title>
 <style>
 body{font-family:system-ui;background:#f0f4f8;margin:0;padding:16px}
 .hdr{background:#0a4272;color:white;border-radius:10px;padding:14px 20px;margin-bottom:14px}
@@ -14,22 +14,19 @@ td{padding:6px 12px;border-bottom:1px solid #eee;vertical-align:middle}
 tr:nth-child(even){background:#f5f8ff}
 .btn-go{background:#2e7d32;color:white;width:100%;padding:14px;font-size:15px;font-weight:700;border:none;border-radius:8px;cursor:pointer;margin:8px 0}
 .nm{background:#d4af3722;border:1px solid #d4af37;border-radius:8px;display:inline-block;padding:2px 7px;font-size:11px;margin:2px}
-.new{background:#e3f2fd;border:1px solid #1565c0;border-radius:8px;display:inline-block;padding:2px 7px;font-size:11px;margin:2px;color:#1565c0;font-weight:700}
 .log{background:#0d1b2a;border-radius:8px;padding:10px;font-family:monospace;font-size:11px;max-height:300px;overflow-y:auto;margin-top:10px}
 .log div{margin-bottom:2px}
 .ok{color:#b9f6ca}.warn{color:#ffe082}.err{color:#ff8a80}.info{color:#a8d8ea}
 .done-box{background:#e8f5e9;border:2px solid #4caf50;border-radius:10px;padding:14px;margin-top:10px}
-.pill{display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700}
-.rvk{background:#e3f2fd;color:#1565c0}
-.pyy{background:#e8f5e9;color:#2e7d32}
-.exists{background:#fff8e1;border:1px solid #ffc107;color:#e65100;border-radius:6px;padding:1px 6px;font-size:10px;font-weight:700}
-.create{background:#e3f2fd;border:1px solid #1565c0;color:#1565c0;border-radius:6px;padding:1px 6px;font-size:10px;font-weight:700}
+.badge-mod{background:#fff8e1;border:1px solid #ffc107;color:#e65100;border-radius:6px;padding:1px 7px;font-size:11px;font-weight:700}
+.badge-new{background:#e3f2fd;border:1px solid #1565c0;color:#1565c0;border-radius:6px;padding:1px 7px;font-size:11px;font-weight:700}
+.badge-ok{background:#e8f5e9;border:1px solid #4caf50;color:#2e7d32;border-radius:6px;padding:1px 7px;font-size:11px;font-weight:700}
 </style>
 </head>
 <body>
 <div class="hdr">
-  <strong>⚓ OP Kipparit — täydellinen rakenne ja osallistujat</strong>
-  <span style="float:right;font-size:11px;opacity:.8">V9.151 · 1.6.2026</span>
+  <strong>⚓ OP Kipparit — La/Su aamu+ip. korjaus</strong>
+  <span style="float:right;font-size:11px;opacity:.8">V9.151</span>
 </div>
 <div id="app"><div class="card" style="text-align:center;padding:24px">⏳ Haetaan Firestoresta...</div></div>
 
@@ -44,7 +41,7 @@ const CFG={apiKey:"AIzaSyB7Dp5_5fN0Iko-4Jn1D2Dp6NNNih63UO0",authDomain:"jsailing
 const db=getFirestore(initializeApp(CFG));
 function esc(s){return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");}
 
-// ---- Täydellinen vuorolista ----
+// Kaikki 7 vuoroa
 const VUOROT=[
   {label:"Ti 2.6.",  pvm:"2026-06-02",alk:"17:00",lop:"21:00",satama:"RVK",     nimet:["Jaana","Petra","Rebekka","Sini","Tuomas"]},
   {label:"Ke 3.6.",  pvm:"2026-06-03",alk:"17:00",lop:"21:00",satama:"RVK",     nimet:["Annaliina","Arto","Emilia","Liisa","Niina"]},
@@ -55,74 +52,101 @@ const VUOROT=[
   {label:"Su ip.",   pvm:"2026-06-08",alk:"14:00",lop:"18:00",satama:"Pyysaari",nimet:["Markus","Onni","Petra","Timo","Tuomas"]},
 ];
 
-// Hae Firestoresta
 const [sailSnap,custSnap]=await Promise.all([
   getDocs(collection(db,"sailings")),
   getDocs(collection(db,"customers"))
 ]);
 const sailings=sailSnap.docs.map(d=>({id:d.id,...d.data()}));
 const customers=custSnap.docs.map(d=>({id:d.id,...d.data()}));
-
-// Nykyinen ainoa OP Kipparit sailing (tunnettu ID)
-const TUNNETTU_ID="gXFebK4xG6XemKyLSQfR";
-const pohja=sailings.find(s=>s.id===TUNNETTU_ID)||sailings.find(s=>(s.name||"").toLowerCase().includes("op kippar"));
-
-// Matchaa jokainen vuoro olemassa olevaan sailingiin (pvm+aika)
 const opS=sailings.filter(s=>(s.name||"").toLowerCase().includes("op kippar"));
 const opIds=new Set(opS.map(s=>s.id));
+const pohja=opS[0]; // käytetään pohjana uusille
+
+// Matchaa vuorot sailingeihin
+// Tarkkuus: pvm + startTime. Jos La/Su:lla on sailing ilman startTimea tai "10:00-18:00",
+// se matchataan aamuun ja ip. luodaan uutena.
+function matchSailing(v){
+  // Täsmällinen match pvm+aika
+  let s=opS.find(x=>x.date===v.pvm&&(x.startTime||"").startsWith(v.alk.substring(0,5)));
+  if(s) return{sailing:s,action:"update"};
+  // PäivämääräMatch ilman aikaa tai väärällä ajalla — käytä jos vain yksi tällä pvmillä
+  const samePvm=opS.filter(x=>x.date===v.pvm);
+  if(samePvm.length===1&&v.alk==="10:00"){
+    // Olemassa oleva on aamuvuoro — päivitä se
+    return{sailing:samePvm[0],action:"update"};
+  }
+  if(samePvm.length===1&&v.alk==="14:00"){
+    // Aamuvuoro olemassa, ip. luodaan uutena
+    return{sailing:null,action:"create"};
+  }
+  if(samePvm.length===0) return{sailing:null,action:"create"};
+  return{sailing:null,action:"create"};
+}
 
 const plan=VUOROT.map(v=>{
-  const match=opS.find(s=>s.date===v.pvm&&(s.startTime||"").startsWith(v.alk.substring(0,5)));
-  const nykyiset=customers.filter(c=>(match?c.sailingId===match.id:false));
-  return{...v, sailing:match||null, nykyiset};
+  const{sailing,action}=matchSailing(v);
+  const nykyiset=sailing?customers.filter(c=>c.sailingId===sailing.id):[];
+  const ok=nykyiset.length===v.nimet.length&&v.nimet.every(n=>nykyiset.some(c=>c.name===n));
+  return{...v,sailing,action,nykyiset,ok};
 });
 
-// Render
-const rows=plan.map((p,i)=>{
-  const status=p.sailing
-    ?`<span class="exists">✓ olemassa</span>`
-    :`<span class="create">+ luodaan uusi</span>`;
-  const cur=p.nykyiset.map(c=>`<span class="nm">${esc(c.name)}</span>`).join(" ")||"—";
+// Render analyysi
+const rows=plan.map(p=>{
+  const badge=p.ok
+    ?`<span class="badge-ok">✓ OK</span>`
+    :p.action==="update"
+      ?`<span class="badge-mod">✎ päivitetään</span>`
+      :`<span class="badge-new">+ luodaan uusi</span>`;
+  const cur=p.nykyiset.map(c=>`<span class="nm">${esc(c.name)}</span>`).join(" ")||`<span style="color:#999">—</span>`;
   const tgt=p.nimet.map(n=>`<span class="nm">${esc(n)}</span>`).join(" ");
-  const same=p.nykyiset.length===p.nimet.length&&p.nimet.every(n=>p.nykyiset.some(c=>c.name===n));
   return`<tr>
     <td><strong>${esc(p.label)}</strong></td>
-    <td>${esc(p.pvm)}</td>
-    <td style="font-family:monospace">${esc(p.alk)}–${esc(p.lop)}</td>
-    <td><span class="pill ${p.satama==="RVK"?"rvk":"pyy"}">${esc(p.satama)}</span></td>
-    <td>${status}</td>
-    <td>${same?`<span style="color:#2e7d32">✅ OK</span>`:cur}</td>
-    <td>${tgt}</td>
+    <td style="font-family:monospace;font-size:12px">${esc(p.pvm)}<br>${esc(p.alk)}–${esc(p.lop)}</td>
+    <td>${badge}</td>
+    <td>${p.ok?`<span style="color:#2e7d32">✅ oikein</span>`:cur}</td>
+    <td>${p.ok?`<span style="color:#2e7d32">✅</span>`:tgt}</td>
   </tr>`;
 }).join("");
 
+const needsWork=plan.filter(p=>!p.ok).length;
+
 document.getElementById("app").innerHTML=`
 <div class="card">
-  <div style="font-weight:700;color:#0a4272;margin-bottom:10px">
-    Firestoressa nyt: <strong>${opS.length}</strong> OP Kipparit sailing · Tarvitaan: <strong>7</strong>
+  <div style="font-weight:700;color:#0a4272;margin-bottom:4px">
+    Tilanne: ${opS.length} sailingia Firestoressa → tarvitaan 7
+  </div>
+  <div style="font-size:12px;color:#666;margin-bottom:10px">
+    ${needsWork} vuoroa vaatii korjausta
   </div>
   <div style="overflow-x:auto"><table>
-    <thead><tr><th>Vuoro</th><th>Pvm</th><th>Aika</th><th>Satama</th><th>Sailing</th><th>Nykyiset osallistujat</th><th>Oikeat osallistujat</th></tr></thead>
+    <thead><tr><th>Vuoro</th><th>Pvm / Aika</th><th>Toiminto</th><th>Nykyiset</th><th>Oikeat</th></tr></thead>
     <tbody>${rows}</tbody>
   </table></div>
 </div>
-<button class="btn-go" id="goBtn">⚓ Luo puuttuvat sailingit ja korjaa kaikki osallistujat</button>
+${needsWork>0
+  ?`<button class="btn-go" id="goBtn">⚓ Toteuta korjaukset (${needsWork} vuoroa)</button>`
+  :`<div class="done-box"><strong style="color:#2e7d32">✅ Kaikki on jo oikein!</strong></div>`}
 <div class="log" id="logBox" style="display:none"></div>`;
 
-document.getElementById("goBtn").onclick=async()=>{
-  document.getElementById("goBtn").disabled=true;
+const goBtn=document.getElementById("goBtn");
+if(!goBtn) return;
+
+goBtn.onclick=async()=>{
+  goBtn.disabled=true;
   const lb=document.getElementById("logBox");
   lb.style.display="block";
   function log(m,t="info"){const d=document.createElement("div");d.className=t;
     d.textContent=new Date().toLocaleTimeString("fi")+" "+m;lb.appendChild(d);lb.scrollTop=lb.scrollHeight;}
 
+  // Käydään läpi järjestyksessä — tärkeää että La aamu käsitellään ennen La ip.
   for(const p of plan){
+    if(p.ok){log(`✓ ${p.label}: jo oikein`,"ok");continue;}
     log(`📅 ${p.label} (${p.pvm} ${p.alk}–${p.lop})`);
 
-    // 1. Hanki tai luo sailing
     let sid=p.sailing?.id||null;
-    if(!sid){
-      log(`  + Luodaan uusi sailing...`);
+
+    if(p.action==="create"||!sid){
+      // Luo uusi sailing
       const ref=await addDoc(collection(db,"sailings"),{
         name:"OP Kipparit",
         date:p.pvm,
@@ -140,23 +164,23 @@ document.getElementById("goBtn").onclick=async()=>{
         updatedAt:serverTimestamp()
       });
       sid=ref.id;
-      log(`  ✅ Sailing luotu: ${sid}`,"ok");
+      log(`  ✅ Uusi sailing luotu: ${sid}`,"ok");
     } else {
-      // Päivitä ajat ja reitti varmasti oikeiksi
+      // Päivitä olemassa olevan ajat ja reitti
       await setDoc(doc(db,"sailings",sid),
-        {startTime:p.alk,endTime:p.lop,reitti:p.satama,updatedAt:serverTimestamp()},
+        {startTime:p.alk,endTime:p.lop,reitti:p.satama,maxPersons:5,updatedAt:serverTimestamp()},
         {merge:true});
-      log(`  ✓ Sailing olemassa, ajat päivitetty`,"ok");
+      log(`  ✎ Sailing päivitetty: ${sid} → ${p.alk}–${p.lop}`,"ok");
     }
 
-    // 2. Poista KAIKKI nykyiset osallistujat tältä sailingilta
+    // Poista kaikki nykyiset tältä sailingilta
     const curC=customers.filter(c=>c.sailingId===sid);
     for(const c of curC){
       await deleteDoc(doc(db,"customers",c.id));
       log(`  🗑️ Poistettu: ${c.name}`,"warn");
     }
 
-    // 3. Lisää oikeat osallistujat
+    // Lisää oikeat
     for(const name of p.nimet){
       await addDoc(collection(db,"customers"),{
         name,phone:"",email:"",
@@ -169,28 +193,15 @@ document.getElementById("goBtn").onclick=async()=>{
     }
   }
 
-  // Poista myös orphan customers joiden sailingId on tunnettu mutta vuoro ei ole listalla
-  log("🧹 Tarkistetaan orphanit...");
-  const freshCust=await getDocs(collection(db,"customers"));
-  const freshSail=await getDocs(collection(db,"sailings"));
-  const sailIds=new Set(freshSail.docs.map(d=>d.id));
-  let orphans=0;
-  for(const d of freshCust.docs){
-    const c=d.data();
-    if(c.sailingId&&!sailIds.has(c.sailingId)){
-      await deleteDoc(doc(db,"customers",d.id));
-      log(`  🗑️ Orphan poistettu: ${c.name} (sailingId: ${c.sailingId})`,"warn");
-      orphans++;
-    }
-  }
-  if(!orphans) log("  ✓ Ei orphaneja","ok");
-
   const done=document.createElement("div");
   done.className="done-box";
-  done.innerHTML=`<strong style="color:#2e7d32;font-size:16px">🏁 Kaikki kunnossa!</strong>
-    <div style="margin-top:6px;font-size:13px">7 vuoroa · 34 osallistujaa · orphanit poistettu<br>
-    <a href="https://jackeseilaa.github.io/tilaukset" target="_blank" style="color:#0a4272;font-weight:700">
-    Avaa hallintapaneeli</a></div>`;
+  done.innerHTML=`<strong style="color:#2e7d32;font-size:16px">🏁 Valmis!</strong>
+    <div style="margin-top:8px;font-size:13px">
+      7 vuoroa · La ja Su jaettu aamu/ip. · Osallistujat kohdistettu oikein<br><br>
+      <a href="https://jackeseilaa.github.io/tilaukset" target="_blank"
+        style="background:#0a4272;color:white;padding:8px 18px;border-radius:8px;font-weight:700;text-decoration:none">
+        Avaa hallintapaneeli →</a>
+    </div>`;
   document.getElementById("app").appendChild(done);
 };
 </script>
