@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="fi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OP Kipparit — Google Kalenteri</title>
+<style>
+body{font-family:system-ui;background:#f0f4f8;margin:0;padding:16px}
+.hdr{background:#0a4272;color:white;border-radius:10px;padding:14px 20px;margin-bottom:14px}
+.card{background:white;border-radius:10px;padding:14px;margin-bottom:12px;border:1px solid #ddd}
+.btn{display:inline-block;padding:9px 18px;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;text-decoration:none;margin:3px}
+.btn-red{background:#c62828;color:white}
+.btn-gcal{background:#4285f4;color:white}
+.btn-go{background:#2e7d32;color:white;width:100%;padding:13px;font-size:15px;display:block;margin:8px 0;border:none;border-radius:8px;cursor:pointer;font-weight:700}
+.row{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid #eee;flex-wrap:wrap}
+.row:last-child{border-bottom:none}
+.label{font-weight:700;min-width:120px;font-size:13px}
+.meta{font-size:12px;color:#666;min-width:140px}
+.log{background:#0d1b2a;border-radius:8px;padding:10px;font-family:monospace;font-size:11px;max-height:200px;overflow-y:auto;margin-top:10px}
+.log div{margin-bottom:2px}
+.ok{color:#b9f6ca}.warn{color:#ffe082}.err{color:#ff8a80}.info{color:#a8d8ea}
+.done-box{background:#e8f5e9;border:2px solid #4caf50;border-radius:10px;padding:14px;margin-top:10px}
+.badge-gcal{background:#e8f0fe;color:#4285f4;border:1px solid #4285f4;border-radius:6px;padding:2px 8px;font-size:11px;font-weight:700}
+</style>
+</head>
+<body>
+<div class="hdr"><strong>📅 OP Kipparit — Google Kalenteri -hallinta</strong></div>
+<div id="app"><div class="card" style="text-align:center;padding:20px">⏳ Haetaan...</div></div>
+
+<script type="module">
+import{initializeApp}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import{getFirestore,collection,getDocs,setDoc,doc,serverTimestamp}
+  from"https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const CFG={apiKey:"AIzaSyB7Dp5_5fN0Iko-4Jn1D2Dp6NNNih63UO0",authDomain:"jsailing-f716c.firebaseapp.com",
+  projectId:"jsailing-f716c",storageBucket:"jsailing-f716c.firebasestorage.app",
+  messagingSenderId:"543523103696",appId:"1:543523103696:web:439a312efa6aec398a8fd5"};
+const db=getFirestore(initializeApp(CFG));
+function esc(s){return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");}
+
+// Oikeat 7 vuoroa
+const VUOROT=[
+  {label:"Ti 2.6.",  pvm:"2026-06-02",alk:"17:00",lop:"21:00",satama:"RVK"},
+  {label:"Ke 3.6.",  pvm:"2026-06-03",alk:"17:00",lop:"21:00",satama:"RVK"},
+  {label:"To 4.6.",  pvm:"2026-06-04",alk:"17:00",lop:"21:00",satama:"RVK"},
+  {label:"La aamu",  pvm:"2026-06-07",alk:"10:00",lop:"14:00",satama:"Pyysaari"},
+  {label:"La ip.",   pvm:"2026-06-07",alk:"14:00",lop:"18:00",satama:"Pyysaari"},
+  {label:"Su aamu",  pvm:"2026-06-08",alk:"10:00",lop:"14:00",satama:"Pyysaari"},
+  {label:"Su ip.",   pvm:"2026-06-08",alk:"14:00",lop:"18:00",satama:"Pyysaari"},
+];
+
+function gcalUrl(pvm,alk,lop,label,satama){
+  const fmt=(d,t)=>d.replace(/-/g,"")+"T"+t.replace(":","")+"00";
+  const start=fmt(pvm,alk), end=fmt(pvm,lop);
+  const desc=`OP Kipparit · ${label} · Satama: ${satama} · J Sailing · s/y Quartet`;
+  const p=new URLSearchParams({action:"TEMPLATE",text:"OP Kipparit",
+    dates:start+"/"+end,details:desc,location:satama+", Finland"});
+  return"https://calendar.google.com/calendar/render?"+p.toString();
+}
+
+const snap=await getDocs(collection(db,"sailings"));
+const sailings=snap.docs.map(d=>({id:d.id,...d.data()}));
+const opS=sailings.filter(s=>(s.name||"").toLowerCase().includes("op kippar"));
+
+// Matchaa vuorot sailingeihin
+const matched=VUOROT.map(v=>{
+  const s=opS.find(x=>x.date===v.pvm&&(x.startTime||"").startsWith(v.alk.substring(0,5)));
+  const gcKey=s?`gcal_${s.id}`:null;
+  const hasGcal=s&&s[gcKey]===true;
+  return{...v,sailing:s,gcKey,hasGcal};
+});
+
+// Vanhat sailingit joilla on gcal-merkintä mutta EIVÄT vastaa oikeita vuoroja
+const vanhatGcal=opS.filter(s=>{
+  const gcKey=`gcal_${s.id}`;
+  const onOikea=matched.some(m=>m.sailing?.id===s.id);
+  return s[gcKey]===true&&!onOikea;
+});
+// Myös oikeat vuorot joilla on gcal mutta väärät ajat (vanha sailing)
+const oikeatJoillaGcal=matched.filter(m=>m.hasGcal);
+const oikeatIlmanGcal=matched.filter(m=>!m.hasGcal&&m.sailing);
+const puuttuvatSailingit=matched.filter(m=>!m.sailing);
+
+const el=document.getElementById("app");
+
+let html=``;
+
+// --- OSA 1: Poista gcal-merkinnät vanhoista ---
+if(vanhatGcal.length>0||oikeatJoillaGcal.length>0){
+  const poistettavat=[...vanhatGcal,...oikeatJoillaGcal.map(m=>m.sailing)];
+  html+=`<div class="card" style="border:2px solid #c62828">
+  <div style="font-weight:700;color:#c62828;margin-bottom:10px">
+    🔵 Vaihe 1: Poista sininen täplä Hallintapaneelista (${poistettavat.length} kpl)
+  </div>
+  <div style="font-size:12px;color:#555;margin-bottom:10px">
+    Nämä sailingit on merkitty "lisätty Google Kalenteriin" — merkintä poistetaan Firestoresta.
+    <strong>Muista myös poistaa vastaavat tapahtumat Google Kalenteristasi manuaalisesti.</strong>
+  </div>
+  <button class="btn btn-red" id="clearGcalBtn">🗑️ Poista kaikki gcal-merkinnät Firestoresta (${poistettavat.length} kpl)</button>
+  <div id="clearLog" class="log" style="display:none"></div>
+  </div>`;
+}
+
+// --- OSA 2: Lisää uudet Google Kalenteriin ---
+html+=`<div class="card">
+  <div style="font-weight:700;color:#0a4272;margin-bottom:10px">
+    📅 Vaihe 2: Lisää uudet 7 vuoroa Google Kalenteriin
+  </div>
+  <div style="font-size:12px;color:#555;margin-bottom:12px">
+    Paina jokaista "Lisää kalenteriin" -linkkiä — Google Kalenteri avautuu ja voit tallentaa tapahtuman.
+    Kun olet lisännyt, paina "✓ Merkitse lisätyksi" jotta sininen täplä tulee Hallintapaneeliin.
+  </div>
+  ${matched.map((m,i)=>{
+    if(!m.sailing) return`<div class="row">
+      <span class="label">${esc(m.label)}</span>
+      <span class="meta">${esc(m.pvm)} ${esc(m.alk)}–${esc(m.lop)}</span>
+      <span style="color:#c62828;font-size:12px">⚠️ Sailing puuttuu Firestoresta</span>
+    </div>`;
+    const url=gcalUrl(m.pvm,m.alk,m.lop,m.label,m.satama);
+    return`<div class="row" id="row_${i}">
+      <span class="label">${esc(m.label)}</span>
+      <span class="meta">${esc(m.pvm)}<br>${esc(m.alk)}–${esc(m.lop)} · ${esc(m.satama)}</span>
+      ${m.hasGcal
+        ?`<span class="badge-gcal">✅ Merkitty lisätyksi</span>`
+        :`<a href="${esc(url)}" target="_blank" class="btn btn-gcal">📅 Lisää Google Kalenteriin</a>
+          <button class="btn" style="background:#2e7d32;color:white" onclick="markAdded(${i},'${m.sailing.id}','${esc(m.gcKey)}')">✓ Merkitse lisätyksi</button>`
+      }
+    </div>`;
+  }).join("")}
+</div>`;
+
+el.innerHTML=html;
+
+// Poista gcal-kentät Firestoresta
+document.getElementById("clearGcalBtn")?.addEventListener("click",async()=>{
+  const btn=document.getElementById("clearGcalBtn");
+  btn.disabled=true;
+  const lb=document.getElementById("clearLog");
+  lb.style.display="block";
+  function log(m,t="info"){const d=document.createElement("div");d.className=t;
+    d.textContent=new Date().toLocaleTimeString("fi")+" "+m;lb.appendChild(d);lb.scrollTop=lb.scrollHeight;}
+
+  const poistettavat=[...vanhatGcal,...oikeatJoillaGcal.map(m=>m.sailing)];
+  for(const s of poistettavat){
+    // Poista kaikki gcal_* kentät tästä sailingista
+    const updated={...s};
+    Object.keys(updated).filter(k=>k.startsWith("gcal_")).forEach(k=>delete updated[k]);
+    // Aseta ne eksplisiittisesti poistetuiksi (Firestore ei tue kenttien poistoa suoraan setDocilla ilman FieldValue.delete)
+    // Käytetään sen sijaan päivitystä jossa gcal-kenttä on false
+    const gcKey=`gcal_${s.id}`;
+    await setDoc(doc(db,"sailings",s.id),{[gcKey]:false,[gcKey+"_date"]:""},{merge:true});
+    log(`✅ Poistettu gcal-merkintä: ${s.name} ${s.date} ${s.startTime||""}`, "ok");
+  }
+  btn.textContent="✅ Poistettu";
+  log("Valmis — päivitä Hallintapaneeli niin sininen täplä on poissa","ok");
+});
+
+// Merkitse lisätyksi
+window.markAdded=async(i,sailingId,gcKey)=>{
+  const today=new Date().toISOString().slice(0,10);
+  await setDoc(doc(db,"sailings",sailingId),{[gcKey]:true,[gcKey+"_date"]:today,updatedAt:serverTimestamp()},{merge:true});
+  const row=document.getElementById("row_"+i);
+  if(row){
+    const btns=row.querySelectorAll("a,button");
+    btns.forEach(b=>b.remove());
+    const badge=document.createElement("span");
+    badge.className="badge-gcal";badge.textContent="✅ Merkitty lisätyksi";
+    row.appendChild(badge);
+  }
+};
+</script>
+</body>
+</html>
