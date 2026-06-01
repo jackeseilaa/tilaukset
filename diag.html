@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="fi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Diagnostiikka</title>
+<style>
+body{font-family:system-ui;background:#f0f4f8;margin:0;padding:16px}
+.hdr{background:#0a4272;color:white;border-radius:10px;padding:14px 20px;margin-bottom:14px}
+.card{background:white;border-radius:10px;padding:14px;margin-bottom:12px;border:1px solid #ddd}
+table{width:100%;border-collapse:collapse;font-size:12px}
+th{background:#0a4272;color:white;padding:6px 10px;text-align:left}
+td{padding:5px 10px;border-bottom:1px solid #eee}
+tr:nth-child(even){background:#f5f8ff}
+.btn{padding:8px 18px;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;margin:4px}
+.red{background:#c62828;color:white}
+.green{background:#2e7d32;color:white}
+.stat{display:inline-block;padding:4px 12px;border-radius:8px;font-weight:700;font-size:13px;margin:3px}
+.warn{background:#fff8e1;border:1px solid #ffc107;color:#e65100}
+.ok{background:#e8f5e9;border:1px solid #4caf50;color:#2e7d32}
+.err{background:#ffebee;border:1px solid #f44336;color:#c62828}
+</style>
+</head>
+<body>
+<div class="hdr"><strong>🔍 Firestore-diagnostiikka</strong> — jsailing-f716c</div>
+<div id="app"><div class="card" style="text-align:center;padding:20px">⏳ Ladataan...</div></div>
+
+<script type="module">
+import{initializeApp}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import{getFirestore,collection,getDocs,deleteDoc,doc,serverTimestamp}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const CFG={apiKey:"AIzaSyB7Dp5_5fN0Iko-4Jn1D2Dp6NNNih63UO0",authDomain:"jsailing-f716c.firebaseapp.com",projectId:"jsailing-f716c",storageBucket:"jsailing-f716c.firebasestorage.app",messagingSenderId:"543523103696",appId:"1:543523103696:web:439a312efa6aec398a8fd5"};
+const app=initializeApp(CFG);
+const db=getFirestore(app);
+const el=document.getElementById("app");
+function esc(s){return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");}
+
+const sailings=(await getDocs(collection(db,"sailings"))).docs.map(d=>({id:d.id,...d.data()}));
+const customers=(await getDocs(collection(db,"customers"))).docs.map(d=>({id:d.id,...d.data()}));
+
+// Etsi orphan customers (sailingId ei vastaa mitään sailingia)
+const sailingIds=new Set(sailings.map(s=>s.id));
+const orphans=customers.filter(c=>c.sailingId&&!sailingIds.has(c.sailingId));
+const noSailing=customers.filter(c=>!c.sailingId&&!c.tutkintoId);
+
+// OP Kipparit sailingit
+const opS=sailings.filter(s=>(s.name||"").toLowerCase().includes("op kippar"));
+const opIds=new Set(opS.map(s=>s.id));
+const opC=customers.filter(c=>opIds.has(c.sailingId));
+
+// Duplikaatit (sama nimi + sailingId)
+const seen=new Map();
+const dupes=[];
+customers.forEach(c=>{const k=c.name+"__"+c.sailingId;if(seen.has(k))dupes.push(c);else seen.set(k,c);});
+
+let html=`
+<div class="card">
+  <div style="font-weight:700;color:#0a4272;margin-bottom:10px">📊 Yhteenveto</div>
+  <span class="stat ${sailings.length>50?'warn':'ok'}">⛵ Sailingit: ${sailings.length}</span>
+  <span class="stat ${customers.length>200?'warn':'ok'}">👥 Customers: ${customers.length}</span>
+  <span class="stat ${orphans.length>0?'err':'ok'}">🔴 Orphanit: ${orphans.length}</span>
+  <span class="stat ${dupes.length>0?'warn':'ok'}">♊ Duplikaatit: ${dupes.length}</span>
+  <span class="stat ok">⚓ OP Kipparit sailingit: ${opS.length}</span>
+  <span class="stat ok">⚓ OP Kipparit osallistujat: ${opC.length}</span>
+</div>`;
+
+// OP Kipparit sailingit taulukko
+html+=`<div class="card">
+<div style="font-weight:700;color:#0a4272;margin-bottom:8px">⚓ OP Kipparit -sailingit (${opS.length} kpl)</div>
+<table><thead><tr><th>Nimi</th><th>Päivämäärä</th><th>Aika</th><th>ID</th><th>Osallistujat</th></tr></thead><tbody>
+${opS.sort((a,b)=>(a.date||"").localeCompare(b.date||"")).map(s=>{
+  const c=opC.filter(x=>x.sailingId===s.id);
+  return`<tr><td>${esc(s.name||"")}</td><td>${esc(s.date||"")}</td><td>${esc(s.startTime||"?")}–${esc(s.endTime||"?")}</td><td style="font-size:10px;color:#888">${esc(s.id)}</td><td>${c.map(x=>`<span style="background:#d4af3722;border:1px solid #d4af37;border-radius:6px;padding:1px 5px;font-size:11px;margin:1px">${esc(x.name)}</span>`).join(" ")||"<span style='color:#999'>tyhjä</span>"}</td></tr>`;
+}).join("")}
+</tbody></table></div>`;
+
+// Orphanit
+if(orphans.length>0){
+  html+=`<div class="card" style="border:2px solid #f44336">
+  <div style="font-weight:700;color:#c62828;margin-bottom:8px">🔴 Orphan-osallistujat — sailingId ei vastaa mitään sailingia (${orphans.length} kpl)</div>
+  <table><thead><tr><th>Nimi</th><th>SailingId</th><th>Status</th><th>Toiminto</th></tr></thead><tbody>
+  ${orphans.map(c=>`<tr><td>${esc(c.name)}</td><td style="font-size:10px;color:#888">${esc(c.sailingId)}</td><td>${esc(c.reservationStatus||"")}</td><td><button class="btn red" onclick="delCustomer('${c.id}','${esc(c.name)}')">🗑️ Poista</button></td></tr>`).join("")}
+  </tbody></table>
+  <button class="btn red" style="margin-top:10px" onclick="delAllOrphans()">🗑️ Poista kaikki orphanit (${orphans.length} kpl)</button>
+  </div>`;
+}
+
+// Duplikaatit
+if(dupes.length>0){
+  html+=`<div class="card" style="border:2px solid #ffc107">
+  <div style="font-weight:700;color:#e65100;margin-bottom:8px">♊ Duplikaatit (${dupes.length} kpl)</div>
+  <table><thead><tr><th>Nimi</th><th>SailingId</th><th>Toiminto</th></tr></thead><tbody>
+  ${dupes.map(c=>`<tr><td>${esc(c.name)}</td><td style="font-size:10px;color:#888">${esc(c.sailingId)}</td><td><button class="btn red" onclick="delCustomer('${c.id}','${esc(c.name)}')">🗑️ Poista</button></td></tr>`).join("")}
+  </tbody></table>
+  <button class="btn red" style="margin-top:10px" onclick="delAllDupes()">🗑️ Poista kaikki duplikaatit (${dupes.length} kpl)</button>
+  </div>`;
+}
+
+el.innerHTML=html;
+
+window.delCustomer=async(id,name)=>{if(!confirm(`Poistetaanko ${name}?`))return;await deleteDoc(doc(db,"customers",id));alert("Poistettu");location.reload();};
+window.delAllOrphans=async()=>{if(!confirm(`Poistetaanko kaikki ${orphans.length} orphania?`))return;for(const c of orphans)await deleteDoc(doc(db,"customers",c.id));alert("Kaikki poistettu");location.reload();};
+window.delAllDupes=async()=>{if(!confirm(`Poistetaanko kaikki ${dupes.length} duplikaattia?`))return;for(const c of dupes)await deleteDoc(doc(db,"customers",c.id));alert("Kaikki poistettu");location.reload();};
+</script>
+</body>
+</html>
