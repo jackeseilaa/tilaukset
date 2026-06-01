@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="fi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>La ip. osallistujat</title>
+</head>
+<body>
+<div id="app">⏳</div>
+<script type="module">
+import{initializeApp}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import{getFirestore,collection,getDocs,addDoc,deleteDoc,doc,serverTimestamp}
+  from"https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+const CFG={apiKey:"AIzaSyB7Dp5_5fN0Iko-4Jn1D2Dp6NNNih63UO0",authDomain:"jsailing-f716c.firebaseapp.com",projectId:"jsailing-f716c",storageBucket:"jsailing-f716c.firebasestorage.app",messagingSenderId:"543523103696",appId:"1:543523103696:web:439a312efa6aec398a8fd5"};
+const db=getFirestore(initializeApp(CFG));
+
+const UUDET=["Jaana","Markus","Tuomas","Rebekka","Sauli"];
+
+const [ss,cs]=await Promise.all([getDocs(collection(db,"sailings")),getDocs(collection(db,"customers"))]);
+const sailings=ss.docs.map(d=>({id:d.id,...d.data()}));
+const customers=cs.docs.map(d=>({id:d.id,...d.data()}));
+
+// La ip. = 2026-06-06 klo 14:00
+const sailing=sailings.find(s=>s.date==="2026-06-06"&&(s.startTime||"").startsWith("14"));
+if(!sailing){document.getElementById("app").innerHTML="❌ Sailingia ei löydy";throw new Error("no sailing");}
+
+const nykyiset=customers.filter(c=>c.sailingId===sailing.id);
+const el=document.getElementById("app");
+el.innerHTML=`<p>La ip. sailing löytyi: ${sailing.id.slice(0,8)}...<br>Nykyiset: ${nykyiset.map(c=>c.name).join(", ")}<br>Uudet: ${UUDET.join(", ")}</p><button id="go" style="padding:12px 24px;background:#2e7d32;color:white;border:none;border-radius:8px;font-size:15px;font-weight:700;cursor:pointer">Vaihda osallistujat</button><div id="log" style="font-family:monospace;font-size:12px;margin-top:10px"></div>`;
+
+document.getElementById("go").onclick=async()=>{
+  document.getElementById("go").disabled=true;
+  const log=s=>{document.getElementById("log").innerHTML+=s+"<br>";};
+  for(const c of nykyiset){await deleteDoc(doc(db,"customers",c.id));log("🗑️ Poistettu: "+c.name);}
+  for(const name of UUDET){await addDoc(collection(db,"customers"),{name,phone:"",email:"",sailingId:sailing.id,tutkintoId:"",billTo:"self",companyId:"",reservationStatus:"paid",laskutusosio:"",updatedAt:serverTimestamp()});log("✅ Lisätty: "+name);}
+  log("🏁 Valmis!");
+};
+</script>
+</body>
+</html>
