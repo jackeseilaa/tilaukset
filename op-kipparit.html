@@ -1,0 +1,322 @@
+
+<!DOCTYPE html>
+<html lang="fi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OP Kipparit — osallistujien lisäys</title>
+<style>
+  body { font-family: system-ui; background: #f0f4f8; margin: 0; padding: 20px; }
+  .header { background: linear-gradient(135deg,#0a4272,#0d5a9e); color: white; border-radius: 12px; padding: 18px 24px; margin-bottom: 20px; display:flex; align-items:center; gap:14px; }
+  .header h1 { margin:0; font-size:20px; }
+  .header p { margin:4px 0 0; opacity:.75; font-size:13px; }
+  .card { background:white; border-radius:10px; padding:16px; margin-bottom:14px; border:1px solid #ddd; }
+  table { width:100%; border-collapse:collapse; font-size:13px; }
+  th { background:#0a4272; color:white; padding:8px 12px; text-align:left; }
+  td { padding:7px 12px; border-bottom:1px solid #eee; vertical-align:top; }
+  tr:last-child td { border-bottom:none; }
+  tr:nth-child(even) { background:#f5f8ff; }
+  .pill { display:inline-block; padding:2px 8px; border-radius:10px; font-size:11px; font-weight:700; margin:1px 2px; }
+  .rvk { background:#e3f2fd; color:#1565c0; }
+  .pyy { background:#e8f5e9; color:#2e7d32; }
+  .name { background:#d4af3722; border:1px solid #d4af37; border-radius:8px; display:inline-block; padding:2px 7px; font-size:11px; margin:1px 2px; }
+  .btn { padding:10px 22px; border:none; border-radius:8px; font-size:15px; font-weight:700; cursor:pointer; }
+  .btn-primary { background:#0a4272; color:white; }
+  .btn-go { background:#2e7d32; color:white; width:100%; padding:14px; font-size:16px; }
+  .btn-danger { background:#c62828; color:white; }
+  .btn:disabled { opacity:.5; cursor:default; }
+  .log { background:#0d1b2a; border-radius:8px; padding:12px; font-family:monospace; font-size:12px; max-height:300px; overflow-y:auto; margin-top:12px; }
+  .log div { margin-bottom:2px; }
+  .ok { color:#b9f6ca; }
+  .warn { color:#ffe082; }
+  .err { color:#ff8a80; }
+  .info { color:#a8d8ea; }
+  .match-badge { display:inline-block; padding:2px 8px; border-radius:10px; font-size:11px; font-weight:700; }
+  .matched { background:#e8f5e9; color:#2e7d32; border:1px solid #4caf50; }
+  .unmatched { background:#ffebee; color:#c62828; border:1px solid #f44336; }
+  .progress { background:#e0e0e0; border-radius:4px; height:10px; overflow:hidden; margin-top:8px; }
+  .progress-bar { background:#d4af37; height:100%; transition:width .3s; }
+  .done-box { background:#e8f5e9; border:2px solid #4caf50; border-radius:10px; padding:14px; margin-bottom:12px; }
+  .warn-box { background:#fff8e1; border:2px solid #ffc107; border-radius:10px; padding:14px; margin-bottom:12px; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div style="font-size:36px">⚓</div>
+  <div>
+    <h1>OP Kipparit — osallistujien lisäys</h1>
+    <p>J Sailing Hallintapaneeli · Firebase jsailing-f716c · V9.150</p>
+  </div>
+</div>
+
+<div id="app">
+  <div class="card" style="text-align:center;padding:30px">
+    <div style="font-size:32px;margin-bottom:8px">⏳</div>
+    <div style="color:#0a4272;font-weight:600">Ladataan Firebase SDK...</div>
+  </div>
+</div>
+
+<!-- Firebase SDK -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getFirestore, collection, getDocs, addDoc, deleteDoc, doc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyB7Dp5_5fN0Iko-4Jn1D2Dp6NNNih63UO0",
+  authDomain: "jsailing-f716c.firebaseapp.com",
+  projectId: "jsailing-f716c",
+  storageBucket: "jsailing-f716c.firebasestorage.app",
+  messagingSenderId: "543523103696",
+  appId: "1:543523103696:web:439a312efa6aec398a8fd5"
+};
+
+// Vuorot (Pe 5.6. poistettu)
+const VUOROT = [
+  { label:"Ti 2.6.",    pvm:"2026-06-02", satama:"RVK",      alkaa:"17:00", loppuu:"21:00", nimet:["Jaana","Petra","Rebekka","Sini","Tuomas"] },
+  { label:"Ke 3.6.",    pvm:"2026-06-03", satama:"RVK",      alkaa:"17:00", loppuu:"21:00", nimet:["Annaliina","Arto","Emilia","Liisa","Niina"] },
+  { label:"To 4.6.",    pvm:"2026-06-04", satama:"RVK",      alkaa:"17:00", loppuu:"21:00", nimet:["Jari","Markus","Miro","Sauli","Timo"] },
+  { label:"La aamu 7.6.", pvm:"2026-06-07", satama:"Pyysaari", alkaa:"10:00", loppuu:"14:00", nimet:["Annaliina","Antti","Emilia","Liisa","Sauli"] },
+  { label:"La ip. 7.6.", pvm:"2026-06-07", satama:"Pyysaari", alkaa:"14:00", loppuu:"18:00", nimet:["Arto","Jaana","Markus","Rebekka","Tuomas"] },
+  { label:"Su aamu 8.6.", pvm:"2026-06-08", satama:"Pyysaari", alkaa:"10:00", loppuu:"14:00", nimet:["Emilia","Liisa","Miro","Nicke","Niina"] },
+  { label:"Su ip. 8.6.", pvm:"2026-06-08", satama:"Pyysaari", alkaa:"14:00", loppuu:"18:00", nimet:["Markus","Onni","Petra","Timo","Tuomas"] },
+];
+
+const app = document.getElementById("app");
+let logEl = null;
+let db;
+
+function log(msg, type="info") {
+  if (!logEl) return;
+  const d = document.createElement("div");
+  d.className = type;
+  d.textContent = new Date().toLocaleTimeString("fi") + " " + msg;
+  logEl.appendChild(d);
+  logEl.scrollTop = logEl.scrollHeight;
+}
+
+function esc(s) {
+  return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+}
+
+// ---- Phase 1: Fetch sailings and find OP Kipparit entries ----
+async function phase1() {
+  app.innerHTML = `<div class="card"><div style="font-size:18px;font-weight:700;color:#0a4272;margin-bottom:12px">⏳ Haetaan purjehdukset Firestoresta...</div></div>`;
+  
+  try {
+    const snap = await getDocs(collection(db, "sailings"));
+    const sailings = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    
+    // Find OP Kipparit sailings
+    const opSailings = sailings.filter(s =>
+      (s.name||"").toLowerCase().includes("op kippar") ||
+      (s.name||"").toLowerCase().includes("op-kippar")
+    );
+
+    // Also get existing customers for OP Kipparit sailings (to find placeholders)
+    const custSnap = await getDocs(collection(db, "customers"));
+    const allCustomers = custSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+    
+    const opSailingIds = opSailings.map(s => s.id);
+    const opCustomers = allCustomers.filter(c => opSailingIds.includes(c.sailingId));
+
+    // Match vuorot to sailings by date + time
+    const matches = VUOROT.map(v => {
+      const matched = opSailings.find(s => {
+        const dateMatch = (s.date||"") === v.pvm;
+        const timeMatch = !s.startTime || s.startTime === v.alkaa || 
+                          (s.startTime||"").startsWith(v.alkaa.substring(0,5));
+        return dateMatch && timeMatch;
+      });
+      // Fallback: match by date only if multiple slots same day
+      const fallback = !matched && opSailings.filter(s => (s.date||"") === v.pvm);
+      return { ...v, sailing: matched || null, fallbackOptions: fallback };
+    });
+
+    renderPhase2(matches, opCustomers, opSailings);
+
+  } catch(e) {
+    app.innerHTML = `<div class="card" style="border:2px solid #f44336"><strong style="color:#c62828">❌ Virhe:</strong> ${esc(e.message)}<br><button class="btn btn-primary" onclick="location.reload()" style="margin-top:10px">Yritä uudelleen</button></div>`;
+  }
+}
+
+// ---- Phase 2: Show match table and confirm ----
+function renderPhase2(matches, existingCustomers, allOpSailings) {
+  const allMatched = matches.every(m => m.sailing);
+  const placeholder = existingCustomers.filter(c =>
+    (c.name||"").toLowerCase().includes("op kipparit") ||
+    (c.name||"").toLowerCase().includes("op_kipparit")
+  );
+
+  let rows = matches.map(m => {
+    const sailingInfo = m.sailing
+      ? `<span class="match-badge matched">✓ ${esc(m.sailing.name||m.sailing.id)}</span>`
+      : m.fallbackOptions && m.fallbackOptions.length > 0
+        ? `<select id="sel_${m.pvm}_${m.alkaa}" style="font-size:12px;padding:2px 6px;border-radius:4px;border:1px solid #ffc107">
+            <option value="">— valitse —</option>
+            ${m.fallbackOptions.map(s => `<option value="${esc(s.id)}">${esc(s.name||s.id)} (${esc(s.startTime||"?")}–${esc(s.endTime||"?")})</option>`).join("")}
+           </select>`
+        : `<span class="match-badge unmatched">⚠️ Ei löydy</span>`;
+    const names = m.nimet.map(n => `<span class="name">${esc(n)}</span>`).join(" ");
+    return `<tr>
+      <td><strong>${esc(m.label)}</strong></td>
+      <td><span class="pill ${m.satama==="RVK"?"rvk":"pyy"}">${esc(m.satama)}</span></td>
+      <td style="font-family:monospace;font-size:12px">${esc(m.alkaa)}–${esc(m.loppuu)}</td>
+      <td>${sailingInfo}</td>
+      <td>${names}</td>
+    </tr>`;
+  }).join("");
+
+  // All OP sailings for manual matching
+  const unmatched = matches.filter(m => !m.sailing);
+
+  app.innerHTML = `
+    <div class="card">
+      <div style="font-weight:700;color:#0a4272;font-size:16px;margin-bottom:12px">Löydetyt OP Kipparit -purjehdukset (${allOpSailings.length} kpl)</div>
+      <table>
+        <thead><tr><th>Vuoro</th><th>Satama</th><th>Aika</th><th>Sailing (Firestore)</th><th>Lisättävät osallistujat</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>
+
+    ${placeholder.length > 0 ? `
+    <div class="warn-box">
+      <strong>⚠️ Löydetty ${placeholder.length} placeholder-osallistujaa</strong> (Op kipparit 1–4 tms.) — nämä poistetaan automaattisesti ennen uusien lisäämistä.
+    </div>` : ""}
+
+    ${!allMatched ? `
+    <div class="warn-box">
+      <strong>⚠️ Kaikkia vuoroja ei löydetty automaattisesti.</strong> Tarkista puuttuvat yllä tai varmista että Firestoressa on oikeat päivämäärät.
+    </div>` : ""}
+
+    <button class="btn btn-go" id="goBtn" ${!allMatched ? "style='background:#e65100'" : ""}>
+      ${placeholder.length > 0 ? "🗑️ Poista placeholderit ja " : ""}✅ Lisää kaikki osallistujat Firestoreen
+    </button>
+    <div class="log" id="logBox" style="display:none"></div>
+  `;
+
+  document.getElementById("goBtn").onclick = () => runUpdate(matches, placeholder);
+}
+
+// ---- Phase 3: Write to Firestore ----
+async function runUpdate(matches, placeholders) {
+  document.getElementById("goBtn").disabled = true;
+  const logBox = document.getElementById("logBox");
+  logBox.style.display = "block";
+  logEl = logBox;
+
+  let added = 0, skipped = 0, deleted = 0;
+
+  // Step 1: Delete placeholders
+  if (placeholders.length > 0) {
+    log(`Poistetaan ${placeholders.length} placeholder-osallistujaa...`);
+    for (const p of placeholders) {
+      try {
+        await deleteDoc(doc(db, "customers", p.id));
+        log(`  🗑️ Poistettu: ${p.name}`, "warn");
+        deleted++;
+      } catch(e) {
+        log(`  ❌ Poisto epäonnistui (${p.name}): ${e.message}`, "err");
+      }
+    }
+  }
+
+  // Step 2: Add participants per sailing
+  const total = matches.reduce((s, m) => s + (m.sailing ? m.nimet.length : 0), 0);
+  let done = 0;
+
+  for (const v of matches) {
+    // Check for manually selected sailing from dropdown
+    let sailing = v.sailing;
+    if (!sailing && v.fallbackOptions && v.fallbackOptions.length > 0) {
+      const selId = document.getElementById(`sel_${v.pvm}_${v.alkaa}`)?.value;
+      if (selId) {
+        sailing = v.fallbackOptions.find(s => s.id === selId);
+      }
+    }
+
+    if (!sailing) {
+      log(`⚠️ ${v.label}: ei sailingId — ohitetaan`, "warn");
+      skipped += v.nimet.length;
+      continue;
+    }
+
+    log(`📅 ${v.label} → sailing "${sailing.name||sailing.id}"`);
+    for (const name of v.nimet) {
+      try {
+        await addDoc(collection(db, "customers"), {
+          name,
+          phone: "",
+          email: "",
+          sailingId: sailing.id,
+          tutkintoId: "",
+          billTo: "self",
+          companyId: "",
+          reservationStatus: "paid",
+          laskutusosio: "",
+          updatedAt: serverTimestamp()
+        });
+        log(`  ✅ ${name}`, "ok");
+        added++;
+      } catch(e) {
+        log(`  ❌ ${name}: ${e.message}`, "err");
+        skipped++;
+      }
+      done++;
+      // Progress
+      const pct = Math.round((done/total)*100);
+      if (document.getElementById("pbar")) document.getElementById("pbar").style.width = pct + "%";
+    }
+  }
+
+  // Done
+  logEl = null;
+  const doneDiv = document.createElement("div");
+  doneDiv.className = "done-box";
+  doneDiv.style.marginTop = "12px";
+  doneDiv.innerHTML = `
+    <strong style="color:#2e7d32;font-size:16px">🏁 Valmis!</strong><br>
+    <div style="margin-top:6px;font-size:13px">
+      ✅ Lisätty: <strong>${added}</strong> osallistujaa<br>
+      🗑️ Poistettu: <strong>${deleted}</strong> placeholder-osallistujaa<br>
+      ${skipped > 0 ? `⚠️ Ohitettu: <strong>${skipped}</strong><br>` : ""}
+    </div>
+    <div style="margin-top:10px;font-size:12px;color:#555">
+      Tarkista hallintapaneelissa: <a href="https://jackeseilaa.github.io/tilaukset" target="_blank">jackeseilaa.github.io/tilaukset</a>
+    </div>
+  `;
+  app.appendChild(doneDiv);
+}
+
+// ---- Init ----
+try {
+  const firebaseApp = initializeApp(FIREBASE_CONFIG);
+  db = getFirestore(firebaseApp);
+
+  // Render schedule preview first, then scan
+  app.innerHTML = `
+    <div class="card">
+      <div style="font-weight:700;color:#0a4272;font-size:16px;margin-bottom:12px">📋 Kurssitaulukko (7 vuoroa, Pe 5.6. poistettu)</div>
+      <table>
+        <thead><tr><th>Vuoro</th><th>Satama</th><th>Aika</th><th>Osallistujat (${[...new Set(VUOROT.flatMap(v=>v.nimet))].length} uniikkia)</th></tr></thead>
+        <tbody>
+          ${VUOROT.map((v,i) => `<tr>
+            <td><strong>${esc(v.label)}</strong></td>
+            <td><span class="pill ${v.satama==="RVK"?"rvk":"pyy"}">${esc(v.satama)}</span></td>
+            <td style="font-family:monospace;font-size:12px">${esc(v.alkaa)}–${esc(v.loppuu)}</td>
+            <td>${v.nimet.map(n=>`<span class="name">${esc(n)}</span>`).join(" ")}</td>
+          </tr>`).join("")}
+        </tbody>
+      </table>
+    </div>
+    <button class="btn btn-primary btn-go" id="scanBtn" style="background:#0a4272">🔍 Hae OP Kipparit -vuorot Firestoresta ja tarkista vastaavuudet</button>
+  `;
+
+  document.getElementById("scanBtn").onclick = phase1;
+
+} catch(e) {
+  app.innerHTML = `<div class="card" style="border:2px solid #f44336"><strong style="color:#c62828">❌ Firebase init epäonnistui:</strong> ${esc(e.message)}</div>`;
+}
+</script>
+</body>
+</html>
