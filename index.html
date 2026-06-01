@@ -207,7 +207,7 @@ import{getAuth,GoogleAuthProvider,signInWithPopup,signOut,onAuthStateChanged}fro
 import{getFirestore,collection,doc,addDoc,setDoc,deleteDoc,onSnapshot,serverTimestamp}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 const FIREBASE_CONFIG={apiKey:"AIzaSyB7Dp5_5fN0Iko-4Jn1D2Dp6NNNih63UO0",authDomain:"jsailing-f716c.firebaseapp.com",projectId:"jsailing-f716c",storageBucket:"jsailing-f716c.firebasestorage.app",messagingSenderId:"543523103696",appId:"1:543523103696:web:439a312efa6aec398a8fd5"};
 const ALLOWED_EMAIL="jacke.seilaa@gmail.com";
-const APP_VERSION="V9.153";const UPDATE_DATE=(()=>{const n=new Date();return n.toLocaleDateString("fi-FI")+' klo '+String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0');})();
+const APP_VERSION="V9.154";const UPDATE_DATE=(()=>{const n=new Date();return n.toLocaleDateString("fi-FI")+' klo '+String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0');})();
 const ISSUERS={
   tmi:{name:"J Sailing",businessId:"1728993-9",address:"Kontiontie 55, 11120 Riihimäki",iban:"FI62 1132 3000 4277 43",bic:"NDEAFIHH"},
   oy:{name:"AJarmo Oy",businessId:"3432355-3",address:"Kontiontie 55, 11120 Riihimäki",iban:"FI73 7997 7994 4257 05",bic:"HOLVFIHH"}
@@ -3529,9 +3529,10 @@ function renderKyselyt(){
   const q=state.kyselyQ||"";
   const filtered=q?ky.filter(k=>JSON.stringify(k).toLowerCase().includes(q.toLowerCase())):ky;
   const sorted=[...filtered].sort((a,b)=>(b.pvm||"").localeCompare(a.pvm||""));
+  const editId=state.kyselyEditId||null;
   const draft=state.kyselyDraft||{nimi:"",puhelin:"",email:"",tyyppi:"purjehdus",aihe:"",lisatiedot:"",pvm:new Date().toISOString().slice(0,10)};
   const tyyppiOpts=["purjehdus","tutkinto","kurssi","muu"].map(t=>`<option value="${t}" ${draft.tyyppi===t?"selected":""}>${t.charAt(0).toUpperCase()+t.slice(1)}</option>`).join("");
-  const rows=sorted.map(k=>`<tr>
+  const rows=sorted.map(k=>`<tr style="background:${editId===k.id?"#fffde7":""}">
     <td style="white-space:nowrap;padding:6px 10px">${fi(k.pvm||"")}</td>
     <td style="padding:6px 10px"><strong>${esc(k.nimi||"")}</strong></td>
     <td style="padding:6px 10px">${esc(k.puhelin||"")}</td>
@@ -3539,12 +3540,15 @@ function renderKyselyt(){
     <td style="padding:6px 10px"><span style="background:#e3f2fd;color:#1565c0;border-radius:6px;padding:1px 7px;font-size:11px;font-weight:700">${esc(k.tyyppi||"")}</span></td>
     <td style="padding:6px 10px">${esc(k.aihe||"")}</td>
     <td style="padding:6px 10px;max-width:180px;font-size:12px;color:#555">${esc(k.lisatiedot||"")}</td>
-    <td style="padding:6px 10px"><button onclick="window._delKysely('${k.id}')" style="background:#ffebee;color:#c62828;border:1px solid #f44336;border-radius:6px;padding:2px 8px;font-size:11px;cursor:pointer">🗑️</button></td>
+    <td style="padding:6px 10px;white-space:nowrap">
+      <button onclick="window._editKysely('${k.id}')" style="background:#e3f2fd;color:#1565c0;border:1px solid #1565c0;border-radius:6px;padding:2px 8px;font-size:11px;cursor:pointer;margin-right:4px">✏️</button>
+      <button onclick="window._delKysely('${k.id}')" style="background:#ffebee;color:#c62828;border:1px solid #f44336;border-radius:6px;padding:2px 8px;font-size:11px;cursor:pointer">🗑️</button>
+    </td>
   </tr>`).join("");
   return`<div class="card" style="max-width:960px;margin:0 auto">
     <div style="font-size:18px;font-weight:700;color:#0a4272;margin-bottom:16px">📋 Kyselyt <span style="font-size:13px;color:#888;font-weight:400">(${ky.length} kpl)</span></div>
     <div style="background:#f8f9fa;border-radius:10px;padding:16px;margin-bottom:20px;border:1px solid #e0e0e0">
-      <div style="font-weight:700;color:#0a4272;margin-bottom:12px">+ Uusi kysely</div>
+      <div style="font-weight:700;color:#0a4272;margin-bottom:12px">${editId?"✏️ Muokkaa kyselyä":"+ Uusi kysely"}</div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
         <div><label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:3px">NIMI *</label>
           <input id="ky_nimi" value="${esc(draft.nimi)}" placeholder="Etunimi Sukunimi" style="width:100%;padding:8px;border:1px solid #d1d5db;border-radius:6px;font-size:13px;box-sizing:border-box" oninput="window._kyD('nimi',this.value)"></div>
@@ -3561,7 +3565,10 @@ function renderKyselyt(){
         <div><label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:3px">PÄIVÄMÄÄRÄ</label>
           <input id="ky_pvm" type="date" value="${esc(draft.pvm)}" style="width:100%;padding:8px;border:1px solid #d1d5db;border-radius:6px;font-size:13px;box-sizing:border-box" oninput="window._kyD('pvm',this.value)"></div>
       </div>
-      <button onclick="window._saveKysely()" style="background:#0a4272;color:white;border:none;border-radius:8px;padding:10px 24px;font-size:14px;font-weight:700;cursor:pointer">💾 Tallenna kysely</button>
+      <div style="display:flex;gap:8px">
+      <button onclick="window._saveKysely()" style="background:#0a4272;color:white;border:none;border-radius:8px;padding:10px 24px;font-size:14px;font-weight:700;cursor:pointer">${editId?"💾 Tallenna muutokset":"💾 Tallenna kysely"}</button>
+      ${editId?`<button onclick="window._cancelEdit()" style="background:#f3f4f6;color:#374151;border:1px solid #d1d5db;border-radius:8px;padding:10px 18px;font-size:14px;font-weight:700;cursor:pointer">✕ Peruuta</button>`:""}
+      </div>
     </div>
     <input placeholder="🔍 Hae nimellä, aiheella, tyypillä..." value="${esc(q)}" style="width:100%;padding:9px 12px;border:1px solid #d1d5db;border-radius:8px;font-size:13px;box-sizing:border-box;margin-bottom:12px" oninput="state.kyselyQ=this.value;render()">
     ${sorted.length===0?`<div style="text-align:center;padding:30px;color:#999;font-size:14px">Ei kyselyjä vielä — lisää ensimmäinen yllä</div>`
@@ -3578,10 +3585,24 @@ window._kyD=function(f,v){if(!state.kyselyDraft)state.kyselyDraft={tyyppi:"purje
 window._saveKysely=async function(){
   const d=state.kyselyDraft||{};
   if(!(d.nimi||"").trim()){alert("Nimi on pakollinen");return;}
-  await fsAdd("kyselyt",{nimi:d.nimi.trim(),puhelin:d.puhelin||"",email:d.email||"",tyyppi:d.tyyppi||"purjehdus",aihe:d.aihe||"",lisatiedot:d.lisatiedot||"",pvm:d.pvm||new Date().toISOString().slice(0,10),luotu:serverTimestamp()});
+  if(state.kyselyEditId){
+    await fsSet("kyselyt",state.kyselyEditId,{nimi:d.nimi.trim(),puhelin:d.puhelin||"",email:d.email||"",tyyppi:d.tyyppi||"purjehdus",aihe:d.aihe||"",lisatiedot:d.lisatiedot||"",pvm:d.pvm||new Date().toISOString().slice(0,10)});
+    state.kyselyEditId=null;
+  } else {
+    await fsAdd("kyselyt",{nimi:d.nimi.trim(),puhelin:d.puhelin||"",email:d.email||"",tyyppi:d.tyyppi||"purjehdus",aihe:d.aihe||"",lisatiedot:d.lisatiedot||"",pvm:d.pvm||new Date().toISOString().slice(0,10),luotu:serverTimestamp()});
+  }
   state.kyselyDraft={tyyppi:"purjehdus",pvm:new Date().toISOString().slice(0,10),nimi:"",puhelin:"",email:"",aihe:"",lisatiedot:""};
   render();
 };
+window._editKysely=function(id){
+  const k=(state.kyselyt||[]).find(x=>x.id===id);
+  if(!k)return;
+  state.kyselyEditId=id;
+  state.kyselyDraft={nimi:k.nimi||"",puhelin:k.puhelin||"",email:k.email||"",tyyppi:k.tyyppi||"purjehdus",aihe:k.aihe||"",lisatiedot:k.lisatiedot||"",pvm:k.pvm||new Date().toISOString().slice(0,10)};
+  render();
+  setTimeout(()=>document.getElementById("ky_nimi")?.scrollIntoView({behavior:"smooth",block:"center"}),100);
+};
+window._cancelEdit=function(){state.kyselyEditId=null;state.kyselyDraft={tyyppi:"purjehdus",pvm:new Date().toISOString().slice(0,10),nimi:"",puhelin:"",email:"",aihe:"",lisatiedot:""};render();};
 window._delKysely=async function(id){if(!confirm("Poistetaanko kysely?"))return;await fsDel("kyselyt",id);};
 
 window._toggle=function(pid){const idx=(state.tuoteLines||[]).findIndex(l=>l.id===pid);if(idx>=0)(state.tuoteLines||[]).splice(idx,1);else{const p=(state.muutTuotteet||[]).find(x=>x.id===pid);if(p)(state.tuoteLines||(state.tuoteLines=[])).push({id:pid,qty:1});}render();};window._qty=function(pid,v){const l=state.tuoteLines.find(x=>x.id===pid);if(l){l.qty=Math.max(1,parseInt(v)||1);render();}};window._close=function(){state.modal=null;render();};
