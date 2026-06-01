@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="fi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Debug sailings</title>
+<style>
+body{font-family:monospace;background:#1a1a2e;color:#a8d8ea;margin:0;padding:16px;font-size:12px}
+.card{background:#0d1b2a;border-radius:8px;padding:12px;margin-bottom:10px;border:1px solid #0a4272}
+pre{margin:0;white-space:pre-wrap;word-break:break-all}
+.ok{color:#b9f6ca}.warn{color:#ffe082}.err{color:#ff8a80}
+</style>
+</head>
+<body>
+<div class="card"><strong>🔍 Kaikki OP Kipparit -sailingit Firestoressa — raakadata</strong></div>
+<div id="app">Ladataan...</div>
+<script type="module">
+import{initializeApp}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import{getFirestore,collection,getDocs}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+const CFG={apiKey:"AIzaSyB7Dp5_5fN0Iko-4Jn1D2Dp6NNNih63UO0",authDomain:"jsailing-f716c.firebaseapp.com",projectId:"jsailing-f716c",storageBucket:"jsailing-f716c.firebasestorage.app",messagingSenderId:"543523103696",appId:"1:543523103696:web:439a312efa6aec398a8fd5"};
+const db=getFirestore(initializeApp(CFG));
+const sailSnap=await getDocs(collection(db,"sailings"));
+const custSnap=await getDocs(collection(db,"customers"));
+const sailings=sailSnap.docs.map(d=>({id:d.id,...d.data()}));
+const customers=custSnap.docs.map(d=>({id:d.id,...d.data()}));
+const opS=sailings.filter(s=>(s.name||"").toLowerCase().includes("op kippar"))
+  .sort((a,b)=>(a.date+(a.startTime||"")).localeCompare(b.date+(b.startTime||"")));
+const el=document.getElementById("app");
+el.innerHTML=`<div class="card ok">OP Kipparit sailingeja: ${opS.length} | Kaikki sailingit: ${sailings.length} | Customers: ${customers.length}</div>`+
+opS.map(s=>{
+  const c=customers.filter(x=>x.sailingId===s.id);
+  return`<div class="card">
+<pre class="ok">ID: ${s.id}
+date: "${s.date}" | startTime: "${s.startTime||""}" | endTime: "${s.endTime||""}"
+name: "${s.name}" | type: "${s.type||""}" | maxPersons: ${s.maxPersons||0}
+Osallistujat (${c.length}): ${c.map(x=>x.name).join(", ")||"—"}</pre></div>`;
+}).join("");
+</script>
+</body>
+</html>
