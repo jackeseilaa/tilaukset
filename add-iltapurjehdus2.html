@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="fi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Iltapurjehdus 17.6. osallistujat</title>
+<style>
+body{font-family:system-ui;background:#f0f4f8;margin:0;padding:16px}
+.hdr{background:#0a4272;color:white;border-radius:10px;padding:14px 20px;margin-bottom:14px}
+.card{background:white;border-radius:10px;padding:14px;margin-bottom:12px;border:1px solid #ddd}
+.btn{width:100%;padding:13px;font-size:15px;font-weight:700;border:none;border-radius:8px;cursor:pointer;margin:6px 0;display:block}
+.green{background:#2e7d32;color:white}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{background:#0a4272;color:white;padding:7px 12px;text-align:left}
+td{padding:6px 12px;border-bottom:1px solid #eee}
+.log{background:#0d1b2a;border-radius:8px;padding:10px;font-family:monospace;font-size:11px;max-height:250px;overflow-y:auto;margin-top:8px}
+.log div{margin-bottom:2px}
+.ok{color:#b9f6ca}.warn{color:#ffe082}.err{color:#ff8a80}.info{color:#a8d8ea}
+.done{background:#e8f5e9;border:2px solid #4caf50;border-radius:10px;padding:12px;margin-top:8px}
+.found{background:#e8f5e9;color:#2e7d32;border-radius:6px;padding:1px 7px;font-size:11px;font-weight:700}
+.notfound{background:#fff8e1;color:#e65100;border-radius:6px;padding:1px 7px;font-size:11px;font-weight:700}
+</style>
+</head>
+<body>
+<div class="hdr"><strong>⛵ Iltapurjehdus 17.6.2026 — osallistujien lisäys</strong></div>
+<div id="app"><div class="card" style="text-align:center;padding:20px">⏳ Haetaan...</div></div>
+<script type="module">
+import{initializeApp}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import{getFirestore,collection,getDocs,addDoc,serverTimestamp}
+  from"https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const CFG={apiKey:"AIzaSyB7Dp5_5fN0Iko-4Jn1D2Dp6NNNih63UO0",authDomain:"jsailing-f716c.firebaseapp.com",
+  projectId:"jsailing-f716c",storageBucket:"jsailing-f716c.firebasestorage.app",
+  messagingSenderId:"543523103696",appId:"1:543523103696:web:439a312efa6aec398a8fd5"};
+const db=getFirestore(initializeApp(CFG));
+function esc(s){return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");}
+
+const NIMET=["Johanna Ojantakanen","Sari Rautakoski","Anna-Mari Silroinen","Minna Alanko-Pirinen"];
+
+const [ss,cs]=await Promise.all([
+  getDocs(collection(db,"sailings")),
+  getDocs(collection(db,"customers"))
+]);
+const sailings=ss.docs.map(d=>({id:d.id,...d.data()}));
+const customers=cs.docs.map(d=>({id:d.id,...d.data()}));
+
+const sailing=sailings.find(s=>
+  s.date==="2026-06-17"&&
+  (s.name||"").toLowerCase().includes("iltapurjehdus")
+);
+
+function etsiAsiakas(nimi){
+  const osat=nimi.toLowerCase().split(" ");
+  return customers.find(c=>osat.every(o=>(c.name||"").toLowerCase().includes(o)));
+}
+
+const osallistujat=NIMET.map(n=>({nimi:n,asiakas:etsiAsiakas(n)}));
+const nykyiset=sailing?customers.filter(c=>c.sailingId===sailing.id):[];
+
+const rows=osallistujat.map(o=>`<tr>
+  <td><strong>${esc(o.nimi)}</strong></td>
+  <td>${o.asiakas?`<span class="found">✓ löytyi</span>`:`<span class="notfound">ei tietoja</span>`}</td>
+  <td>${esc(o.asiakas?.phone||"—")}</td>
+  <td>${esc(o.asiakas?.email||"—")}</td>
+</tr>`).join("");
+
+const sailingInfo=sailing
+  ?`<span style="background:#e8f5e9;color:#2e7d32;border-radius:6px;padding:2px 8px;font-weight:700">✓ ${esc(sailing.name)} ${esc(sailing.date)} ${esc(sailing.startTime||"")}–${esc(sailing.endTime||"")}</span>`
+  :`<span style="background:#ffebee;color:#c62828;border-radius:6px;padding:2px 8px;font-weight:700">⚠️ Sailingia ei löydy</span>`;
+
+document.getElementById("app").innerHTML=`
+<div class="card">
+  <div style="font-weight:700;color:#0a4272;margin-bottom:8px">Sailing</div>
+  ${sailingInfo}
+  ${nykyiset.length>0?`<div style="margin-top:8px;font-size:12px;color:#666">Nykyiset (${nykyiset.length}): ${nykyiset.map(c=>esc(c.name)).join(", ")}</div>`:""}
+</div>
+<div class="card">
+  <div style="font-weight:700;color:#0a4272;margin-bottom:10px">Asiakastiedot</div>
+  <table>
+    <thead><tr><th>Nimi</th><th>Tietokanta</th><th>Puhelin</th><th>Sähköposti</th></tr></thead>
+    <tbody>${rows}</tbody>
+  </table>
+</div>
+${sailing
+  ?`<button class="btn green" id="goBtn">👥 Lisää 4 osallistujaa iltapurjehdukselle 17.6.</button>`
+  :`<div style="background:#ffebee;border:2px solid #f44336;border-radius:8px;padding:12px;color:#c62828;font-weight:700">Sailingia ei löydy. Varmista että ILTAPURJEHDUS 17.6. on tallennettu hallintapaneelissa.</div>`}
+<div class="log" id="lb" style="display:none"></div>`;
+
+document.getElementById("goBtn")?.addEventListener("click",async()=>{
+  document.getElementById("goBtn").disabled=true;
+  const lb=document.getElementById("lb");lb.style.display="block";
+  function log(m,t="info"){const d=document.createElement("div");d.className=t;
+    d.textContent=new Date().toLocaleTimeString("fi")+" "+m;lb.appendChild(d);lb.scrollTop=lb.scrollHeight;}
+
+  for(const o of osallistujat){
+    if(nykyiset.find(c=>c.name===o.nimi)){log(`✓ ${o.nimi}: jo lisätty`,"ok");continue;}
+    await addDoc(collection(db,"customers"),{
+      name:o.nimi,
+      phone:o.asiakas?.phone||"",
+      email:o.asiakas?.email||"",
+      sailingId:sailing.id,
+      tutkintoId:"",
+      billTo:"self",companyId:"",
+      reservationStatus:"paid",laskutusosio:"",
+      updatedAt:serverTimestamp()
+    });
+    log(`✅ ${o.nimi}${o.asiakas?" (tiedot haettu)":""}`,"ok");
+  }
+
+  const done=document.createElement("div");
+  done.className="done";
+  done.innerHTML=`<strong style="color:#2e7d32">🏁 Valmis!</strong> Osallistujat lisätty 17.6. iltapurjehdukselle.<br><br>
+    <a href="https://jackeseilaa.github.io/tilaukset" target="_blank"
+      style="background:#0a4272;color:white;padding:8px 18px;border-radius:8px;font-weight:700;text-decoration:none">
+      Avaa Hallintapaneeli →</a>`;
+  document.getElementById("app").appendChild(done);
+});
+</script>
+</body>
+</html>
