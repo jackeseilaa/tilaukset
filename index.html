@@ -1628,7 +1628,7 @@ function renderReskontra(){
   return`<div class="card">
     <div class="row-between">
       <div><div class="card-title">Reskontra</div><div class="card-sub">Asiakaskohtainen saldo ja avoimet laskut</div></div>
-      <div class="row" style="gap:8px"><button class="btn btn-secondary btn-sm" data-action="open-unbilled">&#128269; Laskuttamattomat</button><button class="btn btn-danger btn-sm" data-action="clear-invoices">&#128465; Tyhjennä rekisteri</button><button class="btn btn-primary btn-sm" data-action="open-register">📒 Kirjanpitoraportti</button></div>
+      <div class="row" style="gap:8px"><button class="btn btn-secondary btn-sm" data-action="open-unbilled">&#128269; Laskuttamattomat</button><button class="btn btn-secondary btn-sm" data-action="export-women-unbilled-csv" title="Lataa toukokuun laskuttamattomat — Naispurjehtijat-ryhmät CSV-tiedostona">♀ Naispurjehtijat CSV</button><button class="btn btn-danger btn-sm" data-action="clear-invoices">&#128465; Tyhjennä rekisteri</button><button class="btn btn-primary btn-sm" data-action="open-register">📒 Kirjanpitoraportti</button></div>
     </div>
     <div class="stats-grid" style="margin:16px 0">
       <div class="stat-card"><div class="stat-label">Laskutettu yht.</div><div class="stat-val" style="font-size:28px">${totalAll.toFixed(2)} €</div></div>
@@ -3379,6 +3379,31 @@ if(a==="save-combined-invoice"){
         const hdr=["Päivä","Laskunro","Viite","Maksaja","Y-tunnus","Sähköposti","Tapahtuma","Malli","Laskulaji","ALV%","Netto","ALV","Brutto","Maksettu","Maksupäivä"].join(sep);
         const lines=rows.map(x=>[x.invoiceDate,x.invoiceNo,x.reference,x.payerName,x.payerBusinessId||"",x.payerEmail||"",x.eventName||"",x.mode==="company"?"Yrityslasku":"Asiakaskohtainen",x.isReservation?"Varausmaksu":x.itype==="partial"?"Osasuoritus":x.itype==="credit"?"Hyvityslasku":"Loppulasku",String(x.vatRatePct||"").replace(".",","),Number(x.net||0).toFixed(2).replace(".",","),Number(x.vat||0).toFixed(2).replace(".",","),Number(x.grossTotal||0).toFixed(2).replace(".",","),x.paid?"Kyllä":"Ei",x.paidDate||""].map(v=>`"${String(v).replace(/"/g,'""')}"`).join(sep));
         const csv=[hdr,...lines].join("\n");const blob=new Blob([csv],{type:"text/csv;charset=utf-8"});const url=URL.createObjectURL(blob);const a2=document.createElement("a");a2.href=url;a2.download=`laskurekisteri_${month}.csv`;a2.click();URL.revokeObjectURL(url);return;
+      }
+      if(a==="export-women-unbilled-csv"){
+        // Laskuttamattomat joiden maksaja on "Naispurjehtijat"-niminen yritys tai asiakas,
+        // ja purjehduksen päivä on toukokuussa (any year, tai prompt kuukaudesta)
+        const targetMonth=prompt("Kuukausi (YYYY-MM):",today().slice(0,7));
+        if(!targetMonth)return;
+        const groups=getUnbilledGroups("");
+        // Suodatetaan ryhmät joiden label sisältää "naispurjehtijat" (case-insensitive)
+        const wGroups=groups.filter(g=>(g.label||"").toLowerCase().includes("naispurjehtijat"));
+        // Suodatetaan tapahtumat joiden pvm on valitussa kuukaudessa
+        const matchItems=[];
+        for(const g of wGroups){
+          for(const item of g.items){
+            if((item.evDate||"").slice(0,7)===targetMonth){
+              matchItems.push({payerLabel:g.label,customerName:item.customer.name,email:item.customer.email||"",phone:item.customer.phone||"",evName:item.evName,evDate:item.evDate,price:item.price,osio:item.osio||""});
+            }
+          }
+        }
+        if(!matchItems.length){alert(`Ei laskuttamattomia Naispurjehtijat-tapahtumia kuukaudessa ${targetMonth}.`);return;}
+        const sep=";";
+        const hdr2=["Maksaja","Osallistuja","Sähköposti","Puhelin","Tapahtuma","Päivä","Hinta (€)","Osio"].join(sep);
+        const lines2=matchItems.map(x=>[x.payerLabel,x.customerName,x.email,x.phone,x.evName,x.evDate,String(x.price.toFixed(2)).replace(".",","),x.osio].map(v=>`"${String(v).replace(/"/g,'""')}"`).join(sep));
+        const csv2=[hdr2,...lines2].join("\n");
+        const blob2=new Blob(["\uFEFF"+csv2],{type:"text/csv;charset=utf-8"});
+        const url2=URL.createObjectURL(blob2);const a3=document.createElement("a");a3.href=url2;a3.download=`naispurjehtijat_laskuttamattomat_${targetMonth}.csv`;a3.click();URL.revokeObjectURL(url2);return;
       }
       if(a==="print-and-save"){
   const inv2=computeInvoice();
