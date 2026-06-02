@@ -2020,6 +2020,7 @@ function renderTuotePickerModal(){
 
 function renderModal(){
   if(!state.modal)return"";
+  if(state.modal?.type==="confirm-delete"){const m=state.modal;return`<div class="overlay" data-action="close-modal"><div class="modal" style="max-width:420px" onclick="event.stopPropagation()"><div class="modal-head"><div class="row-between"><div class="modal-title">&#128465; ${esc(m.title)}</div><button class="btn btn-secondary btn-sm" data-action="close-modal">&#x2715;</button></div></div><div style="padding:16px 20px"><div style="margin-bottom:18px;font-size:14px;line-height:1.5">${m.body}</div><div class="row" style="justify-content:flex-end;gap:10px"><button class="btn btn-secondary" data-action="close-modal">Peruuta</button><button class="btn btn-danger" id="confirm-delete-btn">&#128465; Poista</button></div></div></div></div>`;}
   if(state.modal==="pending-list")return renderPendingListModal();
   if(state.modal==="transfer")return renderTransferModal();
   if(state.modal==="dash-quick")return renderDashQuickModal();
@@ -2857,6 +2858,7 @@ table{width:100%;border-collapse:collapse}
       }
       if(a==="toggle-sailing"){state.openSailingId=(state.openSailingId===itemId)?null:itemId;render();return;}
       if(a==="close-modal"){state.modal=null;state.editId=null;state.editSession=null;state.previewInvoiceId=null;state.dashQuickId=null;state.dashQuickType=null;state.transferCustomerId=null;render();return;}
+      if(el?.id==="confirm-delete-btn"||a==="confirm-delete"){if(state.modal?.type==="confirm-delete"&&typeof state.modal.onConfirm==="function"){state.modal.onConfirm();}return;}
       if(a==="show-pending"){state.modal="pending-list";render();return;}
       if(a==="transfer-customer"){
         state.transferCustomerId=itemId;
@@ -3174,7 +3176,14 @@ table{width:100%;border-collapse:collapse}
     state.combinedInvoice={key:_grp.key,label:_grp.label,payerLabel:_grp.payerLabel||_grp.label,osio:_grp.osio||"",isCompany:_grp.isCompany,companyId:_grp.companyId,issuer:"tmi",invoiceDate:today(),items:_baseItems,editLines:_editLines};state.modal="combined-invoice";render();return;}
       if(a==="new-tutkinto"){state.modal="tutkinto";state.editId=null;state.tutkintoDraft={};render();return;}
       if(a==="edit-tutkinto"){state.modal="tutkinto";state.editId=itemId;state.tutkintoDraft={};render();return;}
-      if(a==="delete-tutkinto"){if(!confirm("Poistetaanko tutkinto?"))return;await fsDel("tutkinnot",itemId);render();return;}
+      if(a==="delete-tutkinto"){
+        const t2=state.tutkinnot.find(x=>x.id===itemId);
+        const tAttendeesCount=state.customers.filter(x=>x.tutkintoId===itemId).length;
+        const tName=t2?.type||"tutkinto";
+        const tWarn=tAttendeesCount>0?`<div style="background:#fef3c7;border:1px solid #f59e0b;border-radius:6px;padding:10px;margin-bottom:12px;font-size:13px">⚠️ Tutkinnolla on <strong>${tAttendeesCount} osallistuja</strong> — heidän tietonsa jäävät rekisteriin.</div>`:"";
+        state.modal={type:"confirm-delete",title:"Poistetaanko tutkinto?",body:`${tWarn}Tutkinto <strong>${esc(tName)}</strong> poistetaan pysyvästi.`,onConfirm:async()=>{await fsDel("tutkinnot",itemId);state.modal=null;render();}};
+        render();return;
+      }
       if(a==="save-tutkinto"){
         const type=state.tutkintoDraft.type||(document.querySelector('[data-field="tutkinto-type"]')?.value||"");
         const date=document.querySelector('[data-field="tutkinto-date"]')?.value||"";
@@ -3263,7 +3272,14 @@ table{width:100%;border-collapse:collapse}
       }
       if(a==="save-company"){const name=(document.querySelector('[data-field="name"]')?.value||"").trim();if(!name)return alert("Yrityksen nimi pakollinen.");const data={name,businessId:document.querySelector('[data-field="businessId"]')?.value||"",email:document.querySelector('[data-field="email"]')?.value||"",commissionPct:parseFloat(document.querySelector('[data-field="commissionPct"]')?.value)||0};if(state.editId)await fsSet("companies",state.editId,data);else await fsAdd("companies",data);state.modal=null;state.editId=null;render();return;}
       if(a==="delete-customer"){if(!confirm("Poistetaanko asiakas?"))return;await fsDel("customers",itemId);render();return;}
-      if(a==="delete-sailing"){if(!confirm("Poistetaanko purjehdus?"))return;await fsDel("sailings",itemId);if(state.openSailingId===itemId)state.openSailingId=null;render();return;}
+      if(a==="delete-sailing"){
+        const s2=state.sailings.find(x=>x.id===itemId);
+        const sAttendeesCount=state.customers.filter(x=>x.sailingId===itemId).length;
+        const sName=s2?.name||"purjehdus";
+        const sWarn=sAttendeesCount>0?`<div style="background:#fef3c7;border:1px solid #f59e0b;border-radius:6px;padding:10px;margin-bottom:12px;font-size:13px">⚠️ Kurssilla on <strong>${sAttendeesCount} osallistuja</strong> — heidän tietonsa jäävät rekisteriin.</div>`:"";
+        state.modal={type:"confirm-delete",title:"Poistetaanko purjehdus?",body:`${sWarn}Purjehdus <strong>${esc(sName)}</strong> poistetaan pysyvästi.`,onConfirm:async()=>{await fsDel("sailings",itemId);if(state.openSailingId===itemId)state.openSailingId=null;state.modal=null;render();}};
+        render();return;
+      }
       if(a==="delete-company"){if(!confirm("Poistetaanko yritys?"))return;await fsDel("companies",itemId);render();return;}
       if(a==="edit-invoice"){
         const x=state.invoices.find(z=>z.id===itemId);if(!x)return;
