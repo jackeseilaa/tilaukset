@@ -2020,7 +2020,7 @@ function renderTuotePickerModal(){
 
 function renderModal(){
   if(!state.modal)return"";
-  if(state.modal?.type==="confirm-delete"){const m=state.modal;return`<div class="overlay" data-action="close-modal"><div class="modal" style="max-width:420px" onclick="event.stopPropagation()"><div class="modal-head"><div class="row-between"><div class="modal-title">&#128465; ${esc(m.title)}</div><button class="btn btn-secondary btn-sm" data-action="close-modal">&#x2715;</button></div></div><div style="padding:16px 20px"><div style="margin-bottom:18px;font-size:14px;line-height:1.5">${m.body}</div><div class="row" style="justify-content:flex-end;gap:10px"><button class="btn btn-secondary" data-action="close-modal">Peruuta</button><button class="btn btn-danger" id="confirm-delete-btn">&#128465; Poista</button></div></div></div></div>`;}
+  if(state.modal?.type==="confirm-delete"){const m=state.modal;return`<div class="overlay" data-action="close-modal"><div class="modal" style="max-width:420px" onclick="event.stopPropagation()"><div class="modal-head"><div class="row-between"><div class="modal-title">&#128465; ${esc(m.title)}</div><button class="btn btn-secondary btn-sm" data-action="close-modal">&#x2715;</button></div></div><div style="padding:16px 20px"><div style="margin-bottom:18px;font-size:14px;line-height:1.5">${m.body}</div><div class="row" style="justify-content:flex-end;gap:10px"><button class="btn btn-secondary" data-action="close-modal">Peruuta</button><button class="btn btn-danger" data-action="confirm-delete">&#128465; Poista</button></div></div></div></div>`;}
   if(state.modal==="pending-list")return renderPendingListModal();
   if(state.modal==="transfer")return renderTransferModal();
   if(state.modal==="dash-quick")return renderDashQuickModal();
@@ -2858,7 +2858,7 @@ table{width:100%;border-collapse:collapse}
       }
       if(a==="toggle-sailing"){state.openSailingId=(state.openSailingId===itemId)?null:itemId;render();return;}
       if(a==="close-modal"){state.modal=null;state.editId=null;state.editSession=null;state.previewInvoiceId=null;state.dashQuickId=null;state.dashQuickType=null;state.transferCustomerId=null;render();return;}
-      if(el?.id==="confirm-delete-btn"||a==="confirm-delete"){if(state.modal?.type==="confirm-delete"&&typeof state.modal.onConfirm==="function"){state.modal.onConfirm();}return;}
+      if(a==="confirm-delete"){if(state.modal?.type==="confirm-delete"&&typeof state.modal.onConfirm==="function"){state.modal.onConfirm();}return;}
       if(a==="show-pending"){state.modal="pending-list";render();return;}
       if(a==="transfer-customer"){
         state.transferCustomerId=itemId;
