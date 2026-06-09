@@ -511,9 +511,18 @@ function computeInvoice(overrideState){
       if(co){
         payerName=co.name||"";payerEmail=co.email||"";payerBusinessId=co.businessId||"";
         const cust=state.customers.filter(c=>c.sailingId===s.id&&c.billTo==="company"&&c.companyId===co.id).sort((a,b)=>(a.name||"").localeCompare(b.name||""));
-        let gross=isPartial?price:cust.length*price;
-        if(isPartial){lines.push({title:`${s.name} — Osasuoritus`,qty:1,unit:price,total:price});}
-        else{for(const c of cust){let amt=isCredit?-Math.abs(price):price;lines.push({title:`${s.name} — ${invTypeLabel(itype)} — ${c.name}`,qty:1,unit:amt,total:amt});}}
+        // Kiinteä nimike-ylikirjoitus: yksi rivi koko kurssille
+        const hasOverride=s.invoiceLabel&&String(s.invoiceLabel).trim()&&Number(s.invoiceFixedGross||0)>0;
+        let gross;
+        if(hasOverride&&!isPartial){
+          const fixedGross=isCredit?-Math.abs(Number(s.invoiceFixedGross)):Number(s.invoiceFixedGross);
+          lines.push({title:String(s.invoiceLabel).trim(),qty:1,unit:fixedGross,total:fixedGross});
+          gross=fixedGross;
+        }else{
+          gross=isPartial?price:cust.length*price;
+          if(isPartial){lines.push({title:`${s.name} — Osasuoritus`,qty:1,unit:price,total:price});}
+          else{for(const c of cust){let amt=isCredit?-Math.abs(price):price;lines.push({title:`${s.name} — ${invTypeLabel(itype)} — ${c.name}`,qty:1,unit:amt,total:amt});}}
+        }
         const comm=Math.abs(gross)*(Number(co.commissionPct||0)/100);
         if(comm>0&&!isCredit)lines.push({title:"Välitysprovisio",qty:1,unit:-comm,total:-comm});
         grossTotal=isCredit?-Math.abs(gross):gross-comm;
@@ -997,7 +1006,8 @@ function renderCalendar(){
   const daysInPrev=new Date(year,month-1,0).getDate();
   const todayStr=today();
   const eventMap={};
-  function addEv(ds,ev){if(!eventMap[ds])eventMap[ds]=[];eventMap[ds].push(ev);}
+  function timeToMin(tl){if(!tl)return 9999;const m=tl.match(/(\d{1,2})[:\.](\d{2})/);if(!m)return 9999;return parseInt(m[1])*60+parseInt(m[2]);}
+  function addEv(ds,ev){if(!eventMap[ds])eventMap[ds]=[];eventMap[ds].push(ev);eventMap[ds].sort((a,b)=>timeToMin(a.timeLabel)-timeToMin(b.timeLabel));}
   for(const s of state.sailings){
     if(!s.date)continue;
     const isCourse=s.type==="Kurssi";
@@ -2117,6 +2127,14 @@ function renderSailingModal(){
         <div class="field"><label class="lbl">Hinta/hlö (€)</label><input type="number" min="0" step="0.01" data-field="pricePerPerson" value="${esc(String(Number(draft.pricePerPerson??s?.pricePerPerson??0)))}"></div>
         <div class="field"><label class="lbl">Varausmaksu (€)</label><input type="number" min="0" step="0.01" data-field="reservationFee" value="${esc(String(Number(draft.reservationFee??s?.reservationFee??0)))}"><div class="small muted" style="margin-top:4px">0 = ei varausmaksua</div></div>
       </div>
+      <div style="border:1.5px solid #e5e7eb;border-radius:8px;padding:12px 14px;margin-top:10px;background:#f9fafb">
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#6b7280;margin-bottom:8px">📄 Laskun nimike -ylikirjoitus (valinnainen)</div>
+        <div class="small muted" style="margin-bottom:10px">Täytä jos haluat laskuttaa koko tapahtuman yhdellä kiinteällä rivillä (esim. yrityskurssi). Jätä tyhjäksi normaaliin osallistujakohtaiseen laskutukseen.</div>
+        <div class="grid2">
+          <div class="field"><label class="lbl">Nimike laskulla</label><input data-field="invoiceLabel" value="${esc(s?.invoiceLabel??\"\")}" placeholder="esim. OP Kipparit purjehtijakurssi 1–7.6.2026"></div>
+          <div class="field"><label class="lbl">Kiinteä kokonaishinta (€, sis. ALV)</label><input type="number" min="0" step="0.01" data-field="invoiceFixedGross" value="${esc(String(s?.invoiceFixedGross>0?s.invoiceFixedGross:\"\"))}" placeholder="0"><div class="small muted" style="margin-top:4px">ALV 25,5 % lasketaan automaattisesti</div></div>
+        </div>
+      </div>
       <div class="row" style="justify-content:flex-end;margin-top:16px"><button class="btn btn-primary" data-action="save-sailing">${editing?"Tallenna muutokset":"Tallenna"}</button></div>
     </div>
   </div></div>`;
@@ -3177,7 +3195,15 @@ table{width:100%;border-collapse:collapse}
   if(a==="start-combined"){const _grps=getUnbilledGroups();const _grp=_grps.find(g=>g.key===itemId);if(!_grp)return;const _co=_grp.isCompany?state.companies.find(x=>x.id===_grp.companyId):null;
     const _provPct=_co?Number(_co.commissionPct||0):0;
     const _baseItems=_grp.items.map(x=>({...x,included:true}));
-    const _editLines=_baseItems.map(x=>({id:x.customer.id+"_"+x.eventId,title:x.evName+" \u2014 "+x.customer.name,amount:x.price,custom:false}));
+    // Jos kaikki rivit kuuluvat samaan purjehdukseen jolla on invoiceOverride, käytä kiinteää riviä
+    const _evIds=[...new Set(_baseItems.map(x=>x.eventId))];
+    const _singleEv=_evIds.length===1&&_baseItems[0]?.isSailing?state.sailings.find(x=>x.id===_evIds[0]):null;
+    let _editLines;
+    if(_singleEv?.invoiceLabel&&String(_singleEv.invoiceLabel).trim()&&Number(_singleEv.invoiceFixedGross||0)>0){
+      _editLines=[{id:"override_"+_singleEv.id,title:String(_singleEv.invoiceLabel).trim(),amount:Number(_singleEv.invoiceFixedGross),custom:false}];
+    }else{
+      _editLines=_baseItems.map(x=>({id:x.customer.id+"_"+x.eventId,title:x.evName+" \u2014 "+x.customer.name,amount:x.price,custom:false}));
+    }
     if(_provPct>0){const _baseTotal=_editLines.reduce((s,l)=>s+l.amount,0);_editLines.push({id:"provisio",title:"Provisio "+_provPct.toFixed(0)+"%",amount:-Math.round(_baseTotal*_provPct/100*100)/100,custom:true,isProvisio:true});}
     state.combinedInvoice={key:_grp.key,label:_grp.label,payerLabel:_grp.payerLabel||_grp.label,osio:_grp.osio||"",isCompany:_grp.isCompany,companyId:_grp.companyId,issuer:"tmi",invoiceDate:today(),items:_baseItems,editLines:_editLines};state.modal="combined-invoice";render();return;}
       if(a==="new-tutkinto"){state.modal="tutkinto";state.editId=null;state.tutkintoDraft={};render();return;}
@@ -3271,6 +3297,8 @@ table{width:100%;border-collapse:collapse}
           reserveSlots:Math.max(0,parseInt(document.querySelector('[data-field="reserveSlots"]')?.value,10)||0),
           pricePerPerson:parseFloat(document.querySelector('[data-field="pricePerPerson"]')?.value)||0,
           reservationFee:parseFloat(document.querySelector('[data-field="reservationFee"]')?.value)||0,
+          invoiceLabel:(document.querySelector('[data-field="invoiceLabel"]')?.value||"").trim(),
+          invoiceFixedGross:parseFloat(document.querySelector('[data-field="invoiceFixedGross"]')?.value)||0,
           sessions:existing?.sessions||[],
           teoria:existing?.teoria||null
         };
