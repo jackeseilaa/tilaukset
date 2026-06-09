@@ -2131,8 +2131,8 @@ function renderSailingModal(){
         <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#6b7280;margin-bottom:8px">📄 Laskun nimike -ylikirjoitus (valinnainen)</div>
         <div class="small muted" style="margin-bottom:10px">Täytä jos haluat laskuttaa koko tapahtuman yhdellä kiinteällä rivillä (esim. yrityskurssi). Jätä tyhjäksi normaaliin osallistujakohtaiseen laskutukseen.</div>
         <div class="grid2">
-          <div class="field"><label class="lbl">Nimike laskulla</label><input data-field="invoiceLabel" value="${esc(s?.invoiceLabel??\"\")}" placeholder="esim. OP Kipparit purjehtijakurssi 1–7.6.2026"></div>
-          <div class="field"><label class="lbl">Kiinteä kokonaishinta (€, sis. ALV)</label><input type="number" min="0" step="0.01" data-field="invoiceFixedGross" value="${esc(String(s?.invoiceFixedGross>0?s.invoiceFixedGross:\"\"))}" placeholder="0"><div class="small muted" style="margin-top:4px">ALV 25,5 % lasketaan automaattisesti</div></div>
+          <div class="field"><label class="lbl">Nimike laskulla</label><input data-field="invoiceLabel" value="${esc(s?.invoiceLabel||'')}" placeholder="esim. OP Kipparit purjehtijakurssi 1–7.6.2026"></div>
+          <div class="field"><label class="lbl">Kiinteä kokonaishinta (€, sis. ALV)</label><input type="number" min="0" step="0.01" data-field="invoiceFixedGross" value="${s?.invoiceFixedGross>0?Number(s.invoiceFixedGross):''}" placeholder="0"><div class="small muted" style="margin-top:4px">ALV 25,5 % lasketaan automaattisesti</div></div>
         </div>
       </div>
       <div class="row" style="justify-content:flex-end;margin-top:16px"><button class="btn btn-primary" data-action="save-sailing">${editing?"Tallenna muutokset":"Tallenna"}</button></div>
