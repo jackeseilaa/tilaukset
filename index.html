@@ -152,6 +152,7 @@ select option{background:#ffffff;color:#111827}
 .type-Muu{background:#e4e4ec;color:#1a1a34;border:1px solid #a8a8c4;}
 .type-Teoria{background:#fff3cd;color:#78350f;border:1px solid #f59e0b;}
 .type-Tutkinto{background:#ede9fe;color:#4c1d95;border:1px solid #c4b5fd;}
+.type-blocked{background:#f3f4f6;color:#4b5563;border:1px solid #d1d5db;}
 .cal-event.multiday-start{border-left:3px solid #064a28 !important;}
 .cal-event.multiday-end{border-right:3px solid #064a28 !important;}
 .cal-event.multiday-mid{opacity:.8;}
@@ -207,7 +208,7 @@ import{getAuth,GoogleAuthProvider,signInWithPopup,signOut,onAuthStateChanged}fro
 import{getFirestore,collection,doc,addDoc,setDoc,deleteDoc,onSnapshot,serverTimestamp}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 const FIREBASE_CONFIG={apiKey:"AIzaSyB7Dp5_5fN0Iko-4Jn1D2Dp6NNNih63UO0",authDomain:"jsailing-f716c.firebaseapp.com",projectId:"jsailing-f716c",storageBucket:"jsailing-f716c.firebasestorage.app",messagingSenderId:"543523103696",appId:"1:543523103696:web:439a312efa6aec398a8fd5"};
 const ALLOWED_EMAIL="jacke.seilaa@gmail.com";
-const APP_VERSION="V9.162";const UPDATE_DATE=(()=>{const n=new Date();return n.toLocaleDateString("fi-FI")+' klo '+String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0');})();
+const APP_VERSION="V9.163";const UPDATE_DATE=(()=>{const n=new Date();return n.toLocaleDateString("fi-FI")+' klo '+String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0');})();
 const ISSUERS={
   tmi:{name:"J Sailing",businessId:"1728993-9",address:"Kontiontie 55, 11120 Riihimäki",iban:"FI62 1132 3000 4277 43",bic:"NDEAFIHH"},
   oy:{name:"AJarmo Oy",businessId:"3432355-3",address:"Kontiontie 55, 11120 Riihimäki",iban:"FI73 7997 7994 4257 05",bic:"HOLVFIHH"}
@@ -1044,6 +1045,12 @@ function renderCalendar(){
       }
     }
   }
+  // Varatut ajat kalenteriin
+  for(const b of state.blockedDays){
+    if(!b.date)continue;
+    let tl="";if(b.startTime&&b.endTime)tl=b.startTime+"–"+b.endTime;else if(b.startTime)tl="klo "+b.startTime;
+    addEv(b.date,{id:b.id,name:b.note||"Varattu",type:"blocked",timeLabel:tl,_isBlocked:true});
+  }
   // Tutkinnot kalenteriin
   for(const t of state.tutkinnot){
     if(!t.date)continue;
@@ -1066,7 +1073,8 @@ function renderCalendar(){
     const evHTML=evs.slice(0,3).map(ev=>{
       const tc="type-"+ev.type+(ev._mdClass?" "+ev._mdClass:"");
       const isTutkinto=!!ev._isTutkinto;
-      const action=isTutkinto?"dash-open":ev._isSession?"edit-session-cal":"edit-sailing";
+      const isBlocked=!!ev._isBlocked;
+      const action=isBlocked?"edit-block-day":isTutkinto?"dash-open":ev._isSession?"edit-session-cal":"edit-sailing";
       const dtype=isTutkinto?"tutkinto":"";
       const sidx=ev._isSession?String(ev._sessIdx):"";
       const booked=isTutkinto
@@ -2040,6 +2048,26 @@ function renderModal(){
   if(state.modal==="teoria")return renderTeoriaModal();
   if(state.modal==="session")return renderSessionModal();
   if(state.modal==="customer")return renderCustomerModal();
+  if(state.modal==="block-day"){
+    const bm=state.blockModal||{};
+    const editing=!!bm.editing;
+    const fmtD=bm.date?bm.date.split("-").reverse().join("."):"";
+    return`<div class="modal-overlay" data-action="close-modal"><div class="modal-box" style="max-width:420px" onclick="event.stopPropagation()">
+      <div class="modal-header"><h3 class="modal-title">🔒 ${editing?"Muokkaa varausta":"Merkitse varatuksi"}</h3><button class="modal-close" data-action="close-modal">✕</button></div>
+      <div class="modal-body" style="display:flex;flex-direction:column;gap:14px">
+        <div style="font-size:14px;color:#6b7280">📅 ${fmtD}</div>
+        <div class="field"><label class="lbl">Otsikko / syy</label><input data-field="block-note" value="${esc(bm.note||"")}" placeholder="esim. Tallinna-matka, Kokous, Varattu…" autofocus></div>
+        <div class="grid2">
+          <div class="field"><label class="lbl">Alkaa (klo)</label><input type="time" data-field="block-start" value="${esc(bm.startTime||"")}"></div>
+          <div class="field"><label class="lbl">Loppuu (klo)</label><input type="time" data-field="block-end" value="${esc(bm.endTime||"")}"></div>
+        </div>
+        <div class="row" style="justify-content:flex-end;gap:8px">
+          <button class="btn btn-secondary" data-action="close-modal">Peruuta</button>
+          <button class="btn btn-primary" data-action="${editing?"update-block-day":"save-block-day"}">${editing?"Tallenna muutokset":"Lisää merkintä"}</button>
+        </div>
+      </div>
+    </div></div>`;
+  }
   if(state.modal==="sailing")return renderSailingModal();
   if(state.modal==="company")return renderCompanyModal();
   if(state.modal==="register")return renderRegisterModal();
@@ -2745,9 +2773,38 @@ Haluatko myös avata Google Kalenterin poistaaksesi tapahtuman sieltä?`);
         if(existing){
           await fsDel("blockedDays",existing.id);
         }else{
-          const note=prompt("Varauksen syy (valinnainen):","")||"";
-          await fsAdd("blockedDays",{date,note});
+          state.blockModal={date,note:"",startTime:"",endTime:""};
+          state.modal="block-day";
+          render();
         }
+        return;
+      }
+      if(a==="save-block-day"){
+        const bm=state.blockModal||{};
+        const note=(document.querySelector('[data-field="block-note"]')?.value||"").trim();
+        const startTime=(document.querySelector('[data-field="block-start"]')?.value||"").trim();
+        const endTime=(document.querySelector('[data-field="block-end"]')?.value||"").trim();
+        if(!bm.date)return;
+        await fsAdd("blockedDays",{date:bm.date,note,startTime,endTime});
+        state.modal=null;state.blockModal=null;render();
+        return;
+      }
+      if(a==="edit-block-day"){
+        const bid=el.dataset.id;
+        const existing=state.blockedDays.find(b=>b.id===bid);
+        if(!existing)return;
+        state.blockModal={...existing,editing:true};
+        state.modal="block-day";render();
+        return;
+      }
+      if(a==="update-block-day"){
+        const bm=state.blockModal||{};
+        if(!bm.id)return;
+        const note=(document.querySelector('[data-field="block-note"]')?.value||"").trim();
+        const startTime=(document.querySelector('[data-field="block-start"]')?.value||"").trim();
+        const endTime=(document.querySelector('[data-field="block-end"]')?.value||"").trim();
+        await fsSet("blockedDays",bm.id,{date:bm.date,note,startTime,endTime});
+        state.modal=null;state.blockModal=null;render();
         return;
       }
       if(a==="print-calendar"){
