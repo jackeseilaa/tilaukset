@@ -453,8 +453,8 @@ function computeInvoice(overrideState){
   const t=isTutkinto?(state.tutkinnot.find(x=>x.id===inv.tutkintoId)||null):null;
   const invIssuer=ISSUERS[inv.issuer||"tmi"]||ISSUERS.tmi;
   const isCharter=!isTutkinto&&s?.type==="Charter";
-  const isForeign=!isTutkinto&&s?.reitti&&/viro|tallinn|ruots|saksa|gotlan|ulkom/i.test(s.reitti||"");
-  const rate=isForeign?0:isCharter?0.135:0.255;
+  const isInternational=(!!s?.kansainvalinen)||(!isTutkinto&&s?.reitti&&/viro|tallinn|ruots|saksa|gotlan|ulkom|englanti|london|dover|britt/i.test(s.reitti||""));
+  const rate=isInternational?0:isCharter?0.135:0.255;
   const ratePct=(rate*100).toFixed(1);
   const itype=inv.type||"full",isRes=itype==="reservation",isPartial=itype==="partial",isCredit=itype==="credit";
   let payerName="",payerEmail="",payerBusinessId="",lines=[],grossTotal=0,eventName="",alreadyInvoicedResFee=0;
@@ -2141,6 +2141,7 @@ function renderSailingModal(){
     <div class="modal-body">
       <div class="field"><label class="lbl">Nimi *</label><input data-field="name" value="${esc(draft.name||s?.name||"")}"></div>
       <div class="field"><label class="lbl">Reitti <span style="font-weight:400;text-transform:none;font-size:11px;color:#6b7280">(esim. Hanko–Tallinna–Helsinki)</span></label><input data-field="reitti" value="${esc(draft.reitti!==undefined?draft.reitti:(s?.reitti||""))}" placeholder="Valinnainen — näkyy kalenterissa ja Google Calendarissa"></div>
+      <div class="field" style="display:flex;align-items:center;gap:10px;margin-top:8px"><label style="display:flex;align-items:center;gap:6px;cursor:pointer;margin:0;font-weight:600;font-size:13px"><input type="checkbox" data-field="kansainvalinen" ${(draft.kansainvalinen||s?.kansainvalinen)?'checked':''} style="width:18px;height:18px;cursor:pointer;accent-color:#0a4272"> 🌍 Kansainvälinen henkilökuljetus (ALV 0%)</label></div>
       <div class="grid2">
         <div class="field"><label class="lbl">Tyyppi *</label>
           <select data-field="sailing-type-live" data-action="sailing-type-changed">
@@ -3380,6 +3381,7 @@ table{width:100%;border-collapse:collapse}
         const existing=state.editId?state.sailings.find(x=>x.id===state.editId):null;
         const data={name,date,type,
           reitti:(document.querySelector('[data-field="reitti"]')?.value||"").trim(),
+          kansainvalinen:!!document.querySelector('[data-field="kansainvalinen"]')?.checked,
           endDate:endDate||"",
           startTime,
           endTime,
