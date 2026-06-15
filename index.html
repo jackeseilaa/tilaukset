@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
 <meta name="apple-mobile-web-app-title" content="J Sailing"/>
 <meta name="theme-color" content="#0a1628"/>
-<title>J Sailing V9.170 — Hallintapaneeli</title>
+<title>J Sailing V9.171 — Hallintapaneeli</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400;1,600&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -208,7 +208,7 @@ import{getAuth,GoogleAuthProvider,signInWithPopup,signOut,onAuthStateChanged}fro
 import{getFirestore,collection,doc,addDoc,setDoc,deleteDoc,onSnapshot,serverTimestamp}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 const FIREBASE_CONFIG={apiKey:"AIzaSyB7Dp5_5fN0Iko-4Jn1D2Dp6NNNih63UO0",authDomain:"jsailing-f716c.firebaseapp.com",projectId:"jsailing-f716c",storageBucket:"jsailing-f716c.firebasestorage.app",messagingSenderId:"543523103696",appId:"1:543523103696:web:439a312efa6aec398a8fd5"};
 const ALLOWED_EMAIL="jacke.seilaa@gmail.com";
-const APP_VERSION="V9.170";const UPDATE_DATE=(()=>{const n=new Date();return n.toLocaleDateString("fi-FI")+' klo '+String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0');})();
+const APP_VERSION="V9.171";const UPDATE_DATE=(()=>{const n=new Date();return n.toLocaleDateString("fi-FI")+' klo '+String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0');})();
 const ISSUERS={
   tmi:{name:"J Sailing",businessId:"1728993-9",address:"Kontiontie 55, 11120 Riihimäki",iban:"FI62 1132 3000 4277 43",bic:"NDEAFIHH"},
   oy:{name:"AJarmo Oy",businessId:"3432355-3",address:"Kontiontie 55, 11120 Riihimäki",iban:"FI73 7997 7994 4257 05",bic:"HOLVFIHH"}
@@ -1717,6 +1717,7 @@ function getUnbilledGroups(filterEventId){
   const expectedPrice=c.priceOverride!=null&&c.priceOverride!==""?Number(c.priceOverride):(ev?Number(ev.pricePerPerson||0):0);
   const directMatch=state.invoices.some(x=>
    (x.coveredCustomerIds&&x.coveredCustomerIds.includes(c.id))||
+   (x.customerId&&x.customerId===c.id)||
    (x.customerId===c.id&&x.eventId===eventId)||
    (x.mode==="customer-company"&&x.eventId===eventId&&(x.lines||[]).some(l=>(l.title||"").includes(c.name)))
   );
@@ -3532,30 +3533,52 @@ if(a==="save-combined-invoice"){
         const csv=[hdr,...lines].join("\n");const blob=new Blob([csv],{type:"text/csv;charset=utf-8"});const url=URL.createObjectURL(blob);const a2=document.createElement("a");a2.href=url;a2.download=`laskurekisteri_${month}.csv`;a2.click();URL.revokeObjectURL(url);return;
       }
       if(a==="export-women-unbilled-csv"){
-        // Laskuttamattomat joiden maksaja on "Naispurjehtijat"-niminen yritys tai asiakas,
-        // ja purjehduksen päivä on valitussa kuukaudessa
+        // ROBUSTI Naispurjehtijat-CSV (v9.171):
+        // Tunnistaa naispurjehtija-tapahtumat nimen/tyypin TAI yrityskytköksen perusteella,
+        // ei pelkän asiakaskohtaisen billTo=company -asetuksen perusteella.
         const targetMonth=document.querySelector("#women-csv-month")?.value||"";
-        if(!targetMonth){alert("Valitse ensin kuukausi!");return;}
-        const groups=getUnbilledGroups("");
-        // Suodatetaan ryhmät joiden label sisältää "naispurjehtijat" (case-insensitive)
-        const wGroups=groups.filter(g=>(g.label||"").toLowerCase().includes("naispurjehtijat"));
-        // Suodatetaan tapahtumat joiden pvm on valitussa kuukaudessa
+        if(!targetMonth){alert("Valitse ensin kuukausi (esim. 2026-06)!");return;}
+        // 1) Naispurjehtija-yritysten id:t (jos asiakas on kytketty yritykseen)
+        const womenCompanyIds=(state.companies||[]).filter(co=>/naispurjeh/i.test(co.name||"")).map(co=>co.id);
+        // 2) Luotettava laskutettu-tarkistus: kattaa sekä yksittäis- että yhdistetyt laskut
+        const isInvoiced=(c)=>state.invoices.some(x=>
+          (x.coveredCustomerIds&&x.coveredCustomerIds.includes(c.id))||
+          (x.customerId&&x.customerId===c.id)
+        );
+        // 3) Onko tapahtuma naispurjehtija-tapahtuma?
+        const womenRe=/naps|nais|iltapurjeh/i;
+        const monthSailings=(state.sailings||[]).filter(s=>(s.date||"").slice(0,7)===targetMonth);
         const matchItems=[];
-        for(const g of wGroups){
-          for(const item of g.items){
-            if((item.evDate||"").slice(0,7)===targetMonth){
-              matchItems.push({payerLabel:g.label,customerName:item.customer.name,email:item.customer.email||"",phone:item.customer.phone||"",evName:item.evName,evDate:item.evDate,price:item.price,osio:item.osio||""});
-            }
+        const diag=[];
+        for(const s of monthSailings){
+          const parts=state.customers.filter(c=>c.sailingId===s.id);
+          const nameMatch=womenRe.test(s.name||"")||womenRe.test(s.reitti||"")||/iltapurjeh/i.test(s.type||"");
+          const hasWomenCompanyPart=parts.some(c=>c.billTo==="company"&&womenCompanyIds.includes(c.companyId));
+          const isWomenEvent=nameMatch||hasWomenCompanyPart;
+          if(!isWomenEvent)continue;
+          let unbilledCount=0;
+          for(const c of parts){
+            if(isInvoiced(c))continue;
+            unbilledCount++;
+            const expectedPrice=c.priceOverride!=null&&c.priceOverride!==""?Number(c.priceOverride):Number(s.pricePerPerson||0);
+            const payerLabel=c.billTo==="company"?(state.companies.find(co=>co.id===c.companyId)?.name||c.name):c.name;
+            matchItems.push({payerLabel,customerName:c.name,email:c.email||"",phone:c.phone||"",evName:s.name||s.type||"",evDate:s.date||"",price:expectedPrice,osio:c.laskutusosio||""});
           }
+          diag.push(`• ${fmtDate(s.date)} ${s.name||s.type} — ${parts.length} osall., ${unbilledCount} laskuttamatonta`);
         }
-        if(!matchItems.length){alert(`Ei laskuttamattomia Naispurjehtijat-tapahtumia kuukaudessa ${targetMonth}.`);return;}
+        if(!matchItems.length){alert(`Ei laskuttamattomia Naispurjehtijat-osallistujia kuukaudessa ${targetMonth}.\n\nLäpikäydyt tapahtumat:\n${diag.join("\n")||"(ei naispurjehtija-tapahtumia tässä kuussa)"}`);return;}
+        // Järjestä päivän mukaan
+        matchItems.sort((a,b)=>(a.evDate||"").localeCompare(b.evDate||""));
         const sep=";";
         const hdr2=["Maksaja","Osallistuja","Sähköposti","Puhelin","Tapahtuma","Päivä","Hinta (€)","Osio"].join(sep);
-        const lines2=matchItems.map(x=>[x.payerLabel,x.customerName,x.email,x.phone,x.evName,x.evDate,String(x.price.toFixed(2)).replace(".",","),x.osio].map(v=>`"${String(v).replace(/"/g,'""')}"`).join(sep));
+        const lines2=matchItems.map(x=>[x.payerLabel,x.customerName,x.email,x.phone,x.evName,x.evDate,String(Number(x.price).toFixed(2)).replace(".",","),x.osio].map(v=>`"${String(v).replace(/"/g,'""')}"`).join(sep));
         const csv2=[hdr2,...lines2].join("\n");
         const blob2=new Blob(["\uFEFF"+csv2],{type:"text/csv;charset=utf-8"});
-        const url2=URL.createObjectURL(blob2);const a3=document.createElement("a");a3.href=url2;a3.download=`naispurjehtijat_laskuttamattomat_${targetMonth}.csv`;a3.click();URL.revokeObjectURL(url2);return;
+        const url2=URL.createObjectURL(blob2);const a3=document.createElement("a");a3.href=url2;a3.download=`naispurjehtijat_laskuttamattomat_${targetMonth}.csv`;a3.click();URL.revokeObjectURL(url2);
+        alert(`✓ ${matchItems.length} laskuttamatonta osallistujaa (${targetMonth}).\n\nTapahtumat:\n${diag.join("\n")}`);
+        return;
       }
+
       if(a==="print-and-save"){
   const inv2=computeInvoice();
   if(!inv2.isTutkinto&&!inv2.sailing)return alert("Valitse tapahtuma.");
