@@ -1209,7 +1209,18 @@ function renderInvoicing(){
   const source=state.invoice.source||"sailing",isTutkinto=source==="tutkinto";
   const editingInv=state.editInvoiceId?state.invoices.find(x=>x.id===state.editInvoiceId):null;
   const inv=computeInvoice();
-  const evOpts=state.sailings.slice().sort((a,b)=>(a.date||"").localeCompare(b.date||"")).map(x=>{const hasSess=x.type==="Kurssi"&&Array.isArray(x.sessions)&&x.sessions.length>0;const firstD=hasSess?x.sessions.slice().sort((a,b)=>(a.date||"").localeCompare(b.date||""))[0]?.date:x.date;const lastD=hasSess?x.sessions.slice().sort((a,b)=>(b.date||"").localeCompare(a.date||""))[0]?.date:x.endDate||x.date;const dLabel=hasSess&&firstD&&lastD&&firstD!==lastD?fmtDate(firstD)+"–"+fmtDate(lastD):fmtDate(x.date);return`<option value="${x.id}" ${x.id===state.invoice.sailingId?"selected":""}>${esc(x.name)} (${dLabel})</option>`;}).join("");
+// Dynaamisesti suodatetut purjehdukset — näytä vain valitun asiakkaan purjehdukset
+  const selectedCustomerId=state.invoice.customerId;
+  const customerSailings=selectedCustomerId
+    ?state.customers
+        .filter(c=>c.id===selectedCustomerId)
+        .flatMap(c=>c.sailingId?[c.sailingId]:[])
+        .filter((v,i,a)=>a.indexOf(v)===i) // deduplicate
+    :[];
+  const sailingsToShow=selectedCustomerId&&customerSailings.length>0
+    ?state.sailings.filter(s=>customerSailings.includes(s.id))
+    :state.sailings;
+  const evOpts=sailingsToShow.slice().sort((a,b)=>(a.date||"").localeCompare(b.date||"")).map(x=>{const hasSess=x.type==="Kurssi"&&Array.isArray(x.sessions)&&x.sessions.length>0;const firstD=hasSess?x.sessions.slice().sort((a,b)=>(a.date||"").localeCompare(b.date||""))[0]?.date:x.date;const lastD=hasSess?x.sessions.slice().sort((a,b)=>(b.date||"").localeCompare(a.date||""))[0]?.date:x.endDate||x.date;const dLabel=hasSess&&firstD&&lastD&&firstD!==lastD?fmtDate(firstD)+"–"+fmtDate(lastD):fmtDate(x.date);return`<option value="${x.id}" ${x.id===state.invoice.sailingId?"selected":""}>${esc(x.name)} (${dLabel})</option>`;}).join("");
   const tutkintoOpts=state.tutkinnot.slice().sort((a,b)=>(b.date||"").localeCompare(a.date||"")).map(x=>`<option value="${x.id}" ${x.id===state.invoice.tutkintoId?"selected":""}>${esc(x.type)}${x.boatType?" ("+esc(x.boatType)+")":""} — ${esc(x.customerName)} — ${fmtDate(x.date)}</option>`).join("");
   const custOpts=state.customers.slice().sort((a,b)=>(a.name||"").localeCompare(b.name||"")).map(x=>`<option value="${x.id}" ${x.id===state.invoice.customerId?"selected":""}>${esc(x.name)}</option>`).join("");
   const coOpts=state.companies.slice().sort((a,b)=>(a.name||"").localeCompare(b.name||"")).map(x=>`<option value="${x.id}" ${x.id===state.invoice.companyId?"selected":""}>${esc(x.name)}</option>`).join("");
