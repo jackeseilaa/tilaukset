@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
 <meta name="apple-mobile-web-app-title" content="J Sailing"/>
 <meta name="theme-color" content="#0a1628"/>
-<title>J Sailing V9.168 — Hallintapaneeli</title>
+<title>J Sailing V9.169 — Hallintapaneeli</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400;1,600&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -208,7 +208,7 @@ import{getAuth,GoogleAuthProvider,signInWithPopup,signOut,onAuthStateChanged}fro
 import{getFirestore,collection,doc,addDoc,setDoc,deleteDoc,onSnapshot,serverTimestamp}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 const FIREBASE_CONFIG={apiKey:"AIzaSyB7Dp5_5fN0Iko-4Jn1D2Dp6NNNih63UO0",authDomain:"jsailing-f716c.firebaseapp.com",projectId:"jsailing-f716c",storageBucket:"jsailing-f716c.firebasestorage.app",messagingSenderId:"543523103696",appId:"1:543523103696:web:439a312efa6aec398a8fd5"};
 const ALLOWED_EMAIL="jacke.seilaa@gmail.com";
-const APP_VERSION="V9.168";const UPDATE_DATE=(()=>{const n=new Date();return n.toLocaleDateString("fi-FI")+' klo '+String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0');})();
+const APP_VERSION="V9.169";const UPDATE_DATE=(()=>{const n=new Date();return n.toLocaleDateString("fi-FI")+' klo '+String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0');})();
 const ISSUERS={
   tmi:{name:"J Sailing",businessId:"1728993-9",address:"Kontiontie 55, 11120 Riihimäki",iban:"FI62 1132 3000 4277 43",bic:"NDEAFIHH"},
   oy:{name:"AJarmo Oy",businessId:"3432355-3",address:"Kontiontie 55, 11120 Riihimäki",iban:"FI73 7997 7994 4257 05",bic:"HOLVFIHH"}
@@ -1725,8 +1725,10 @@ function getUnbilledGroups(filterEventId){
   const totalInvoiced=directMatch?expectedPrice:state.invoices.filter(x=>
    (x.payerName===payerMatch&&x.eventId===eventId&&(x.laskutusosio||"")===osio)
   ).reduce((s,x)=>s+Number(x.grossTotal||0),0);
-  const fullyInvoiced=directMatch||(expectedPrice>0?totalInvoiced>=expectedPrice:totalInvoiced>0);
+  const hasAssignment=!!c.sailingId||!!c.tutkintoId;
+  const fullyInvoiced=directMatch||(expectedPrice>0?totalInvoiced>=expectedPrice:false);
   if(fullyInvoiced)continue;
+  if(!hasAssignment)continue;
   const price=c.priceOverride!=null&&c.priceOverride!==""?Number(c.priceOverride):(isSailing?Number(ev.pricePerPerson||0):Number(ev.pricePerPerson||0));
   const evName=isSailing
    ?(ev.name||"")
