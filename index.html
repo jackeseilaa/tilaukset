@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
 <meta name="apple-mobile-web-app-title" content="J Sailing"/>
 <meta name="theme-color" content="#0a1628"/>
-<title>J Sailing V9.172 — Hallintapaneeli</title>
+<title>J Sailing V9.173 — Hallintapaneeli</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400;1,600&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -208,7 +208,7 @@ import{getAuth,GoogleAuthProvider,signInWithPopup,signOut,onAuthStateChanged}fro
 import{getFirestore,collection,doc,addDoc,setDoc,deleteDoc,onSnapshot,serverTimestamp}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 const FIREBASE_CONFIG={apiKey:"AIzaSyB7Dp5_5fN0Iko-4Jn1D2Dp6NNNih63UO0",authDomain:"jsailing-f716c.firebaseapp.com",projectId:"jsailing-f716c",storageBucket:"jsailing-f716c.firebasestorage.app",messagingSenderId:"543523103696",appId:"1:543523103696:web:439a312efa6aec398a8fd5"};
 const ALLOWED_EMAIL="jacke.seilaa@gmail.com";
-const APP_VERSION="V9.172";const UPDATE_DATE=(()=>{const n=new Date();return n.toLocaleDateString("fi-FI")+' klo '+String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0');})();
+const APP_VERSION="V9.173";const UPDATE_DATE=(()=>{const n=new Date();return n.toLocaleDateString("fi-FI")+' klo '+String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0');})();
 const ISSUERS={
   tmi:{name:"J Sailing",businessId:"1728993-9",address:"Kontiontie 55, 11120 Riihimäki",iban:"FI62 1132 3000 4277 43",bic:"NDEAFIHH"},
   oy:{name:"AJarmo Oy",businessId:"3432355-3",address:"Kontiontie 55, 11120 Riihimäki",iban:"FI73 7997 7994 4257 05",bic:"HOLVFIHH"}
@@ -3630,7 +3630,7 @@ if(a==="print"){const _inv=computeInvoice();if(_inv&&_inv.grossTotal!==undefined
         const area=document.getElementById("reg-print-area");
         if(!area)return;
         const win=window.open("","_blank","width=1000,height=750");
-        win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Kirjanpitoraportti</title><link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Outfit:wght@400;600;700;800&display=swap" rel="stylesheet"><style>
+        win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Kirjanpitoraportti</title><link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Outfit:wght@400;600;700;800&display=swap" rel="stylesheet"><style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Outfit',sans-serif;font-size:11px;color:#111;padding:28px;max-width:960px;margin:0 auto}
 .table{width:100%;border-collapse:collapse}
@@ -3646,10 +3646,13 @@ body{font-family:'Outfit',sans-serif;font-size:11px;color:#111;padding:28px;max-
 .infobox-blue{background:#dbeafe;color:#1e3a8a;border:1px solid #93c5fd;padding:8px 12px;border-radius:8px}
 .small{font-size:9px}.muted{color:#6b7280}
 .noPrint{display:none}
+.back-bar{display:flex;gap:10px;margin-bottom:18px;flex-wrap:wrap}
+.back-btn{background:#0a4272;color:#fff;border:none;border-radius:8px;padding:10px 20px;font-size:14px;font-weight:700;cursor:pointer;font-family:Outfit,sans-serif}
+.print-btn{background:#16a34a;color:#fff;border:none;border-radius:8px;padding:10px 20px;font-size:14px;font-weight:700;cursor:pointer;font-family:Outfit,sans-serif}
 hr{border-top:1.5px solid #e5e7eb;margin:10px 0}
 @page{margin:15mm;size:A4}
-@media print{.noPrint{display:none}body{padding:0}}
-</style></head><body>`+area.innerHTML+`</body></html>`);
+@media print{.noPrint{display:none}.back-bar{display:none}body{padding:0}}
+</style></head><body>`+`<div class=\"back-bar\"><button class=\"back-btn\" onclick=\"window.close()\">\u2190 Takaisin sovellukseen</button><button class=\"print-btn\" onclick=\"window.print()\">\U0001f5a8 Tulosta</button></div>`+area.innerHTML+`</body></html>`);
         win.document.close();
         setTimeout(()=>{win.focus();win.print();},500);
         return;
