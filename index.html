@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
 <meta name="apple-mobile-web-app-title" content="J Sailing"/>
 <meta name="theme-color" content="#0a1628"/>
-<title>J Sailing V9.173 — Hallintapaneeli</title>
+<title>J Sailing V9.174 — Hallintapaneeli</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400;1,600&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -208,7 +208,7 @@ import{getAuth,GoogleAuthProvider,signInWithPopup,signOut,onAuthStateChanged}fro
 import{getFirestore,collection,doc,addDoc,setDoc,deleteDoc,onSnapshot,serverTimestamp}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 const FIREBASE_CONFIG={apiKey:"AIzaSyB7Dp5_5fN0Iko-4Jn1D2Dp6NNNih63UO0",authDomain:"jsailing-f716c.firebaseapp.com",projectId:"jsailing-f716c",storageBucket:"jsailing-f716c.firebasestorage.app",messagingSenderId:"543523103696",appId:"1:543523103696:web:439a312efa6aec398a8fd5"};
 const ALLOWED_EMAIL="jacke.seilaa@gmail.com";
-const APP_VERSION="V9.173";const UPDATE_DATE=(()=>{const n=new Date();return n.toLocaleDateString("fi-FI")+' klo '+String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0');})();
+const APP_VERSION="V9.174";const UPDATE_DATE=(()=>{const n=new Date();return n.toLocaleDateString("fi-FI")+' klo '+String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0');})();
 const ISSUERS={
   tmi:{name:"J Sailing",businessId:"1728993-9",address:"Kontiontie 55, 11120 Riihimäki",iban:"FI62 1132 3000 4277 43",bic:"NDEAFIHH"},
   oy:{name:"AJarmo Oy",businessId:"3432355-3",address:"Kontiontie 55, 11120 Riihimäki",iban:"FI73 7997 7994 4257 05",bic:"HOLVFIHH"}
@@ -663,9 +663,120 @@ function renderTopBar(){
   </div>`;
 }
 function renderNavTabs(){
-  const tabs=[["dashboard","🧭 Dashboard"],["calendar","📅 Kalenteri"],["sailings","⛵ Purjehdukset"],["muuttuotteet","📦 Muut tuotteet"],["customers","👤 Asiakkaat"],["companies","🏢 Yritykset"],["invoicing","🧾 Laskutus"],["reskontra","📊 Reskontra"],["kyselyt","📋 Kyselyt"]];
+  const tabs=[["dashboard","🧭 Dashboard"],["calendar","📅 Kalenteri"],["sailings","⛵ Purjehdukset"],["muuttuotteet","📦 Muut tuotteet"],["customers","👤 Asiakkaat"],["companies","🏢 Yritykset"],["invoicing","🧾 Laskutus"],["reskontra","📊 Reskontra"],["tasmaytys","🔍 Täsmäytys"],["kyselyt","📋 Kyselyt"]];
   return`<nav class="nav-tabs">${tabs.map(([id,label])=>`<button class="nav-tab ${state.tab===id?"active":""}" data-tab="${id}">${label}</button>`).join("")}</nav>`;
 }
+/* ===== Henkilo- ja tasmaytyslogiikka (V9.174) ===== */
+function custIdentityKey(c){
+  const e=(c.email||"").trim().toLowerCase();if(e)return"e:"+e;
+  const p=(c.phone||"").replace(/\D/g,"");if(p)return"p:"+p;
+  return"n:"+((c.name||"").trim().toLowerCase());
+}
+function custEventLabel(c){
+  if(c.sailingId){const s=state.sailings.find(x=>x.id===c.sailingId);return s?(s.name||"Purjehdus"):"(poistettu purjehdus)";}
+  if(c.tutkintoId){const t=state.tutkinnot.find(x=>x.id===c.tutkintoId);return t?((t.type||"Tutkinto")+(t.boatType?" ("+t.boatType+")":"")):"(poistettu tutkinto)";}
+  return "\u2014";
+}
+function custEventDate(c){
+  if(c.sailingId){const s=state.sailings.find(x=>x.id===c.sailingId);return s?(s.date||""):"";}
+  if(c.tutkintoId){const t=state.tutkinnot.find(x=>x.id===c.tutkintoId);return t?(t.date||""):"";}
+  return "";
+}
+function custExpectedPrice(c){
+  if(c.priceOverride!=null&&c.priceOverride!=="")return Number(c.priceOverride)||0;
+  if(c.sailingId){const s=state.sailings.find(x=>x.id===c.sailingId);return s?Number(s.pricePerPerson||0):0;}
+  return 0;
+}
+function custInvoices(c){
+  const eid=c.sailingId||c.tutkintoId||"";
+  return state.invoices.filter(x=>
+    (Array.isArray(x.coveredCustomerIds)&&x.coveredCustomerIds.includes(c.id))||
+    (x.payerName&&x.payerName===c.name&&eid&&(x.eventId===eid||x.eventId==="COMBINED"))
+  );
+}
+function custCoveredById(c){return state.invoices.some(x=>Array.isArray(x.coveredCustomerIds)&&x.coveredCustomerIds.includes(c.id));}
+function courseInvoices(sid){return state.invoices.filter(x=>x.eventId===sid);}
+function custInvoiceState(c){
+  const invs=custInvoices(c);
+  if(!invs.length)return"none";
+  const gross=invs.reduce((s,x)=>s+Number(x.grossTotal||0),0);
+  const exp=custExpectedPrice(c);
+  if(exp>0&&gross+0.5<exp)return"partial";
+  return"invoiced";
+}
+function renderTasmaytys(){
+  const cs=state.customers,invs=state.invoices;
+  const persons=new Set(cs.map(custIdentityKey)).size;
+  const laskutettu=invs.reduce((s,x)=>s+Number(x.grossTotal||0),0);
+  const maksettu=invs.filter(x=>x.paid).reduce((s,x)=>s+Number(x.grossTotal||0),0);
+  const avoin=invs.filter(x=>!x.paid).reduce((s,x)=>s+Number(x.grossTotal||0),0);
+  const uncovered=cs.filter(c=>custInvoiceState(c)==="none");
+  const custIds=new Set(cs.map(c=>c.id));
+  const orphans=invs.filter(x=>Array.isArray(x.coveredCustomerIds)&&x.coveredCustomerIds.length&&x.coveredCustomerIds.some(id=>!custIds.has(id)));
+  const byName=new Map();
+  for(const c of cs){const nm=(c.name||"").trim().toLowerCase();if(!nm)continue;if(!byName.has(nm))byName.set(nm,new Set());byName.get(nm).add(custIdentityKey(c));}
+  const dups=Array.from(byName.entries()).filter(e=>e[1].size>1);
+  const unpaid=invs.filter(x=>!x.paid).sort((a,b)=>(a.invoiceDate||"").localeCompare(b.invoiceDate||""));
+  const courses=state.sailings.slice().sort((a,b)=>(b.date||"").localeCompare(a.date||""));
+
+  const summary=`<div class="card"><div class="card-title">\u{1F50D} Laskutuksen t\u00e4sm\u00e4ytys</div>
+    <div class="card-sub">Tarkistaa asiakasrekisterin ja reskontran v\u00e4liset ristiriidat. Lue-vain \u2014 ei muuta dataa ilman erillist\u00e4 klikkausta.</div>
+    <div class="hr"></div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px">
+     <div class="stat-card"><div class="stat-label">Henkil\u00f6it\u00e4</div><div class="stat-val">${persons}</div></div>
+     <div class="stat-card"><div class="stat-label">Osallistumisia</div><div class="stat-val">${cs.length}</div></div>
+     <div class="stat-card"><div class="stat-label">Laskuja</div><div class="stat-val">${invs.length}</div></div>
+     <div class="stat-card"><div class="stat-label">Laskutettu</div><div class="stat-val" style="font-size:18px">${laskutettu.toFixed(0)} \u20ac</div></div>
+     <div class="stat-card"><div class="stat-label">Maksettu</div><div class="stat-val" style="font-size:18px;color:#166534">${maksettu.toFixed(0)} \u20ac</div></div>
+     <div class="stat-card"><div class="stat-label">Avoinna</div><div class="stat-val" style="font-size:18px;color:${avoin>0?"#991b1b":"#166534"}">${avoin.toFixed(0)} \u20ac</div></div>
+    </div></div>`;
+
+  const courseCards=courses.map(s=>{
+    const parts=cs.filter(c=>c.sailingId===s.id);
+    const cinvs=courseInvoices(s.id);
+    const combined=invs.filter(x=>x.eventId==="COMBINED"&&Array.isArray(x.coveredCustomerIds)&&parts.some(p=>x.coveredCustomerIds.includes(p.id)));
+    const allInvs=[...cinvs,...combined.filter(x=>!cinvs.includes(x))];
+    if(!parts.length&&!allInvs.length)return"";
+    const exp=parts.reduce((sum,c)=>sum+custExpectedPrice(c),0);
+    const invSum=allInvs.reduce((sum,x)=>sum+Number(x.grossTotal||0),0);
+    const coveredN=parts.filter(custCoveredById).length;
+    const uncoveredN=parts.length-coveredN;
+    let flagColor="#166534",flagTxt="\u2705 Kunnossa";
+    if(parts.length===0&&allInvs.length){flagColor="#b45309";flagTxt="\u26A0\uFE0F Lasku olemassa, ei osallistujia rekisteriss\u00e4";}
+    else if(uncoveredN>0&&allInvs.length){flagColor="#b45309";flagTxt=`\u26A0\uFE0F ${uncoveredN} osallistujaa ei katettu \u2014 liit\u00e4 kurssilasku alta`;}
+    else if(uncoveredN>0){flagColor="#991b1b";flagTxt=`\u26A0\uFE0F ${uncoveredN} osallistujaa ilman laskua`;}
+    const invList=allInvs.length?allInvs.map(x=>`<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 8px;background:#f8fafc;border-radius:6px;margin-top:4px">
+        <div class="small"><strong style="color:#0a4272">${esc(x.invoiceNo||"")}</strong> \u00b7 ${esc(x.eventId==="COMBINED"?"Yhdistetty":"Kurssilasku")} \u00b7 ${Number(x.grossTotal||0).toFixed(0)} \u20ac \u00b7 ${x.paid?'<span style="color:#16a34a">\u2713 maksettu</span>':'<span style="color:#dc2626">avoin</span>'} \u00b7 kattaa ${(x.coveredCustomerIds||[]).length} id</div>
+        ${parts.length?`<button class="btn btn-teal btn-sm" data-action="cover-course" data-sid="${s.id}" data-inv="${x.id}">Kattaa kaikki ${parts.length}</button>`:""}
+      </div>`).join(""):`<div class="muted small" style="margin-top:4px">Ei laskuja t\u00e4lle kurssille.</div>`;
+    return`<div class="item" style="flex-direction:column;align-items:stretch;border-left:4px solid ${flagColor}">
+      <div class="row-between"><div><h3>${esc(s.name||"")} ${s.date?`<span class="muted small">${esc(fi(s.date))}</span>`:""}</h3>
+       <div class="meta small" style="color:${flagColor};font-weight:700">${flagTxt}</div></div>
+       <div class="r small" style="text-align:right;white-space:nowrap">${parts.length} osall. \u00b7 odotettu ${exp.toFixed(0)} \u20ac<br>laskutettu ${invSum.toFixed(0)} \u20ac${exp>0?` \u00b7 ${Math.abs(invSum-exp)<1?'t\u00e4sm\u00e4\u00e4':(invSum<exp?`vaje ${(exp-invSum).toFixed(0)} \u20ac`:`yli ${(invSum-exp).toFixed(0)} \u20ac`)}`:""}</div>
+      </div>${invList}</div>`;
+  }).filter(Boolean).join("");
+
+  const coursesCard=`<div class="card"><div class="card-title">\u26F5 Kurssi-/purjehdust\u00e4sm\u00e4ytys</div>
+    <div class="card-sub">Vertaa kunkin kurssin osallistujia ja laskuja. OP Kipparit -tyyppinen kokonaislasku: paina "Kattaa kaikki" niin osallistujat n\u00e4kyv\u00e4t laskutettuina.</div>
+    <div class="hr"></div>${courseCards||'<div class="muted">Ei kursseja.</div>'}</div>`;
+
+  const uncCard=`<div class="card"><div class="card-title">\u26A0\uFE0F Osallistujat ilman laskua <span class="badge ${uncovered.length?'badge-red':'badge-green'}" style="font-size:11px">${uncovered.length}</span></div>
+    <div class="hr"></div>${uncovered.length===0?'<div class="muted">Kaikki osallistumiset on laskutettu tai katettu. \u2705</div>':`<table class="table"><thead><tr><th>Nimi</th><th>Tapahtuma</th><th>Pvm</th><th class="r">Odotettu</th><th></th></tr></thead><tbody>${uncovered.slice().sort((a,b)=>(custEventDate(b)||"").localeCompare(custEventDate(a)||"")).map(c=>`<tr><td>${esc(c.name||"")}</td><td class="small">${esc(custEventLabel(c))}</td><td class="small muted">${esc(fi(custEventDate(c)))}</td><td class="r">${custExpectedPrice(c).toFixed(0)} \u20ac</td><td><button class="btn btn-secondary btn-sm" data-action="customer-detail" data-id="${c.id}">N\u00e4yt\u00e4</button></td></tr>`).join("")}</tbody></table>`}</div>`;
+
+  const dupCard=`<div class="card"><div class="card-title">\u{1F501} Mahdolliset tuplahenkil\u00f6t <span class="badge ${dups.length?'badge-amber':'badge-green'}" style="font-size:11px">${dups.length}</span></div>
+    <div class="card-sub">Sama nimi, mutta eri yhteystiedot (s\u00e4hk\u00f6posti/puhelin) \u2014 voivat olla sama henkil\u00f6 tai eri henkil\u00f6t.</div>
+    <div class="hr"></div>${dups.length===0?'<div class="muted">Ei havaittuja tuplia. \u2705</div>':dups.map(e=>`<div class="item" style="padding:8px 10px"><div><strong>${esc(e[0])}</strong> <span class="muted small">${e[1].size} eri yhteystietoa</span></div></div>`).join("")}</div>`;
+
+  const orphCard=`<div class="card"><div class="card-title">\u{1F9FE} Orpolaskut <span class="badge ${orphans.length?'badge-red':'badge-green'}" style="font-size:11px">${orphans.length}</span></div>
+    <div class="card-sub">Lasku viittaa poistettuun asiakkaaseen (coveredCustomerIds).</div>
+    <div class="hr"></div>${orphans.length===0?'<div class="muted">Ei orpolaskuja. \u2705</div>':`<table class="table"><thead><tr><th>Nro</th><th>Pvm</th><th>Maksaja</th><th class="r">Summa</th><th></th></tr></thead><tbody>${orphans.map(x=>`<tr><td>${esc(x.invoiceNo||"")}</td><td class="small">${esc(x.invoiceDate||"")}</td><td class="small">${esc(x.payerName||"")}</td><td class="r">${Number(x.grossTotal||0).toFixed(2)} \u20ac</td><td><button class="btn btn-secondary btn-sm" data-action="preview-invoice" data-id="${x.id}">Avaa</button></td></tr>`).join("")}</tbody></table>`}</div>`;
+
+  const unpaidCard=`<div class="card"><div class="card-title">\u{1F4B8} Avoimet laskut <span class="badge ${unpaid.length?'badge-amber':'badge-green'}" style="font-size:11px">${unpaid.length}</span></div>
+    <div class="hr"></div>${unpaid.length===0?'<div class="muted">Ei avoimia laskuja. \u2705</div>':`<table class="table"><thead><tr><th>Nro</th><th>Pvm</th><th>Maksaja</th><th class="r">Summa</th><th></th></tr></thead><tbody>${unpaid.map(x=>`<tr><td>${esc(x.invoiceNo||"")}</td><td class="small">${esc(x.invoiceDate||"")}</td><td class="small">${esc(x.payerName||"")}</td><td class="r" style="font-weight:700">${Number(x.grossTotal||0).toFixed(2)} \u20ac</td><td><button class="btn btn-secondary btn-sm" data-action="preview-invoice" data-id="${x.id}">Avaa</button></td></tr>`).join("")}</tbody></table>`}</div>`;
+
+  return summary+coursesCard+uncCard+dupCard+orphCard+unpaidCard;
+}
+
 function renderTab(){
   if(state.tab==="dashboard")return renderDashboard();
   if(state.tab==="calendar")return renderCalendar();
@@ -674,6 +785,7 @@ function renderTab(){
   if(state.tab==="companies")return renderCompanies();
   if(state.tab==="invoicing")return renderInvoicing();
   if(state.tab==="reskontra")return renderReskontra();
+  if(state.tab==="tasmaytys")return renderTasmaytys();
   if(state.tab==="muuttuotteet")return renderMuutTuotteet();
   if(state.tab==="kyselyt")return renderKyselyt();
   return"";
@@ -1191,10 +1303,52 @@ function renderSailings(){
 }
 function renderCustomers(){
   const term=(state.searchCustomers||"").toLowerCase();
-  const list=state.customers.slice().sort((a,b)=>{const o={pending:0,reserve:1,paid:2};return(o[a.reservationStatus]??1)-(o[b.reservationStatus]??1)||(a.name||"").localeCompare(b.name||"");}).filter(c=>!term||(c.name||"").toLowerCase().includes(term)||(c.phone||"").toLowerCase().includes(term)||(c.email||"").toLowerCase().includes(term));
-  return`<div class="card"><div class="row-between"><div><div class="card-title">Asiakkaat</div><div class="card-sub">🔴 Varausmaksu odottaa · 🟢 Vahvistettu · 🟡 Varapaikka</div></div><button class="btn btn-primary" data-action="new-customer">+ Uusi asiakas</button></div>
-    <div class="hr"></div><div class="field"><label class="lbl">Haku</label><input data-action="search-customers" value="${esc(state.searchCustomers)}" placeholder="Hae nimellä, puhelimella tai sähköpostilla…"></div>
-    ${list.length===0?`<div class="muted">Ei osumia.</div>`:`${list.map(c=>{const s=state.sailings.find(x=>x.id===c.sailingId),co=state.companies.find(x=>x.id===c.companyId);const st=c.reservationStatus||"pending",dc=st==="paid"?"dot-green":st==="reserve"?"dot-amber":"dot-red";return`<div class="item"><div style="display:flex;gap:10px;flex:1;align-items:flex-start"><span class="dot ${dc}" style="margin-top:6px;flex-shrink:0"></span><div><h3>${esc(c.name||"")}${s?`<span class="pill">${esc(s.name)}</span>`:""}</h3><div class="meta">${statusBadge(st)}</div><div class="meta">${c.email?`<a href="mailto:${esc(c.email)}" style="color:#1e40af">${esc(c.email)}</a>`:""}${c.email&&c.phone?" · ":""}${esc(c.phone||"")}${co&&c.billTo==="company"?` · <span class="badge badge-silver">${esc(co.name)}</span>`:""}</div></div></div><div class="row" style="flex-shrink:0;align-items:flex-start">${st==="pending"?`<button class="btn btn-teal btn-sm" data-action="confirm-payment" data-id="${c.id}">✓ Maksettu</button>`:""}<button class="btn btn-primary btn-sm" data-action="customer-detail" data-id="${c.id}">Näytä</button><button class="btn btn-secondary btn-sm" data-action="edit-customer" data-id="${c.id}">Muokkaa</button><button class="btn btn-danger btn-sm" data-action="delete-customer" data-id="${c.id}">Poista</button></div></div>`;}).join("")}`}
+  const groups=new Map();
+  for(const c of state.customers){
+    const k=custIdentityKey(c);
+    if(!groups.has(k))groups.set(k,{key:k,name:"",phone:"",email:"",items:[]});
+    const g=groups.get(k);g.items.push(c);
+    if(c.name&&c.name.length>g.name.length)g.name=c.name;
+    if(!g.email&&c.email)g.email=c.email;
+    if(!g.phone&&c.phone)g.phone=c.phone;
+  }
+  let persons=Array.from(groups.values()).filter(p=>!term||(p.name||"").toLowerCase().includes(term)||(p.phone||"").toLowerCase().includes(term)||(p.email||"").toLowerCase().includes(term));
+  persons.sort((a,b)=>{
+    const ap=a.items.some(c=>(c.reservationStatus||"pending")==="pending")?0:1;
+    const bp=b.items.some(c=>(c.reservationStatus||"pending")==="pending")?0:1;
+    return ap-bp||(a.name||"").localeCompare(b.name||"");
+  });
+  const expanded=state.expandedPerson||null;
+  return`<div class="card"><div class="row-between"><div><div class="card-title">Asiakkaat <span class="badge badge-navy" style="font-size:11px">${groups.size} henkil\u00f6\u00e4 \u00b7 ${state.customers.length} osallistumista</span></div><div class="card-sub">\u{1F534} Varausmaksu odottaa \u00b7 \u{1F7E2} Vahvistettu \u00b7 \u{1F7E1} Varapaikka \u00b7 \u{1F9FE} Laskutettu \u00b7 \u26A0\uFE0F Ei laskua</div></div><button class="btn btn-primary" data-action="new-customer">+ Uusi asiakas</button></div>
+    <div class="hr"></div><div class="field"><label class="lbl">Haku</label><input data-action="search-customers" value="${esc(state.searchCustomers)}" placeholder="Hae nimell\u00e4, puhelimella tai s\u00e4hk\u00f6postilla\u2026"></div>
+    ${persons.length===0?`<div class="muted">Ei osumia.</div>`:persons.map(p=>{
+      const n=p.items.length;
+      const invN=p.items.filter(c=>custInvoiceState(c)==="invoiced").length;
+      const noInvN=p.items.filter(c=>custInvoiceState(c)==="none").length;
+      const open=expanded===p.key;
+      const rollup=`<span class="badge badge-silver" style="font-size:10px">${n} osall.</span> ${invN>0?`<span class="badge badge-green" style="font-size:10px">\u{1F9FE} ${invN}</span>`:""} ${noInvN>0?`<span class="badge badge-red" style="font-size:10px">\u26A0\uFE0F ${noInvN} ei laskua</span>`:""}`;
+      const rows=p.items.slice().sort((a,b)=>(custEventDate(b)||"").localeCompare(custEventDate(a)||"")).map(c=>{
+        const st=c.reservationStatus||"pending",dc=st==="paid"?"dot-green":st==="reserve"?"dot-amber":"dot-red";
+        const ist=custInvoiceState(c);
+        const ibadge=ist==="invoiced"?`<span class="badge badge-green" style="font-size:10px">\u{1F9FE} Laskutettu</span>`:ist==="partial"?`<span class="badge badge-amber" style="font-size:10px">\u25D0 Osittain</span>`:`<span class="badge badge-red" style="font-size:10px">\u26A0\uFE0F Ei laskua</span>`;
+        const co=state.companies.find(x=>x.id===c.companyId);
+        return`<div class="item" style="padding:8px 10px;background:#f8fafc">
+          <div style="display:flex;gap:10px;flex:1;align-items:flex-start"><span class="dot ${dc}" style="margin-top:6px;flex-shrink:0"></span>
+          <div><h3 style="font-size:14px">${esc(custEventLabel(c))} ${custEventDate(c)?`<span class="muted small">${esc(fi(custEventDate(c)))}</span>`:""}</h3>
+          <div class="meta">${statusBadge(st)} ${ibadge}${co&&c.billTo==="company"?` \u00b7 <span class="badge badge-silver">${esc(co.name)}</span>`:""}</div></div></div>
+          <div class="row" style="flex-shrink:0;align-items:flex-start">${st==="pending"?`<button class="btn btn-teal btn-sm" data-action="confirm-payment" data-id="${c.id}">\u2713 Maksettu</button>`:""}<button class="btn btn-primary btn-sm" data-action="customer-detail" data-id="${c.id}">N\u00e4yt\u00e4</button><button class="btn btn-secondary btn-sm" data-action="edit-customer" data-id="${c.id}">Muokkaa</button><button class="btn btn-danger btn-sm" data-action="delete-customer" data-id="${c.id}">Poista</button></div>
+        </div>`;
+      }).join("");
+      return`<div class="item" style="flex-direction:column;align-items:stretch">
+        <div style="display:flex;gap:10px;align-items:center;cursor:pointer" data-action="toggle-person" data-id="${esc(p.key)}">
+          <span style="font-size:16px;color:#0a4272">${open?"\u25be":"\u25b8"}</span>
+          <div style="flex:1"><h3>${esc(p.name||"(nimet\u00f6n)")}</h3>
+          <div class="meta">${rollup}</div>
+          <div class="meta">${p.email?`<a href="mailto:${esc(p.email)}" style="color:#1e40af">${esc(p.email)}</a>`:""}${p.email&&p.phone?" \u00b7 ":""}${esc(p.phone||"")}</div></div>
+        </div>
+        ${open?`<div style="margin-top:8px;display:flex;flex-direction:column;gap:6px">${rows}</div>`:""}
+      </div>`;
+    }).join("")}
   </div>`;
 }
 function renderCompanies(){
@@ -3071,7 +3225,18 @@ table{width:100%;border-collapse:collapse}
     else{const nid=await fsAdd("muutTuotteet",mdata);if(nid&&!state.muutTuotteet.find(x=>x.id===nid))state.muutTuotteet.push({id:nid,...mdata});}
     state.muuTuoteDraft={};render();return;
   }
-  if(a==="customer-detail"){state.customerDetailId=itemId;state.modal="customer-detail";render();return;}
+  if(a==="toggle-person"){state.expandedPerson=state.expandedPerson===itemId?null:itemId;render();return;}
+      if(a==="cover-course"){
+        const sid=el.dataset.sid,invId=el.dataset.inv;
+        const inv=state.invoices.find(x=>x.id===invId);if(!inv)return;
+        const parts=state.customers.filter(c=>c.sailingId===sid);
+        if(!parts.length)return alert("Kurssilla ei ole osallistujia rekisterissä.");
+        if(!confirm("Merkitäänkö kurssin kaikki "+parts.length+" osallistujaa laskun "+(inv.invoiceNo||"")+" kattamiksi?"))return;
+        const ids=Array.from(new Set([...(inv.coveredCustomerIds||[]),...parts.map(p=>p.id)]));
+        inv.coveredCustomerIds=ids;await fsSet("invoices",inv.id,{coveredCustomerIds:ids});
+        alert("Tehty — osallistujat näkyvät nyt laskutettuina.");render();return;
+      }
+      if(a==="customer-detail"){state.customerDetailId=itemId;state.modal="customer-detail";render();return;}
   if(a==="new-customer"){state.modal="customer";state.editId=null;render();return;}
       if(a==="edit-customer"){state.modal="customer";state.editId=itemId;render();return;}
       if(a==="new-sailing"){state.modal="sailing";state.editId=null;state.sailingDraft={};render();return;}
