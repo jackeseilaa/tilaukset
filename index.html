@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
 <meta name="apple-mobile-web-app-title" content="J Sailing"/>
 <meta name="theme-color" content="#0a1628"/>
-<title>J Sailing V9.180 — Hallintapaneeli</title>
+<title>J Sailing V9.179 — Hallintapaneeli</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400;1,600&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -208,7 +208,7 @@ import{getAuth,GoogleAuthProvider,signInWithPopup,signOut,onAuthStateChanged}fro
 import{getFirestore,collection,doc,addDoc,setDoc,deleteDoc,onSnapshot,serverTimestamp}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 const FIREBASE_CONFIG={apiKey:"AIzaSyB7Dp5_5fN0Iko-4Jn1D2Dp6NNNih63UO0",authDomain:"jsailing-f716c.firebaseapp.com",projectId:"jsailing-f716c",storageBucket:"jsailing-f716c.firebasestorage.app",messagingSenderId:"543523103696",appId:"1:543523103696:web:439a312efa6aec398a8fd5"};
 const ALLOWED_EMAIL="jacke.seilaa@gmail.com";
-const APP_VERSION="V9.180";const UPDATE_DATE=(()=>{const n=new Date();return n.toLocaleDateString("fi-FI")+' klo '+String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0');})();
+const APP_VERSION="V9.179";const UPDATE_DATE=(()=>{const n=new Date();return n.toLocaleDateString("fi-FI")+' klo '+String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0');})();
 const ISSUERS={
   tmi:{name:"J Sailing",businessId:"1728993-9",address:"Kontiontie 55, 11120 Riihimäki",iban:"FI62 1132 3000 4277 43",bic:"NDEAFIHH"},
   oy:{name:"AJarmo Oy",businessId:"3432355-3",address:"Kontiontie 55, 11120 Riihimäki",iban:"FI73 7997 7994 4257 05",bic:"HOLVFIHH"}
@@ -775,11 +775,10 @@ function renderTasmaytys(){
     if(parts.length===0&&allInvs.length){flagColor="#b45309";flagTxt="\u26A0\uFE0F Lasku olemassa, ei osallistujia rekisteriss\u00e4";}
     else if(uncoveredN>0&&allInvs.length){flagColor="#b45309";flagTxt=`\u26A0\uFE0F ${uncoveredN} osallistujaa ei katettu \u2014 liit\u00e4 kurssilasku alta`;}
     else if(uncoveredN>0){flagColor="#991b1b";flagTxt=`\u26A0\uFE0F ${uncoveredN} osallistujaa ilman laskua`;}
-    const otherInvsForCourse=invs.filter(x=>x.eventId===s.id||x.eventId==="COMBINED");
     const invList=allInvs.length?allInvs.map(x=>`<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 8px;background:#f8fafc;border-radius:6px;margin-top:4px">
         <div class="small"><strong style="color:#0a4272">${esc(x.invoiceNo||"")}</strong> \u00b7 ${esc(x.eventId==="COMBINED"?"Yhdistetty":"Kurssilasku")} \u00b7 ${Number(x.grossTotal||0).toFixed(0)} \u20ac \u00b7 ${x.paid?'<span style="color:#16a34a">\u2713 maksettu</span>':'<span style="color:#dc2626">avoin</span>'} \u00b7 kattaa ${(x.coveredCustomerIds||[]).length} id</div>
         ${parts.length?`<button class="btn btn-teal btn-sm" data-action="cover-course" data-sid="${s.id}" data-inv="${x.id}">Kattaa kaikki ${parts.length}</button>`:""}
-      </div>`).join(""):(parts.length&&otherInvsForCourse.length?otherInvsForCourse.map(x=>`<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 8px;background:#f8fafc;border-radius:6px;margin-top:4px"><div class="small"><strong style="color:#0a4272">${esc(x.invoiceNo||"")}</strong> ${Number(x.grossTotal||0).toFixed(0)} \u20ac ${x.paid?'<span style="color:#16a34a">\u2713 maksettu</span>':'<span style="color:#dc2626">avoin</span>'}</div><button class="btn btn-teal btn-sm" data-action="cover-course" data-sid="${s.id}" data-inv="${x.id}">Liit\u00e4 ${parts.length}</button></div>`).join(""):`<div class="muted small" style="margin-top:4px">Ei laskuja t\u00e4lle kurssille.</div>`;
+      </div>`).join(""):`<div class="muted small" style="margin-top:4px">Ei laskuja t\u00e4lle kurssille.</div>`;
     return`<div class="item" style="flex-direction:column;align-items:stretch;border-left:4px solid ${flagColor}">
       <div class="row-between"><div><h3>${esc(s.name||"")} ${s.date?`<span class="muted small">${esc(fi(s.date))}</span>`:""}</h3>
        <div class="meta small" style="color:${flagColor};font-weight:700">${flagTxt}</div></div>
