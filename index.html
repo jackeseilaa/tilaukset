@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
 <meta name="apple-mobile-web-app-title" content="J Sailing"/>
 <meta name="theme-color" content="#0a1628"/>
-<title>J Sailing V9.181 — Hallintapaneeli</title>
+<title>J Sailing V9.182 — Hallintapaneeli</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400;1,600&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -208,7 +208,7 @@ import{getAuth,GoogleAuthProvider,signInWithPopup,signOut,onAuthStateChanged}fro
 import{getFirestore,collection,doc,addDoc,setDoc,deleteDoc,onSnapshot,serverTimestamp}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 const FIREBASE_CONFIG={apiKey:"AIzaSyB7Dp5_5fN0Iko-4Jn1D2Dp6NNNih63UO0",authDomain:"jsailing-f716c.firebaseapp.com",projectId:"jsailing-f716c",storageBucket:"jsailing-f716c.firebasestorage.app",messagingSenderId:"543523103696",appId:"1:543523103696:web:439a312efa6aec398a8fd5"};
 const ALLOWED_EMAIL="jacke.seilaa@gmail.com";
-const APP_VERSION="V9.181";const UPDATE_DATE=(()=>{const n=new Date();return n.toLocaleDateString("fi-FI")+' klo '+String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0');})();
+const APP_VERSION="V9.182";const UPDATE_DATE=(()=>{const n=new Date();return n.toLocaleDateString("fi-FI")+' klo '+String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0');})();
 const ISSUERS={
   tmi:{name:"J Sailing",businessId:"1728993-9",address:"Kontiontie 55, 11120 Riihimäki",iban:"FI62 1132 3000 4277 43",bic:"NDEAFIHH"},
   oy:{name:"AJarmo Oy",businessId:"3432355-3",address:"Kontiontie 55, 11120 Riihimäki",iban:"FI73 7997 7994 4257 05",bic:"HOLVFIHH"}
@@ -831,7 +831,7 @@ function addDays(s,n){const d=new Date(s+'T12:00:00');d.setDate(d.getDate()+n);r
 function fi(s){if(!s)return'';const[y,m,d]=s.split('-');return d+'.'+m+'.'+y;}
 function yymmdd(s){if(!s)return'000000';const[y,m,d]=s.split('-');return y.slice(2)+m+d;}
 
-function printInvoiceFull(inv){
+function printInvoiceFull(inv,partName="",eventDate=""){
  const I=inv.issuer==='oy'
   ?{name:'AJarmo Oy',bid:'3432355-3',addr:'Kontiontie 55',city:'11120 Riihimäki',iban:'FI73 7997 7994 4257 05',bic:'HOLVFIHH',phone:'+358 443 808 569',email:'jacke.seilaa@gmail.com'}
   :{name:'J Sailing',bid:'1728993-9',addr:'Kontiontie 55',city:'11120 Riihimäki',iban:'FI62 1132 3000 4277 43',bic:'NDEAFIHH',phone:'+358 443 808 569',email:'jacke.seilaa@gmail.com'};
@@ -3557,7 +3557,25 @@ table{width:100%;border-collapse:collapse}
         fsSet("invoices",inv.id,{grossTotal:inv.grossTotal,paid:inv.paid,paidDate:inv.paidDate});
         state.modal="";state.editInvoiceId="";alert("Lasku päivitetty!");render();return;
       }
-      if(a==="print-preview"){const _inv=state.invoices.find(x=>x.id===state.previewInvoiceId);if(_inv)printInvoiceFull(_inv);return;}
+      if(a==="print-preview"){
+        const _inv=state.invoices.find(x=>x.id===state.previewInvoiceId);if(!_inv)return;
+        let partName="",eventDate="";
+        if(Array.isArray(_inv.coveredCustomerIds)&&_inv.coveredCustomerIds.length){
+          const firstCustId=_inv.coveredCustomerIds[0];
+          const cust=state.customers.find(c=>c.id===firstCustId);
+          if(cust){partName=cust.name||"";
+            const eid=cust.sailingId||cust.tutkintoId;
+            if(eid){
+              const sail=state.sailings.find(s=>s.id===eid);
+              const tut=state.tutkinnot.find(t=>t.id===eid);
+              const ev=sail||tut;
+              eventDate=ev?(ev.date||""):"";
+            }
+          }
+        }
+        printInvoiceFull(_inv,partName,eventDate);
+        return;
+      }
       if(a==="edit-session-cal"||a==="edit-session-direct"){if(idx===null||isNaN(idx))return;state.editSession={sailingId:itemId,idx};state.modal="session";render();return;}
       if(a==="confirm-payment"){const c=state.customers.find(x=>x.id===itemId);if(!c)return;if(!confirm(`Merkitäänkö ${c.name} varausmaksu suoritetuksi?`))return;c.reservationStatus="paid";await fsSet("customers",c.id,c);render();return;}
       if(a==="promote-reserve"){const c=state.customers.find(x=>x.id===itemId);if(!c)return;const s=state.sailings.find(x=>x.id===c.sailingId);if(!s)return;if(confirmedCount(s.id)>=Number(s.maxPersons||0)){alert("Kurssi on täynnä.");return;}if(!confirm(`Siirretäänkö ${c.name} odottamaan varausmaksua?`))return;c.reservationStatus="pending";await fsSet("customers",c.id,c);render();return;}
