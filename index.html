@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
 <meta name="apple-mobile-web-app-title" content="J Sailing"/>
 <meta name="theme-color" content="#0a1628"/>
-<title>J Sailing V9.183 — Hallintapaneeli</title>
+<title>J Sailing V9.185 — Hallintapaneeli</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400;1,600&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -208,7 +208,7 @@ import{getAuth,GoogleAuthProvider,signInWithPopup,signOut,onAuthStateChanged}fro
 import{getFirestore,collection,doc,addDoc,setDoc,deleteDoc,onSnapshot,serverTimestamp}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 const FIREBASE_CONFIG={apiKey:"AIzaSyB7Dp5_5fN0Iko-4Jn1D2Dp6NNNih63UO0",authDomain:"jsailing-f716c.firebaseapp.com",projectId:"jsailing-f716c",storageBucket:"jsailing-f716c.firebasestorage.app",messagingSenderId:"543523103696",appId:"1:543523103696:web:439a312efa6aec398a8fd5"};
 const ALLOWED_EMAIL="jacke.seilaa@gmail.com";
-const APP_VERSION="V9.183";const UPDATE_DATE=(()=>{const n=new Date();return n.toLocaleDateString("fi-FI")+' klo '+String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0');})();
+const APP_VERSION="V9.185";const UPDATE_DATE=(()=>{const n=new Date();return n.toLocaleDateString("fi-FI")+' klo '+String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0');})();
 const ISSUERS={
   tmi:{name:"J Sailing",businessId:"1728993-9",address:"Kontiontie 55, 11120 Riihimäki",iban:"FI62 1132 3000 4277 43",bic:"NDEAFIHH"},
   oy:{name:"AJarmo Oy",businessId:"3432355-3",address:"Kontiontie 55, 11120 Riihimäki",iban:"FI73 7997 7994 4257 05",bic:"HOLVFIHH"}
@@ -2278,6 +2278,20 @@ function renderModal(){
   if(state.modal==="combined-invoice")return renderCombinedInvoiceModal();
   return"";
 }
+function rebuildInvoiceLines(inv){
+  const ids=Array.isArray(inv.coveredCustomerIds)?inv.coveredCustomerIds:[];
+  const custs=ids.map(id=>state.customers.find(c=>c.id===id)).filter(Boolean);
+  return custs.map(c=>{
+    const eid=c.sailingId||c.tutkintoId||"";
+    const isSail=!!c.sailingId;
+    const ev=isSail?state.sailings.find(s=>s.id===eid):state.tutkinnot.find(t=>t.id===eid);
+    const evName=ev?(isSail?(ev.name||"Purjehdus"):((ev.type||"Tutkinto")+(ev.boatType?" ("+ev.boatType+")":""))):"";
+    const evDate=ev?(ev.date||""):"";
+    const price=c.priceOverride!=null&&c.priceOverride!==""?Number(c.priceOverride):(ev?Number(ev.pricePerPerson||0):0);
+    const title=(evDate?fi(evDate)+" \u2014 ":"")+c.name+(evName?" ("+evName+")":"");
+    return{title,qty:1,unit:price,total:price,evDate};
+  }).sort((a,b)=>(a.evDate||"").localeCompare(b.evDate||""));
+}
 function renderEditInvoiceModal(){
   const inv=state.invoices.find(x=>x.id===state.editInvoiceId);if(!inv)return"";
   return`<div class="overlay" data-action="close-modal"><div class="modal" onclick="event.stopPropagation()">
@@ -2289,6 +2303,7 @@ function renderEditInvoiceModal(){
       <div class="field"><label class="lbl">Laskun summa (€)</label><input type="number" data-action="edit-gross" value="${Number(inv.grossTotal||0).toFixed(2)}" step="0.01" style="font-size:16px;font-weight:700"></div>
       <div style="margin-top:14px"><label style="display:flex;align-items:center;gap:8px;cursor:pointer"><input type="checkbox" data-action="edit-paid" ${inv.paid?"checked":""} style="width:18px;height:18px"> <strong>Merkitty maksetuksi</strong></label></div>
       ${inv.paid?`<div class="field" style="margin-top:8px"><label class="lbl">Maksupäivä</label><input type="date" data-action="edit-paid-date" value="${inv.paidDate||today()}"></div>`:``}
+      ${Array.isArray(inv.coveredCustomerIds)&&inv.coveredCustomerIds.length?`<div style="margin-top:14px"><button class="btn btn-teal" data-action="rebuild-invoice-lines" style="width:100%">\u{1F504} Päivitä rivit (pvm — nimi — tapahtuma)</button><div class="muted small" style="margin-top:4px">Rakentaa laskurivit uudelleen osallistujatiedoista päivämääräjärjestyksessä. Loppusummaa ei muuteta.</div></div>`:``}
       <div class="hr" style="margin:16px 0"></div>
       <div class="row" style="gap:8px">
         <button class="btn btn-danger btn-sm" data-action="make-credit-invoice" data-id="${inv.id}">↩ Hyvityslasku</button>
@@ -3547,6 +3562,18 @@ table{width:100%;border-collapse:collapse}
         state.modal=null;state.editId=null;render();return;
       }
       if(a==="preview-invoice"){state.previewInvoiceId=itemId;state.modal="invoice-preview";render();return;}
+      if(a==="rebuild-invoice-lines"){
+        const inv=state.invoices.find(x=>x.id===state.editInvoiceId);if(!inv)return;
+        const newLines=rebuildInvoiceLines(inv);
+        if(!newLines.length){alert("Ei osallistujia joista rivejä voisi rakentaa.");return;}
+        inv.lines=newLines;
+        const vr=Number(inv.vatRatePct||25.5)/100;
+        const newGross=newLines.reduce((s,l)=>s+Number(l.total||0),0);
+        inv.net=newGross/(1+vr);inv.vat=newGross-inv.net;
+        await fsSet("invoices",inv.id,{lines:inv.lines,net:inv.net,vat:inv.vat});
+        alert("Rivit päivitetty! "+newLines.length+" riviä, pvm-järjestyksessä. Laskun loppusummaa EI muutettu.");
+        render();return;
+      }
       if(a==="save-edit-invoice"){
         const inv=state.invoices.find(x=>x.id===state.editInvoiceId);if(!inv)return;
         const gt=document.querySelector('input[data-action="edit-gross"]')?.value;
