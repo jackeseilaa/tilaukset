@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
 <meta name="apple-mobile-web-app-title" content="J Sailing"/>
 <meta name="theme-color" content="#0a1628"/>
-<title>J Sailing V9.189 — Hallintapaneeli</title>
+<title>J Sailing V9.190 — Hallintapaneeli</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400;1,600&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -208,7 +208,7 @@ import{getAuth,GoogleAuthProvider,signInWithPopup,signOut,onAuthStateChanged}fro
 import{getFirestore,collection,doc,addDoc,setDoc,deleteDoc,onSnapshot,serverTimestamp}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 const FIREBASE_CONFIG={apiKey:"AIzaSyB7Dp5_5fN0Iko-4Jn1D2Dp6NNNih63UO0",authDomain:"jsailing-f716c.firebaseapp.com",projectId:"jsailing-f716c",storageBucket:"jsailing-f716c.firebasestorage.app",messagingSenderId:"543523103696",appId:"1:543523103696:web:439a312efa6aec398a8fd5"};
 const ALLOWED_EMAIL="jacke.seilaa@gmail.com";
-const APP_VERSION="V9.189";const UPDATE_DATE=(()=>{const n=new Date();return n.toLocaleDateString("fi-FI")+' klo '+String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0');})();
+const APP_VERSION="V9.190";const UPDATE_DATE=(()=>{const n=new Date();return n.toLocaleDateString("fi-FI")+' klo '+String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0');})();
 const ISSUERS={
   tmi:{name:"J Sailing",businessId:"1728993-9",address:"Kontiontie 55, 11120 Riihimäki",iban:"FI62 1132 3000 4277 43",bic:"NDEAFIHH"},
   oy:{name:"AJarmo Oy",businessId:"3432355-3",address:"Kontiontie 55, 11120 Riihimäki",iban:"FI73 7997 7994 4257 05",bic:"HOLVFIHH"}
@@ -2414,7 +2414,7 @@ function renderSailingModal(){
     <div class="modal-body">
       <div class="field"><label class="lbl">Nimi *</label><input data-field="name" value="${esc(draft.name||s?.name||"")}"></div>
       <div class="field"><label class="lbl">Reitti <span style="font-weight:400;text-transform:none;font-size:11px;color:#6b7280">(esim. Hanko–Tallinna–Helsinki)</span></label><input data-field="reitti" value="${esc(draft.reitti!==undefined?draft.reitti:(s?.reitti||""))}" placeholder="Valinnainen — näkyy kalenterissa ja Google Calendarissa"></div>
-      <div class="field" style="display:flex;align-items:center;gap:10px;margin-top:8px"><label style="display:flex;align-items:center;gap:6px;cursor:pointer;margin:0;font-weight:600;font-size:13px"><input type="checkbox" data-field="kansainvalinen" ${(draft.kansainvalinen||s?.kansainvalinen)?'checked':''} style="width:18px;height:18px;cursor:pointer;accent-color:#0a4272"> 🌍 Kansainvälinen henkilökuljetus (ALV 0%)</label></div>
+      <div class="field" style="display:flex;align-items:center;gap:10px;margin-top:8px"><button type="button" class="btn" data-action="toggle-intl" style="flex:0 0 auto;padding:6px 12px;border:2px solid #d1d5db;border-radius:6px;background:${(draft.kansainvalinen||s?.kansainvalinen)?'#0a4272':'#fff'};color:${(draft.kansainvalinen||s?.kansainvalinen)?'#fff':'#1a1a2e'};font-weight:600;font-size:13px;cursor:pointer;transition:all 0.2s">🌍 ${(draft.kansainvalinen||s?.kansainvalinen)?'Kansainvälinen (ALV 0%)':'Ei kansainvälinen'}</button><input type="hidden" data-field="kansainvalinen" value="${(draft.kansainvalinen||s?.kansainvalinen)?'true':'false'}"></div>
       <div class="grid2">
         <div class="field"><label class="lbl">Tyyppi *</label>
           <select data-field="sailing-type-live" data-action="sailing-type-changed">
@@ -2916,6 +2916,12 @@ function bind(){
     if(startEl) d.startTime=startEl.value;
     if(endEl) d.endTime=endEl.value;
     if(typeEl) d.type=typeEl.value;
+    state.sailingDraft=d;
+    render();
+  });
+  document.querySelector('[data-action="toggle-intl"]')?.addEventListener("click",()=>{
+    const d=state.sailingDraft||{};
+    d.kansainvalinen=!d.kansainvalinen;
     state.sailingDraft=d;
     render();
   });
@@ -3711,7 +3717,7 @@ table{width:100%;border-collapse:collapse}
         const existing=state.editId?state.sailings.find(x=>x.id===state.editId):null;
         const data={name,date,type,
           reitti:(document.querySelector('[data-field="reitti"]')?.value||"").trim(),
-          kansainvalinen:!!document.querySelector('[data-field="kansainvalinen"]')?.checked,
+          kansainvalinen:document.querySelector('[data-field="kansainvalinen"]')?.value==="true",
           endDate:endDate||"",
           startTime,
           endTime,
