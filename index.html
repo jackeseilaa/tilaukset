@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
 <meta name="apple-mobile-web-app-title" content="J Sailing"/>
 <meta name="theme-color" content="#0a1628"/>
-<title>J Sailing V9.187 — Hallintapaneeli</title>
+<title>J Sailing V9.188 — Hallintapaneeli</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400;1,600&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -208,7 +208,7 @@ import{getAuth,GoogleAuthProvider,signInWithPopup,signOut,onAuthStateChanged}fro
 import{getFirestore,collection,doc,addDoc,setDoc,deleteDoc,onSnapshot,serverTimestamp}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 const FIREBASE_CONFIG={apiKey:"AIzaSyB7Dp5_5fN0Iko-4Jn1D2Dp6NNNih63UO0",authDomain:"jsailing-f716c.firebaseapp.com",projectId:"jsailing-f716c",storageBucket:"jsailing-f716c.firebasestorage.app",messagingSenderId:"543523103696",appId:"1:543523103696:web:439a312efa6aec398a8fd5"};
 const ALLOWED_EMAIL="jacke.seilaa@gmail.com";
-const APP_VERSION="V9.187";const UPDATE_DATE=(()=>{const n=new Date();return n.toLocaleDateString("fi-FI")+' klo '+String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0');})();
+const APP_VERSION="V9.188";const UPDATE_DATE=(()=>{const n=new Date();return n.toLocaleDateString("fi-FI")+' klo '+String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0');})();
 const ISSUERS={
   tmi:{name:"J Sailing",businessId:"1728993-9",address:"Kontiontie 55, 11120 Riihimäki",iban:"FI62 1132 3000 4277 43",bic:"NDEAFIHH"},
   oy:{name:"AJarmo Oy",businessId:"3432355-3",address:"Kontiontie 55, 11120 Riihimäki",iban:"FI73 7997 7994 4257 05",bic:"HOLVFIHH"}
@@ -446,6 +446,13 @@ function invTypeBadge(t){
   if(t==="credit")return`<span class="badge badge-red" style="font-size:10px">Hyvitys</span>`;
   return`<span class="badge badge-silver" style="font-size:10px">Loppulasku</span>`;
 }
+// Kansainvälinen henkilökuljetus (ALV 0 %): rasti TAI reitin/nimen tunnistus
+function isIntlSailing(s){
+  if(!s)return false;
+  if(s.kansainvalinen)return true;
+  const txt=String(s.reitti||"")+" "+String(s.name||"");
+  return /viro|tallinn|ruots|saksa|gotlan|ulkom|englanti|london|dover|britt|prangli|naissaar|eesti|aegna|helsinki\s*[-–]\s*tallinn/i.test(txt);
+}
 function computeInvoice(overrideState){
   const inv=overrideState||state.invoice;
   const source=inv.source||"sailing",isTutkinto=source==="tutkinto";
@@ -453,7 +460,7 @@ function computeInvoice(overrideState){
   const t=isTutkinto?(state.tutkinnot.find(x=>x.id===inv.tutkintoId)||null):null;
   const invIssuer=ISSUERS[inv.issuer||"tmi"]||ISSUERS.tmi;
   const isCharter=!isTutkinto&&s?.type==="Charter";
-  const isInternational=(!!s?.kansainvalinen)||(!isTutkinto&&s?.reitti&&/viro|tallinn|ruots|saksa|gotlan|ulkom|englanti|london|dover|britt/i.test(s.reitti||""));
+  const isInternational=!isTutkinto&&isIntlSailing(s);
   const rate=isInternational?0:isCharter?0.135:0.255;
   const ratePct=(rate*100).toFixed(1);
   const itype=inv.type||"full",isRes=itype==="reservation",isPartial=itype==="partial",isCredit=itype==="credit";
@@ -2012,7 +2019,9 @@ function renderCombinedInvoiceModal(){
  const selected=ci.items.filter(x=>x.included);
  const grossTotal=ci.editLines.reduce((s,l)=>s+l.amount,0);
  const isCharter=ci.items.some(x=>x.included&&x.isSailing&&x.ev?.type==="Charter");
- const rate=isCharter?0.135:0.255;
+ const _sail=ci.items.filter(x=>x.included&&x.isSailing&&x.ev);
+ const isIntl=_sail.length>0&&_sail.every(x=>isIntlSailing(x.ev));
+ const rate=isIntl?0:(isCharter?0.135:0.255);
  const ratePct=(rate*100).toFixed(1);
  const net=grossTotal/(1+rate),vat=grossTotal-net;
  const issr=ISSUERS[ci.issuer||"tmi"]||ISSUERS.tmi;
@@ -2436,7 +2445,7 @@ function renderSailingModal(){
         <div class="small muted" style="margin-bottom:10px">Täytä jos haluat laskuttaa koko tapahtuman yhdellä kiinteällä rivillä (esim. yrityskurssi). Jätä tyhjäksi normaaliin osallistujakohtaiseen laskutukseen.</div>
         <div class="grid2">
           <div class="field"><label class="lbl">Nimike laskulla</label><input data-field="invoiceLabel" value="${esc(s?.invoiceLabel||'')}" placeholder="esim. OP Kipparit purjehtijakurssi 1–7.6.2026"></div>
-          <div class="field"><label class="lbl">Kiinteä kokonaishinta (€, sis. ALV)</label><input type="number" min="0" step="0.01" data-field="invoiceFixedGross" value="${s?.invoiceFixedGross>0?Number(s.invoiceFixedGross):''}" placeholder="0"><div class="small muted" style="margin-top:4px">ALV 25,5 % lasketaan automaattisesti</div></div>
+          <div class="field"><label class="lbl">Kiinteä kokonaishinta (€, sis. ALV)</label><input type="number" min="0" step="0.01" data-field="invoiceFixedGross" value="${s?.invoiceFixedGross>0?Number(s.invoiceFixedGross):''}" placeholder="0"><div class="small muted" style="margin-top:4px">${(draft.kansainvalinen||isIntlSailing(s))?"🌍 ALV 0 % (kansainvälinen henkilökuljetus)":"ALV 25,5 % lasketaan automaattisesti"}</div></div>
         </div>
       </div>
       <div class="row" style="justify-content:flex-end;margin-top:16px"><button class="btn btn-primary" data-action="save-sailing">${editing?"Tallenna muutokset":"Tallenna"}</button></div>
@@ -3774,7 +3783,7 @@ table{width:100%;border-collapse:collapse}
         if(cust&&cust.reservationStatus==="pending"){cust.reservationStatus="paid";await fsSet("customers",cust.id,cust);}
         render();return;
       }
-      if(a==="print-combined"){const ci=state.combinedInvoice;const issr2=ISSUERS[ci.issuer||"tmi"]||ISSUERS.tmi;const gross=ci.editLines.reduce((s,l)=>s+l.amount,0);const isCharter=ci.items.some(x=>x.included&&x.isSailing&&x.ev?.type==="Charter");const rate=isCharter?0.135:0.255;const net=gross/(1+rate),vat=gross-net;const invNo=nextInvoiceNumber();const payerName=ci.isCompany?(state.companies.find(x=>x.id===ci.companyId)?.name||ci.label):ci.label;const payerEmail=ci.isCompany?(state.companies.find(x=>x.id===ci.companyId)?.email||""):(state.customers.find(x=>x.name===ci.label)?.email||"");const payerBid=ci.isCompany?(state.companies.find(x=>x.id===ci.companyId)?.businessId||""):"";printInvoiceFull({issuer:ci.issuer||"tmi",invoiceNo:invNo,invoiceDate:ci.invoiceDate||today(),paymentDays:ci.paymentDays||7,reference:finnishReference(invNo.replace(/[^0-9]/g,"")),payerName,payerEmail,payerBusinessId:payerBid,lines:ci.editLines.map(l=>({title:l.title,qty:1,unit:l.amount,total:l.amount})),net,vat,grossTotal:gross,vatRatePct:Number((rate*100).toFixed(1))});return;}
+      if(a==="print-combined"){const ci=state.combinedInvoice;const issr2=ISSUERS[ci.issuer||"tmi"]||ISSUERS.tmi;const gross=ci.editLines.reduce((s,l)=>s+l.amount,0);const isCharter=ci.items.some(x=>x.included&&x.isSailing&&x.ev?.type==="Charter");const _sail=ci.items.filter(x=>x.included&&x.isSailing&&x.ev);const isIntl=_sail.length>0&&_sail.every(x=>isIntlSailing(x.ev));const rate=isIntl?0:(isCharter?0.135:0.255);const net=gross/(1+rate),vat=gross-net;const invNo=nextInvoiceNumber();const payerName=ci.isCompany?(state.companies.find(x=>x.id===ci.companyId)?.name||ci.label):ci.label;const payerEmail=ci.isCompany?(state.companies.find(x=>x.id===ci.companyId)?.email||""):(state.customers.find(x=>x.name===ci.label)?.email||"");const payerBid=ci.isCompany?(state.companies.find(x=>x.id===ci.companyId)?.businessId||""):"";printInvoiceFull({issuer:ci.issuer||"tmi",invoiceNo:invNo,invoiceDate:ci.invoiceDate||today(),paymentDays:ci.paymentDays||7,reference:finnishReference(invNo.replace(/[^0-9]/g,"")),payerName,payerEmail,payerBusinessId:payerBid,lines:ci.editLines.map(l=>({title:l.title,qty:1,unit:l.amount,total:l.amount})),net,vat,grossTotal:gross,vatRatePct:Number((rate*100).toFixed(1))});return;}
 if(a==="save-combined-invoice"){
     const ci=state.combinedInvoice;
     const sel=ci.items.filter(x=>x.included);
