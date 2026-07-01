@@ -208,7 +208,7 @@ import{getAuth,GoogleAuthProvider,signInWithPopup,signOut,onAuthStateChanged}fro
 import{getFirestore,collection,doc,addDoc,setDoc,deleteDoc,onSnapshot,serverTimestamp}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 const FIREBASE_CONFIG={apiKey:"AIzaSyB7Dp5_5fN0Iko-4Jn1D2Dp6NNNih63UO0",authDomain:"jsailing-f716c.firebaseapp.com",projectId:"jsailing-f716c",storageBucket:"jsailing-f716c.firebasestorage.app",messagingSenderId:"543523103696",appId:"1:543523103696:web:439a312efa6aec398a8fd5"};
 const ALLOWED_EMAIL="jacke.seilaa@gmail.com";
-const APP_VERSION="V9.192";const UPDATE_DATE=(()=>{const n=new Date();return n.toLocaleDateString("fi-FI")+' klo '+String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0');})();
+const APP_VERSION="V9.193";const UPDATE_DATE=(()=>{const n=new Date();return n.toLocaleDateString("fi-FI")+' klo '+String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0');})();
 const ISSUERS={
   tmi:{name:"J Sailing",businessId:"1728993-9",address:"Kontiontie 55, 11120 Riihimäki",iban:"FI62 1132 3000 4277 43",bic:"NDEAFIHH"},
   oy:{name:"AJarmo Oy",businessId:"3432355-3",address:"Kontiontie 55, 11120 Riihimäki",iban:"FI73 7997 7994 4257 05",bic:"HOLVFIHH"}
@@ -390,7 +390,7 @@ function gcalUrl(title,date,startTime,endTime,description,endDate,locationOverri
     if(endDate){const d=new Date(endDate+"T12:00:00");d.setDate(d.getDate()+1);end=d.toISOString().slice(0,10).replace(/-/g,"");}
     else end=start;
   }
-  const params=new URLSearchParams({action:"TEMPLATE",text:title,dates:start+"/"+end,details:description||"J Sailing — Absolut 37",location:locationOverride||"Loviisa, Finland"});
+  const params=new URLSearchParams({action:"TEMPLATE",text:title,dates:start+"/"+end,details:description||"J Sailing — Absolut 37",location:locationOverride||""});
   return"https://calendar.google.com/calendar/render?"+params.toString();
 }
 function gcalButton(sailing,sessionIdx){
